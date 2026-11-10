@@ -1,0 +1,196 @@
+
+.section {
+  height: 450vh;
+  position: relative;
+  background: #050505;
+  color: #fff;
+}
+
+.sticky {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  min-height: 550px;
+  overflow: hidden;
+  background: #050505;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.top {
+  position: absolute;
+  top: 7%;
+  left: 7%;
+  right: 7%;
+  display: flex;
+  justify-content: space-between;
+  font: 10px Arial, sans-serif;
+  letter-spacing: .2em;
+  color: #777;
+  z-index: 200;
+}
+
+.scene {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  perspective: 1300px;
+  perspective-origin: 50% 50%;
+  transform-style: preserve-3d;
+}
+
+.card {
+  position: absolute;
+  width: clamp(230px, 25vw, 390px);
+  height: clamp(360px, 68vh, 610px);
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  transform-origin: center center;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  will-change: transform, opacity, filter;
+  box-shadow: 0 20px 70px rgba(0,0,0,.45);
+}
+
+.cardContent {
+  position: absolute;
+  bottom: 30px;
+  left: 28px;
+  right: 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.cardContent span {
+  font: 10px Arial, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: .18em;
+  color: rgba(255,255,255,.75);
+}
+
+.cardContent h3 {
+  font-family: "Bodoni Moda", Georgia, serif;
+  font-weight: 400;
+  font-size: clamp(38px, 4vw, 62px);
+  letter-spacing: -.055em;
+  margin: 6px 0 15px;
+  line-height: 1;
+}
+
+.cardContent a {
+  font: 9px Arial, sans-serif;
+  letter-spacing: .13em;
+  color: #fff;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(255,255,255,.6);
+  padding-bottom: 5px;
+}
+
+.bottom {
+  position: absolute;
+  bottom: 9%;
+  left: 7%;
+  right: 7%;
+  display: flex;
+  justify-content: space-between;
+  font: 10px Arial, sans-serif;
+  letter-spacing: .2em;
+  color: #777;
+  z-index: 200;
+}
+
+.progressTrack {
+  position: absolute;
+  bottom: 5%;
+  left: 7%;
+  right: 7%;
+  height: 1px;
+  background: #333;
+  z-index: 200;
+}
+
+.progressFill {
+  height: 100%;
+  background: #fff;
+}
+
+@media (max-width: 768px) {
+  .section {
+    height: 350vh;
+  }
+
+  .card {
+    width: 58vw;
+    height: 53vh;
+    max-height: 520px;
+  }
+
+  .cardContent {
+    bottom: 22px;
+    left: 18px;
+    right: 18px;
+  }
+
+  .cardContent h3 {
+    font-size: 42px;
+  }
+
+  .top, .bottom {
+    left: 6%;
+    right: 6%;
+    font-size: 8px;
+  }
+
+  .top {
+    top: 8%;
+  }
+
+  .bottom {
+    bottom: 10%;
+  }
+
+  .progressTrack {
+    left: 6%;
+    right: 6%;
+    bottom: 6%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .section {
+    height: auto;
+    padding: 100px 6%;
+  }
+
+  .sticky {
+    position: relative;
+    height: auto;
+    min-height: 0;
+    display: block;
+    overflow: visible;
+  }
+
+  .scene {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 18px;
+    height: auto;
+  }
+
+  .card {
+    position: relative;
+    width: 100%;
+    height: 380px;
+    transform: none !important;
+  }
+
+  .top, .bottom, .progressTrack {
+    display: none;
+  }
+}

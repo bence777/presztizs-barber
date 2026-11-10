@@ -1,0 +1,193 @@
+
+.section {
+  background: #ffffff;
+  color: #111;
+  padding: clamp(100px, 11vw, 170px) 0;
+}
+
+.container {
+  width: min(100% - 48px, 1360px);
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 40px;
+  margin-bottom: 55px;
+}
+
+.eyebrow {
+  display: block;
+  font-family: Arial, sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .22em;
+  color: #757575;
+  margin-bottom: 25px;
+}
+
+.header h2 {
+  font-family: "Bodoni Moda", Georgia, serif;
+  font-size: clamp(52px, 6.5vw, 110px);
+  font-weight: 400;
+  line-height: .99;
+  letter-spacing: -.065em;
+  margin: 0;
+}
+
+.header h2 em {
+  font-weight: 400;
+}
+
+.allPrices {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid #111;
+  color: #111;
+  padding: 17px 25px;
+  font: 600 10px Arial, sans-serif;
+  letter-spacing: .15em;
+  text-decoration: none;
+  transition: background .25s, color .25s;
+}
+
+.allPrices:hover {
+  background: #111;
+  color: #fff;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 15px;
+}
+
+.card {
+  background: #f4f4f4;
+  border: 1px solid #e5e5e5;
+  min-height: 280px;
+  padding: 25px;
+  display: flex;
+  flex-direction: column;
+  transition:
+    background .3s ease,
+    transform .3s ease;
+}
+
+.card:hover {
+  background: #ededed;
+  transform: translateY(-5px);
+}
+
+.number {
+  font: 600 10px Arial, sans-serif;
+  letter-spacing: .16em;
+  color: #777777;
+}
+
+.content {
+  flex: 1;
+  padding-top: 42px;
+}
+
+.content h3 {
+  font-family: "Bodoni Moda", Georgia, serif;
+  font-weight: 400;
+  font-size: clamp(24px, 2.3vw, 35px);
+  line-height: 1.1;
+  letter-spacing: -.045em;
+  margin: 0 0 15px;
+}
+
+.content p {
+  font-family: Arial, sans-serif;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #686868;
+  margin: 0;
+  max-width: 230px;
+}
+
+.meta {
+  border-top: 1px solid #d7d7d7;
+  padding-top: 22px;
+  margin-top: 30px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.meta strong {
+  font-family: "Bodoni Moda", Georgia, serif;
+  font-weight: 500;
+  font-size: 29px;
+  letter-spacing: -.04em;
+  white-space: nowrap;
+}
+
+.meta span {
+  font: 11px Arial, sans-serif;
+  color: #777;
+  white-space: nowrap;
+  padding-bottom: 5px;
+}
+
+.footnote {
+  font-family: Georgia, serif;
+  font-style: italic;
+  font-size: 15px;
+  color: #888888;
+  margin: 35px 0 0;
+  text-align: right;
+}
+
+@media (max-width: 1050px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .section {
+    padding: 85px 0;
+  }
+
+  .container {
+    width: calc(100% - 36px);
+  }
+
+  .header {
+    display: block;
+    margin-bottom: 35px;
+  }
+
+  .header h2 {
+    font-size: clamp(48px, 11vw, 70px);
+  }
+
+  .allPrices {
+    margin-top: 30px;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .card {
+    min-height: 225px;
+  }
+
+  .content {
+    padding-top: 25px;
+  }
+
+  .content h3 {
+    font-size: 31px;
+  }
+}

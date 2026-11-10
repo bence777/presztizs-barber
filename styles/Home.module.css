@@ -1,0 +1,318 @@
+
+.site {
+  background: #080908;
+  color: #fff;
+  min-height: 100vh;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* HEADER */
+
+.header {
+  height: 70px;
+  border-bottom: 1px solid #242524;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 clamp(24px, 3.3vw, 65px);
+  position: relative;
+  z-index: 4;
+  background: #080908;
+}
+
+.brand {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 23px;
+  text-decoration: none;
+  color: #fff;
+  letter-spacing: -0.04em;
+}
+
+.brand span {
+  font-size: 13px;
+  font-style: italic;
+  margin-left: 4px;
+}
+
+.header nav {
+  display: flex;
+  gap: clamp(20px, 3vw, 52px);
+}
+
+.header nav a {
+  text-decoration: none;
+  color: #aaa9a7;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.header nav a:hover {
+  color: #fff;
+}
+
+.header nav .bookingNav { color: #f1f3ef; border-bottom: 1px solid #888; padding-bottom: 5px; }
+.header nav .bookingNav:hover { border-color: #fff; }
+
+/* HERO */
+
+.hero {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  height: calc(100svh - 70px);
+  min-height: 590px;
+  overflow: hidden;
+  background: #050505;
+}
+
+/* VIDEO BACKGROUND */
+/* A HeroVideo komponens a hero közvetlen gyermeke */
+
+.hero :global(.heroVideoWrap) {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  z-index: -3;
+  pointer-events: none;
+  background: #050505;
+}
+
+.hero :global(.heroVideo) {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+  filter: grayscale(1) brightness(0.38) contrast(1.12);
+}
+
+/* Sötét overlay + vignetta */
+
+.hero :global(.heroVideoWrap)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+
+  background:
+    linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.48) 0%,
+      rgba(0, 0, 0, 0.22) 45%,
+      rgba(0, 0, 0, 0.35) 100%
+    ),
+    linear-gradient(
+      0deg,
+      rgba(0, 0, 0, 0.65) 0%,
+      transparent 30%,
+      transparent 70%,
+      rgba(0, 0, 0, 0.3) 100%
+    ),
+    radial-gradient(
+      ellipse at center,
+      transparent 20%,
+      rgba(0, 0, 0, 0.45) 100%
+    );
+}
+
+/* Régi háttérkép - kompatibilitás */
+
+.portrait {
+  display: none;
+}
+
+.shade {
+  display: none;
+}
+
+/* EDITORIAL LABELS */
+
+.topline,
+.bottomline {
+  position: absolute;
+  left: 9.2%;
+  right: 9.2%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+  letter-spacing: 0.21em;
+  color: #a5a4a3;
+  font-weight: 500;
+  z-index: 2;
+}
+
+.topline {
+  top: 8%;
+}
+
+.bottomline {
+  bottom: 5%;
+}
+
+.bottomline a {
+  color: #eae9e5;
+  text-decoration: none;
+  border-bottom: 1px solid #888;
+  padding-bottom: 5px;
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.bottomline a:hover {
+  color: #fff;
+  border-color: #fff;
+}
+
+/* CENTER TITLE */
+
+.center {
+  position: absolute;
+  left: 9.2%;
+  right: 9.2%;
+  top: 51%;
+  transform: translateY(-50%);
+  text-align: center;
+  z-index: 2;
+}
+
+.center h1 {
+  font-family: "Bodoni Moda", "Times New Roman", Georgia, serif;
+  font-weight: 400;
+  white-space: nowrap;
+  letter-spacing: -0.065em;
+  font-size: clamp(65px, 10.4vw, 190px);
+  line-height: 0.95;
+  margin: 0;
+  color: #fff;
+}
+
+.center h1 em {
+  font-weight: 400;
+  letter-spacing: -0.075em;
+}
+
+.center p {
+  font-family: "Bodoni Moda", Georgia, serif;
+  font-style: italic;
+  font-size: clamp(15px, 1.7vw, 24px);
+  margin: 17px 0 0;
+  color: #d0cfcc;
+}
+
+/* TABLET */
+
+@media (max-width: 1024px) {
+  .center {
+    left: 5%;
+    right: 5%;
+  }
+
+  .center h1 {
+    font-size: clamp(60px, 9.5vw, 110px);
+  }
+
+  .topline,
+  .bottomline {
+    left: 6%;
+    right: 6%;
+  }
+}
+
+/* MOBILE */
+
+@media (max-width: 760px) {
+  .header {
+    height: 64px;
+    padding: 0 20px;
+  }
+
+  .brand {
+    font-size: 20px;
+  }
+
+  .brand span {
+    font-size: 11px;
+  }
+
+  .header nav {
+    gap: 14px;
+  }
+
+  .header nav a {
+    font-size: 9px;
+  }
+
+  .header nav a:nth-child(2),
+  .header nav a:nth-child(3) {
+    display: none;
+  }
+
+  .hero {
+    height: calc(100svh - 64px);
+    min-height: 560px;
+  }
+
+  .hero :global(.heroVideo) {
+    object-position: 58% center;
+    filter: grayscale(1) brightness(0.32) contrast(1.1);
+  }
+
+  .topline,
+  .bottomline {
+    left: 6%;
+    right: 6%;
+    font-size: 9px;
+    letter-spacing: 0.12em;
+  }
+
+  .topline {
+    top: 6%;
+  }
+
+  .bottomline {
+    bottom: 5%;
+  }
+
+  .center {
+    left: 4%;
+    right: 4%;
+    top: 51%;
+  }
+
+  .center h1 {
+    white-space: normal;
+    font-size: clamp(52px, 12vw, 90px);
+    line-height: 0.95;
+    letter-spacing: -0.055em;
+  }
+
+  .center h1 em {
+    display: block;
+    letter-spacing: -0.06em;
+  }
+
+  .center p {
+    max-width: 290px;
+    margin: 22px auto 0;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+}
+
+/* REDUCED MOTION */
+
+@media (prefers-reduced-motion: reduce) {
+  .header nav a,
+  .bottomline a {
+    transition: none;
+  }
+}
