@@ -4,7 +4,7 @@ import { formatPrice } from "../data/bookingConfig";
 import GuestIdentity from "./GuestIdentity";
 import styles from "../styles/BookingWizard.module.css";
 
-const TIMEZONE = "Europe/Budapest";
+const TIMEZONE = "Europe/Debrecen";
 const STEPS = ["Szolgáltatás", "Barber", "Időpont", "Adataid"];
 const WEEKDAYS = ["H", "K", "Sze", "Cs", "P", "Szo", "V"];
 const MONTHS = [
@@ -12,7 +12,7 @@ const MONTHS = [
   "július", "augusztus", "szeptember", "október", "november", "december",
 ];
 
-function getTodayInBudapest() {
+function getTodayInDebrecen() {
   const formatter = new Intl.DateTimeFormat("en-GB", {
     timeZone: TIMEZONE,
     year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
@@ -70,13 +70,13 @@ export default function BookingWizard() {
   const router = useRouter();
   const workspaceRef = useRef(null);
   const previousStepRef = useRef(0);
-  const [today, setToday] = useState(getTodayInBudapest);
+  const [today, setToday] = useState(getTodayInDebrecen);
   const [step, setStep] = useState(0);
   const [serviceId, setServiceId] = useState(null);
   const [barberId, setBarberId] = useState(null);
   const [date, setDate] = useState(null);
   const [time, setTime] = useState(null);
-  const [visibleMonth, setVisibleMonth] = useState(() => monthIndex(getTodayInBudapest().date));
+  const [visibleMonth, setVisibleMonth] = useState(() => monthIndex(getTodayInDebrecen().date));
   const [person, setPerson] = useState({ name: "", email: "", phone: "" });
   const [showPreview, setShowPreview] = useState(false);
   const [verified, setVerified] = useState(false);
@@ -138,9 +138,9 @@ export default function BookingWizard() {
     else if (service) setStep(1);
   }, [router.isReady, router.query.service, router.query.barber, catalog]);
 
-  // A felület állapotát Budapest szerinti dátumhoz igazítjuk.
+  // A felület állapotát Debrecen szerinti dátumhoz igazítjuk.
   useEffect(() => {
-    const fresh = getTodayInBudapest();
+    const fresh = getTodayInDebrecen();
     setToday(fresh);
     setVisibleMonth((month) => Math.max(month, monthIndex(fresh.date)));
   }, []);
@@ -490,7 +490,7 @@ export default function BookingWizard() {
             </>
           )}
         </div>
-        <div className={styles.demoFooter}><span>FOGLALÁS / PRESZTÍZS BARBER</span><span>EUROPE / BUDAPEST</span></div>
+        <div className={styles.demoFooter}><span>FOGLALÁS / PRESZTÍZS BARBER</span><span>EUROPE / Debrecen</span></div>
       </section>
     </div>
   );

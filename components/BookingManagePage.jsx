@@ -8,5 +8,5 @@ export default function BookingManagePage({admin=false}) {
     <main className={styles.page}><header className={styles.header}><a href="/" className={styles.brand}>Presztízs <em>Barber</em></a><nav><a href="/idopontfoglalas">IDŐPONTFOGLALÁS</a><a href="/eszkozeim">ESZKÖZEIM</a>{admin&&<a href="/foglalasaim">SAJÁT FOGLALÁSAIM</a>}</nav></header>
     <section className={styles.intro}><span className={styles.kicker}>{admin?'SZALON / ADMIN':'VENDÉGPROFIL / SAJÁT IDŐPONTOK'}</span><h1>{admin?'Foglalás':'A foglalás'}<em>{admin?'kezelő.':'aid.'}</em></h1><p>{admin?'A szalon időpontjai, vendégei és előzményei.':'Az összes közelgő és korábbi látogatásod egy helyen.'}</p></section>
     <BookingIdentityGate><BookingManageList admin={admin}/></BookingIdentityGate>
-    <footer className={styles.footer}>PRESZTÍZS BARBER <span>EUROPE / BUDAPEST</span></footer></main></>;
+    <footer className={styles.footer}>PRESZTÍZS BARBER <span>EUROPE / Debrecen</span></footer></main></>;
 }
