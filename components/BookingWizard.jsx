@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { formatPrice } from "../data/bookingConfig";
+import { getCachedAvailability, invalidateCachedAvailability, loadPublicAvailability, loadPublicCatalog } from "../lib/client/bookingCache.mjs";
 import GuestIdentity from "./GuestIdentity";
 import styles from "../styles/BookingWizard.module.css";
 
@@ -85,6 +86,8 @@ export default function BookingWizard() {
   const [catalogError, setCatalogError] = useState("");
   const [availableDays, setAvailableDays] = useState({});
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
+  const [hasWorkingHours, setHasWorkingHours] = useState(null);
+  const lastRefreshRef = useRef(0);
   const [availabilityError, setAvailabilityError] = useState("");
   const [refreshAvailability, setRefreshAvailability] = useState(0);
   const [bookingBusy, setBookingBusy] = useState(false);
@@ -95,12 +98,7 @@ export default function BookingWizard() {
 
   useEffect(() => {
     let active = true;
-    fetch("/api/booking/config", { cache: "no-store" })
-      .then(async response => {
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || "Nem érhető el a foglalórendszer.");
-        return data;
-      })
+    loadPublicCatalog()
       .then(data => { if (active) setCatalog({ services: data.services || [], barbers: data.barbers || [] }); })
       .catch(error => { if (active) setCatalogError(error.message); })
       .finally(() => { if (active) setCatalogLoading(false); });
@@ -109,21 +107,41 @@ export default function BookingWizard() {
 
   useEffect(() => {
     if (!serviceId || !barberId) return;
-    const controller = new AbortController();
+    let active = true;
     const month = `${monthParts(visibleMonth).year}-${String(monthParts(visibleMonth).month + 1).padStart(2, "0")}`;
-    setAvailabilityLoading(true);
+    const force = refreshAvailability !== lastRefreshRef.current;
+    lastRefreshRef.current = refreshAvailability;
+    const cached = !force && getCachedAvailability(serviceId, barberId, month);
     setAvailabilityError("");
-    setAvailableDays({});
-    fetch(`/api/booking/availability?${new URLSearchParams({ service: serviceId, barber: barberId, month })}`, {
-      cache: "no-store", signal: controller.signal,
-    }).then(async response => {
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Nem sikerült lekérni az időpontokat.");
-      return data;
-    }).then(data => { if (!controller.signal.aborted) setAvailableDays(data.days || {}); })
-      .catch(error => { if (!controller.signal.aborted) setAvailabilityError(error.message); })
-      .finally(() => { if (!controller.signal.aborted) setAvailabilityLoading(false); });
-    return () => controller.abort();
+    setDate(null);
+    setTime(null);
+    if (cached) {
+      setAvailableDays(cached.days || {});
+      setHasWorkingHours(cached.hasWorkingHours !== false);
+      setAvailabilityLoading(false);
+    } else {
+      setAvailableDays({});
+      setHasWorkingHours(null);
+      setAvailabilityLoading(true);
+    }
+    loadPublicAvailability(serviceId, barberId, month, { force })
+      .then(data => {
+        if (!active) return;
+        setAvailableDays(data.days || {});
+        setHasWorkingHours(data.hasWorkingHours !== false);
+        // A következő hónapot alacsony prioritással előtöltjük.
+        // Így a naptárlapozás rendszerint azonnali lesz.
+        const nextIndex = visibleMonth + 1;
+        const now = getTodayInDebrecen();
+        if (nextIndex <= monthIndex(addDays(now.date, 60))) {
+          const next = monthParts(nextIndex);
+          const nextMonth = `${next.year}-${String(next.month + 1).padStart(2, "0")}`;
+          loadPublicAvailability(serviceId, barberId, nextMonth).catch(() => {});
+        }
+      })
+      .catch(error => { if (active) setAvailabilityError(error.message); })
+      .finally(() => { if (active) setAvailabilityLoading(false); });
+    return () => { active = false; };
   }, [serviceId, barberId, visibleMonth, refreshAvailability]);
 
   // A szolgáltatás vagy barber előre kiválasztható a főoldalról:
@@ -211,9 +229,13 @@ export default function BookingWizard() {
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
         if (response.status === 401) { setVerified(false); setPerson({ name: '', email: '', phone: '' }); setShowPreview(false); }
-        if (response.status === 409) { setStep(2); setShowPreview(false); setTime(null); setRefreshAvailability(n => n + 1); }
+        if (response.status === 409) {
+          invalidateCachedAvailability(serviceId, barberId, date.slice(0, 7));
+          setStep(2); setShowPreview(false); setTime(null); setRefreshAvailability(n => n + 1);
+        }
         throw new Error(data.error || "Nem sikerült véglegesíteni a foglalást.");
       }
+      invalidateCachedAvailability(serviceId, barberId, date.slice(0, 7));
       setConfirmedBooking(data.booking);
     } catch (error) { setBookingError(error.message); }
     finally { setBookingBusy(false); }
@@ -410,6 +432,9 @@ export default function BookingWizard() {
                   </div>
                   {availabilityLoading && <p className={styles.noTimes}>Szabad időpontok betöltése…</p>}
                   {availabilityError && <p className={styles.noTimes} role="alert">{availabilityError}</p>}
+                  {!availabilityLoading && !availabilityError && hasWorkingHours === false && (
+                    <p className={styles.noTimes} role="status">Ehhez a barberhez még nincs munkaidő beállítva. A szalon tudja aktiválni a foglalható napokat.</p>
+                  )}
                   {date && !availabilityLoading && !availabilityError ? (
                     <>
                       {slots.some((slot) => slot.available) ? (
@@ -427,7 +452,7 @@ export default function BookingWizard() {
                         </div>
                       ) : <p className={styles.noTimes}>Erre a napra már nincs szabad időpont. Válassz másik napot.</p>}
                     </>
-                  ) : !availabilityLoading && !availabilityError ? (
+                  ) : !availabilityLoading && !availabilityError && hasWorkingHours !== false ? (
                     <div className={styles.emptyTimes}>
                       <span className={styles.emptyIcon} aria-hidden="true">◷</span>
                       <p>Kattints egy napra a naptárban, és itt megjelennek az időpontok.</p>
