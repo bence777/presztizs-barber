@@ -99,7 +99,7 @@ function Card({ barber, index, position, reducedMotion }) {
         <span>{barber.role}</span>
         <h3>{barber.name}</h3>
         <a href="/idopontfoglalas">
-          IDŐPONTFOGLALÁS ↗
+          IDŐPONTFOGLALÁS
         </a>
       </div>
     </motion.article>

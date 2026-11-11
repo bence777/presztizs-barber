@@ -109,7 +109,7 @@ export default function AdminIdentityGate({children}) {
         <form onSubmit={sendCode} className={styles.form}>
           <label htmlFor="admin-auth-email">Kezelői e-mail-cím</label>
           <input id="admin-auth-email" type="email" autoComplete="email" value={email} placeholder="barber@email.hu" maxLength={254} onChange={e=>setEmail(e.target.value)} required autoFocus/>
-          <button className={styles.primary} type="submit" disabled={busy||!EMAIL_OK.test(email.trim())}>{busy?'Kód küldése…':'Ellenőrző kód küldése'} <span aria-hidden="true">→</span></button>
+          <button className={styles.primary} type="submit" disabled={busy||!EMAIL_OK.test(email.trim())}>{busy?'Kód küldése…':'Ellenőrző kód küldése'} </button>
         </form><p className={styles.note}>Csak előzetesen engedélyezett szalonkezelők és barberek kapnak kódot. A vendégbelépés nem ad kezelői hozzáférést.</p>
       </>}
       {phase==='code' && <><h1>Ellenőrizd az e-mailed.</h1><p className={styles.sub}>Ha a megadott címhez aktív kezelői jogosultság tartozik, elküldtük az egyszer használatos belépési kódot ide: <strong>{email}</strong></p>
@@ -117,16 +117,16 @@ export default function AdminIdentityGate({children}) {
           <label htmlFor="admin-auth-otp">Ellenőrző kód</label>
           <input id="admin-auth-otp" type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={10} pattern="[0-9]{6,10}" value={code} onChange={e=>setCode(e.target.value.replace(/\D/g,'').slice(0,10))} placeholder="E-mailben kapott kód" required autoFocus/>
           <label style={{display:"flex",alignItems:"center",gap:9,fontSize:12,color:"#666",margin:"14px 0"}}><input type="checkbox" checked={remember} onChange={e=>setRemember(e.target.checked)}/> Megbízható eszköz 7 napra (opcionális)</label>
-          <button className={styles.primary} type="submit" disabled={busy||code.length<6}>{busy?'Ellenőrzés…':'Bejelentkezés'} <span aria-hidden="true">→</span></button>
+          <button className={styles.primary} type="submit" disabled={busy||code.length<6}>{busy?'Ellenőrzés…':'Bejelentkezés'} </button>
         </form><div className={styles.subActions}>
           <button type="button" disabled={busy||cooldown>0} onClick={()=>sendCode()}>{cooldown>0?`Új kód ${cooldown} mp múlva`:'Kód újraküldése'}</button>
           <button type="button" disabled={busy} onClick={()=>{setError('');setCode('');setPhase('email');}}>Másik e-mail-cím</button>
         </div>
       </>}
-      {phase==='denied' && <><h1>Nincs kezelői hozzáférés.</h1><p className={styles.sub}>A megadott fiók nem szerepel az aktív szalonkezelők között. A hozzáférést a szalon tulajdonosa adhatja meg.</p>{email&&<p className={styles.verified}>{email}</p>}<button className={styles.primary} disabled={busy} onClick={switchAccount} type="button">Belépés másik e-maillel <span>→</span></button></>}
-      {phase==='unavailable' && <><h1>Kapcsolódási hiba.</h1><p className={styles.sub}>Most nem sikerült ellenőrizni a kezelői munkamenetet.</p><button className={styles.primary} onClick={checkSession} type="button">Újrapróbálás →</button></>}
+      {phase==='denied' && <><h1>Nincs kezelői hozzáférés.</h1><p className={styles.sub}>A megadott fiók nem szerepel az aktív szalonkezelők között. A hozzáférést a szalon tulajdonosa adhatja meg.</p>{email&&<p className={styles.verified}>{email}</p>}<button className={styles.primary} disabled={busy} onClick={switchAccount} type="button">Belépés másik e-maillel </button></>}
+      {phase==='unavailable' && <><h1>Kapcsolódási hiba.</h1><p className={styles.sub}>Most nem sikerült ellenőrizni a kezelői munkamenetet.</p><button className={styles.primary} onClick={checkSession} type="button">Újrapróbálás</button></>}
       {error&&<p role="alert" className={styles.error}>{error}</p>}
-      <div className={styles.bottom}><span>SECURE ACCESS · SUPABASE AUTH</span><a href="/foglalasaim">Vendég vagyok ↗</a></div>
+      <div className={styles.bottom}><span>SECURE ACCESS · SUPABASE AUTH</span><a href="/foglalasaim">Vendég vagyok</a></div>
     </section>
     <footer className={styles.footer}>© PRESZTÍZS BARBER <span>SAJÁT KEZELŐI AZONOSÍTÁS</span></footer>
   </main>;

@@ -1,60 +1,123 @@
 .page {
   min-height: 100svh;
-  background: #080808;
-  color: #fff;
+  background: #0a0a0a;
+  color: #f7f7f7;
   font-family: Arial, Helvetica, sans-serif;
+  overflow-x: clip;
 }
 .header {
-  height: 80px;
-  padding: 0 clamp(20px, 4.4vw, 76px);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  border-bottom: 1px solid #242424;
+  width: 100%; height: 84px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 clamp(23px, 4.8vw, 74px);
+  border-bottom: 1px solid #2c2c2c;
+  background: #0c0c0c;
+  position: relative; z-index: 20;
+  gap: 26px;
 }
 .brand {
-  font: 400 27px/1 Georgia, "Times New Roman", serif;
-  letter-spacing: -.06em;
-  color: #fff;
-  text-decoration: none;
-  white-space: nowrap;
+  color: #fff; white-space: nowrap; text-decoration: none;
+  font: 400 clamp(23px, 2.5vw, 32px)/1 Georgia, 'Times New Roman', serif;
+  letter-spacing: -.068em;
 }
-.brand em { font-size: 18px; font-weight: 400; }
-.headerRight { display: flex; align-items: center; gap: clamp(20px, 4vw, 60px); }
-.headerTag, .back, .introMeta, .footer {
-  font: 600 10px/1.5 Arial, sans-serif;
-  letter-spacing: .16em;
+.brand em { font-size: .78em; font-weight: 400; }
+.headerRight { display: flex; gap: clamp(16px, 3.5vw, 61px); align-items: center; justify-content: flex-end; }
+.back {
+  color: #eee; white-space: nowrap; text-decoration: none;
+  font: 400 clamp(12px, 1.1vw, 16px)/1.35 Arial, sans-serif;
+  transition: color .2s ease;
 }
-.headerTag { color: #777; }
-.back { text-decoration: none; color: #dedede; transition: color .2s; }
-.back span { margin-left: 7px; }
-.back:hover { color: #999; }
-.intro { max-width: 1480px; margin: 0 auto; padding: 52px clamp(20px, 4.4vw, 76px) 57px; }
-.introMeta { display: flex; justify-content: space-between; color: #898989; gap: 20px; }
-.introMain { display: flex; align-items: flex-end; justify-content: space-between; gap: 40px; padding-top: 43px; }
+.back:hover, .back:focus-visible { color: #999; }
+.bookingPill {
+  display: inline-flex; justify-content: center; align-items: center;
+  min-height: 44px; padding: 10px 28px;
+  border-radius: 99px; text-decoration: none; white-space: nowrap;
+  background: #f8f8f8; color: #121212;
+  font: 500 15px/1 Arial, sans-serif;
+  transition: background .2s ease;
+}
+.bookingPill:hover { background: #d4d4d4; }
+.menuToggle { display: none; }
+.intro {
+  min-height: 264px;
+  width: 100%;
+  padding: 50px clamp(23px, 4.8vw, 74px) 45px;
+  display: flex; flex-direction: column; justify-content: center;
+  position: relative; isolation: isolate;
+  background: #0a0a0a;
+  overflow: hidden;
+}
+.intro::before {
+  content: ''; position: absolute; z-index: -2;
+  width: 52%; height: 100%; top: 0; right: 0;
+  background: url('/images/salon-chair.webp') no-repeat 70% 35% / cover;
+  filter: grayscale(1) brightness(.8) contrast(1.17);
+}
+.intro::after {
+  content: ''; position: absolute; inset: 0; z-index: -1;
+  background: linear-gradient(90deg, #0a0a0a 0%, rgba(10,10,10,.97) 28%, rgba(10,10,10,.65) 56%, rgba(10,10,10,.08) 90%),
+              linear-gradient(0deg, rgba(10,10,10,.35), transparent 40%);
+}
+.introMeta {
+  font: 600 11px/1.4 Arial, Helvetica, sans-serif;
+  letter-spacing: .19em; color: #a8a8a8;
+}
+.introMain { padding-top: 31px; }
 .introMain h1 {
   margin: 0;
-  font: 400 clamp(48px, 6.3vw, 102px)/.97 "Bodoni Moda", Georgia, "Times New Roman", serif;
-  letter-spacing: -.065em;
+  font: 400 clamp(52px, 5.75vw, 88px)/1.04 Georgia, 'Times New Roman', serif;
+  letter-spacing: -.06em;
+  max-width: 1050px;
 }
 .introMain h1 em { font-weight: 400; }
-.introMain p { max-width: 245px; margin: 0 0 5px; color: #a3a3a3; font: 13px/1.7 Arial, sans-serif; }
-.footer { max-width: 1480px; margin: 0 auto; padding: 35px clamp(20px, 4.4vw, 76px); display: flex; justify-content: space-between; color: #6f6f6f; gap: 20px; }
-@media (max-width: 800px) {
-  .header { height: 66px; }
-  .brand { font-size: 22px; }
-  .brand em { font-size: 14px; }
-  .headerTag { display: none; }
-  .intro { padding-top: 33px; padding-bottom: 35px; }
-  .introMeta { font-size: 8px; }
-  .introMeta span:last-child { display: none; }
-  .introMain { display: block; padding-top: 25px; }
-  .introMain h1 { font-size: clamp(44px, 9vw, 76px); }
-  .introMain p { max-width: 330px; margin: 14px 0 0; }
-  .footer { font-size: 8px; }
+.introMain p { margin: 19px 0 0; color: #c5c5c5; font: 400 clamp(13px, 1.2vw, 17px)/1.6 Arial, sans-serif; max-width: 620px; }
+.footer {
+  padding: 27px clamp(23px, 4.8vw, 74px);
+  display: flex; gap: 20px; justify-content: space-between;
+  font: 600 9px/1.5 Arial, sans-serif;
+  letter-spacing: .16em; color: #777;
+  background: #090909;
 }
-@media (max-width: 450px) {
-  .back { font-size: 8px; }
+@media (max-width: 1080px) {
+  .headerRight { gap: 20px; }
+  .bookingPill { padding-inline: 18px; }
+}
+@media (max-width: 800px) {
+  .header { height: 74px; padding: 0 23px; }
+  .brand { font-size: 28px; }
+  .menuToggle {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
+    width: 44px; height: 44px; margin-right: -8px; padding: 8px;
+    border: 0; background: transparent; cursor: pointer;
+  }
+  .menuToggle span { display: block; width: 22px; height: 2px; border-radius: 2px; background: #f3f3f3; transition: transform .2s ease; }
+  .menuToggle[aria-expanded='true'] span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+  .menuToggle[aria-expanded='true'] span:nth-child(2) { opacity: 0; }
+  .menuToggle[aria-expanded='true'] span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+  .headerRight {
+    position: absolute; left: 0; right: 0; top: 74px;
+    display: none; flex-direction: column; align-items: stretch;
+    padding: 20px 23px 25px; gap: 0;
+    background: #111; border-bottom: 1px solid #343434;
+    box-shadow: 0 15px 30px rgba(0,0,0,.42);
+  }
+  .menuOpen { display: flex; }
+  .back { font-size: 15px; padding: 15px 0; border-bottom: 1px solid #2c2c2c; }
+  .bookingPill { width: 100%; margin-top: 18px; font-size: 14px; }
+  .intro { min-height: 269px; padding: 40px 25px 33px; justify-content: center; }
+  .intro::before { width: 85%; background-position: 64% center; }
+  .intro::after { background: linear-gradient(90deg, rgba(10,10,10,.99), rgba(10,10,10,.9) 27%, rgba(10,10,10,.23) 100%), linear-gradient(0deg, rgba(10,10,10,.5), transparent); }
+  .introMeta { font-size: 10px; }
+  .introMain { padding-top: 26px; }
+  .introMain h1 { max-width: 420px; font-size: clamp(48px, 7.8vw, 70px); line-height: 1.04; }
+  .introMain p { max-width: 290px; font-size: 14px; margin-top: 16px; }
+}
+@media (max-width: 480px) {
+  .brand { font-size: 25px; }
+  .intro { min-height: 277px; }
+  .introMain h1 { max-width: 280px; font-size: clamp(44px, 12.5vw, 57px); }
+  .introMain p { max-width: 248px; }
   .footer span:last-child { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .menuToggle span, .back, .bookingPill { transition: none; }
 }

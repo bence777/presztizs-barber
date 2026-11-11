@@ -106,7 +106,7 @@ export default function TrustedDevices({scope='guest'}) {
     <div className={styles.foot}>
       <p>Az eltávolítás törli az eszköz szerveroldali munkamenet-adatait, és a hozzáférés a következő kérésnél megszűnik.
         A foglalásaid és a profilod nem törlődnek. Újra belépni mindig lehet e-mail-kóddal.</p>
-      <a href={admin?'/admin/foglalasok':'/foglalasaim'}>Vissza a foglalásokhoz <span aria-hidden="true">→</span></a>
+      <a href={admin?'/admin/foglalasok':'/foglalasaim'}>Vissza a foglalásokhoz </a>
     </div>
   </section>;
 }
