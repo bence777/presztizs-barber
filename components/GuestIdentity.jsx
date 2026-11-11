@@ -24,7 +24,7 @@ export default function GuestIdentity({ onVerified, initialProfile = null }) {
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [remember, setRemember] = useState(true);
+  const [remember, setRemember] = useState(false);
   const [welcome, setWelcome] = useState(null);
   const [profile, setProfile] = useState(initialProfile);
   const [busy, setBusy] = useState(false);
@@ -51,6 +51,34 @@ export default function GuestIdentity({ onVerified, initialProfile = null }) {
     }
     return () => { mounted.current = false; };
   }, []); // Run once: never reset an in-progress OTP entry on rerenders.
+
+  // A másik böngészőből visszavont hozzáférésnél ne maradjon nyitva a vendégprofil.
+  useEffect(() => {
+    if (view !== "ready") return;
+    let active = true;
+    async function recheck() {
+      try {
+        const session = await api("session");
+        if (active && !session.remembered) {
+          setProfile(null);
+          setWelcome(null);
+          setView("email");
+          onVerified(null);
+        }
+      } catch { /* Temporary failure: server endpoints still fail closed. */ }
+    }
+    const onFocus = () => { void recheck(); };
+    const onVisible = () => { if (document.visibilityState === "visible") void recheck(); };
+    const interval = setInterval(recheck, 60000);
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      active = false;
+      clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [view]);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -222,6 +250,7 @@ export default function GuestIdentity({ onVerified, initialProfile = null }) {
           <h3>Üdv, <em>{profile.name.split(/\s+/)[0]}.</em></h3>
           <p>A vendégprofilod készen áll. Nem kell újra megadnod az adataidat.</p>
           <div className={styles.profileData}><span>NÉV</span><strong>{profile.name}</strong><span>E-MAIL</span><strong>{profile.email}</strong><span>TELEFON</span><strong>{profile.phone}</strong></div>
+          <a href="/eszkozeim" className={styles.secondary} style={{display:"inline-block",textAlign:"center",textDecoration:"none"}}>MEGBÍZHATÓ ESZKÖZÖK KEZELÉSE</a>
           <button type="button" className={styles.secondary} onClick={newEmail} disabled={busy}>NEM ÉN VAGYOK / KIJELENTKEZÉS</button>
         </div>
       )}

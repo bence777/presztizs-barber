@@ -1,3 +1,5 @@
+> **Frissítés:** a korábbi cookie- és belépési leírást a 2026-11-11-es eszköznyilvántartás és az opcionális megjegyzés módosította. Az aktuális működéshez olvasd el a `README-SECURITY-GDPR-ESZKOZOK.md` fájlt.
+
 # Presztízs Barber – vendégazonosítás (Supabase Auth + SMTP)
 
 A belépési/azonosítási folyamat **Supabase Auth e-mail OTP**, a küldés pedig a Supabase Dashboard **Authentication → SMTP Settings** részében beállított Resend SMTP-n történik.

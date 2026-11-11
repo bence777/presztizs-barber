@@ -1,9 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { setGuestCookies, getGuest, getProfile, jsonOnly, isConfigured } from '../lib/server/guestAuth.js';
+import {setDeviceCookie} from '../lib/server/trustedDevices.js';
 
 process.env.SUPABASE_URL = 'https://example.supabase.co';
 process.env.SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_test';
+process.env.SUPABASE_SECRET_KEY = 'sb_secret_test_only';
 process.env.SESSION_SIGNING_SECRET = 'test-only-sufficiently-long-hmac-key-0123456789';
 process.env.NODE_ENV = 'production';
 const userId = 'bf763a63-087b-487b-85bc-fbf63be22323';
@@ -35,13 +37,15 @@ test('configured with server-only keys', () => {
 test('cookie session persists, is HttpOnly and expires at fixed 60 days', async () => {
   const res = response();
   setGuestCookies(res, { access_token:'short-jwt', refresh_token:'server-refresh-token' }, userId, { remember:true });
+  setDeviceCookie(res,'guest','B'.repeat(43),Date.now()+60*24*60*60*1000,true);
   const setCookies = res.getHeader('Set-Cookie');
-  assert.equal(setCookies.length,3);
+  assert.equal(setCookies.length,4);
   assert.ok(setCookies.every(c=>c.includes('HttpOnly')&&c.includes('Secure')&&c.includes('SameSite=Lax')));
   assert.ok(setCookies.every(c=>c.includes('Max-Age=')));
   const cookies = cookieJar(setCookies);
   const beforeFetch = globalThis.fetch;
   globalThis.fetch = async (url) => {
+    if (url.toString().includes('/rest/v1/trusted_devices')) return mockOk([{id:userId,user_id:userId,scope:'guest',last_seen_at:new Date().toISOString(),expires_at:new Date(Date.now()+86400000).toISOString()}]);
     if (url.toString().endsWith('/auth/v1/user')) return mockOk({ id:userId,email:'guest@example.com' });
     throw new Error('Unexpected API call');
   };
@@ -54,7 +58,7 @@ test('cookie session persists, is HttpOnly and expires at fixed 60 days', async 
       const expiredRes = response();
       const expired = await getGuest({cookies},expiredRes);
       assert.equal(expired,null);
-      assert.equal(expiredRes.getHeader('Set-Cookie').length,3);
+      assert.equal(expiredRes.getHeader('Set-Cookie').length,4);
     } finally { Date.now = originalDateNow; }
   } finally { globalThis.fetch = beforeFetch; }
 });
@@ -62,12 +66,14 @@ test('cookie session persists, is HttpOnly and expires at fixed 60 days', async 
 test('refreshes an expired access token but preserves absolute deadline',async()=>{
   const res=response();
   setGuestCookies(res,{access_token:'old',refresh_token:'old-r'},userId,{remember:true});
+  setDeviceCookie(res,'guest','B'.repeat(43),Date.now()+60*24*60*60*1000,true);
   const cookies=cookieJar(res.getHeader('Set-Cookie'));
   const oldDeadline=cookies.pb_device_until;
   const beforeFetch=globalThis.fetch;
   const paths=[];
   globalThis.fetch=async (url,opts)=>{
     paths.push(url.toString());
+    if(url.toString().includes('/rest/v1/trusted_devices')) return mockOk([{id:userId,user_id:userId,scope:'guest',last_seen_at:new Date().toISOString(),expires_at:new Date(Date.now()+86400000).toISOString()}]);
     if(url.toString().endsWith('/auth/v1/user') && opts.headers.Authorization==='Bearer old')return mockOk({message:'expired'},401);
     if(url.toString().endsWith('/auth/v1/token?grant_type=refresh_token')) return mockOk({access_token:'fresh',refresh_token:'fresh-r'});
     if(url.toString().endsWith('/auth/v1/user') && opts.headers.Authorization==='Bearer fresh')return mockOk({id:userId,email:'guest@example.com'});
@@ -78,15 +84,15 @@ test('refreshes an expired access token but preserves absolute deadline',async()
     const guest=await getGuest({cookies},newRes);
     assert.equal(guest.token,'fresh');
     assert.equal(cookieJar(newRes.getHeader('Set-Cookie')).pb_device_until,oldDeadline);
-    assert.equal(paths.length,3);
+    assert.equal(paths.length,4);
   } finally {globalThis.fetch=beforeFetch;}
 });
 
-test('profile read is authenticated with the users own JWT',async()=>{
+test('profile read uses the server-only secret after the session is verified',async()=>{
   const beforeFetch=globalThis.fetch;
   globalThis.fetch=async (url,opts)=>{
-    assert.equal(opts.headers.Authorization,'Bearer guest-jwt');
-    assert.equal(opts.headers.apikey,'sb_publishable_test');
+    assert.equal(opts.headers.apikey,'sb_secret_test_only');
+    assert.equal(opts.headers.Authorization,undefined);
     assert.match(url.toString(),/guest_profiles/);
     return mockOk([{full_name:'Béla Teszt',phone:'+36 301234567'}]);
   };

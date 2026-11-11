@@ -56,7 +56,7 @@ function parseBooking(b){return {staffId:b.staff_id,serviceId:b.service_id,date:
 function emptyForm(date,time,staffId,services,staff){return {staffId:staffId||staff.find(x=>x.active)?.id||'',serviceId:services.find(x=>x.active)?.id||'',date:date||today(),time:time||'10:00',guestName:'',guestEmail:'',guestPhone:'',status:'confirmed',notify:true};}
 function StatusTag({value}) {return <span className={`${styles.status} ${styles['status_'+value]||''}`}><span className={styles.statusDot}/>{STATUS[value]||value}</span>}
 
-export default function AdminDashboard(){
+export default function AdminDashboard({onAdminLogout,adminManager}){
   const router=useRouter();
   const [cursor,setCursor]=useState(today);
   const [view,setView]=useState('week');
@@ -155,11 +155,12 @@ export default function AdminDashboard(){
       <div className={styles.sidebarDivider}/>
       <div className={styles.navSection}>GYORS MŰVELETEK</div>
       <button type="button" className={styles.navSimple} onClick={()=>newBooking()}><Icon name="plus" size={17}/> Új foglalás</button>
+      <a className={styles.navSimple} href="/admin/eszkozok"><Icon name="settings" size={17}/> Eszközök kezelése</a>
       <a className={styles.navSimple} href="/idopontfoglalas"><Icon name="arrowUpRight" size={17}/> Vendégoldal</a>
       <div className={styles.sidebarFoot}><div className={styles.onlineDot}/> <span>Adatkapcsolat · Supabase</span><small>EUROPE / BUDAPEST</small></div>
     </aside>
     <div className={styles.main}>
-      <header className={styles.topbar}><div className={styles.breadcrumb}><span>Presztízs Barber</span><span className={styles.slash}>/</span><strong>{tab==='calendar'?'Naptár':'Foglalások'}</strong></div><div className={styles.topRight}><span className={styles.topTime}>MAGYARORSZÁG · GMT+1/+2</span><a href="/" title="Weboldal megnyitása"><Icon name="arrowUpRight" size={16}/></a><span className={styles.avatar}>PB</span></div></header>
+      <header className={styles.topbar}><div className={styles.breadcrumb}><span>Presztízs Barber</span><span className={styles.slash}>/</span><strong>{tab==='calendar'?'Naptár':'Foglalások'}</strong></div><div className={styles.topRight}><span className={styles.topTime}>MAGYARORSZÁG · GMT+1/+2</span><a href="/admin/eszkozok" title="Eszközök kezelése" style={{fontSize:12,color:"#555",textDecoration:"none"}}>Eszközök</a><a href="/" title="Weboldal megnyitása"><Icon name="arrowUpRight" size={16}/></a><span className={styles.avatar} title={adminManager?.email||'Kezelői fiók'}>PB</span>{onAdminLogout&&<button type="button" onClick={onAdminLogout} title="Kilépés a kezelői fiókból" style={{background:'transparent',border:'1px solid #ddd',borderRadius:6,padding:'7px 11px',fontSize:11,color:'#666',cursor:'pointer'}}>Kijelentkezés</button>}</div></header>
       <div className={styles.content}>
         <div className={styles.headingRow}><div><div className={styles.overline}>FOGLALÁSKEZELŐ / ADMIN</div><h1>{tab==='calendar'?'Naptár':'Foglalások'}</h1><p>Az összes időpontod. Egy helyen, átláthatóan.</p></div><div className={styles.headingActions}><button type="button" className={styles.ghostButton} onClick={load} disabled={loading}><Icon name="refresh" size={16}/><span>Frissítés</span></button><button type="button" className={styles.primaryButton} onClick={()=>newBooking()}><Icon name="plus" size={17}/> Új foglalás</button></div></div>
         <div className={styles.stats}>

@@ -210,6 +210,7 @@ export default function BookingWizard() {
       });
       const data = await response.json().catch(()=>({}));
       if(!response.ok) {
+        if(response.status===401) {setVerified(false);setPerson({name:'',email:'',phone:''});setShowPreview(false);}
         if(response.status===409) { setStep(2);setShowPreview(false);setTime(null);setRefreshAvailability(n=>n+1); }
         throw new Error(data.error || "Nem sikerült véglegesíteni a foglalást.");
       }

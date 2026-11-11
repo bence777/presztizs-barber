@@ -1,3 +1,5 @@
+> **2026-11-11 / Biztonsági és GDPR-frissítés:** a legújabb változat telepítési sorrendje, új `/eszkozeim` és `/admin/eszkozok` kezelője, valamint a kötelező Supabase SQL fájlok leírása a **`README-SECURITY-GDPR-ESZKOZOK.md`** fájlban található. A jelen README régebbi, prototípus-állapotot ismertet.
+
 # Presztízs Barber — főoldal (editorial)
 
 Next.js **Pages Router** projekt. A meglévő hero videót, a fehér szolgáltatáskártyákat és a 3D-s barbergalériát változatlanul hagytuk, ezek után az alábbi három szekció került:

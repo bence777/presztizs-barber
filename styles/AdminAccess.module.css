@@ -1,0 +1,27 @@
+.screen{min-height:100svh;background:#fafafa;color:#161616;font-family:Arial,Helvetica,sans-serif;display:flex;flex-direction:column}
+.top{height:76px;display:flex;align-items:center;justify-content:space-between;padding:0 clamp(20px,4vw,64px);border-bottom:1px solid #e8e8e8;background:#fff}
+.brand{display:inline-flex;align-items:center;gap:13px;font-size:19px;color:#151515;text-decoration:none;font-weight:700;letter-spacing:-.04em}
+.brand>span{font-weight:900;color:#888;letter-spacing:-.05em}.brand strong{font-size:14px;letter-spacing:-.02em}
+.topLabel{font-size:10px;font-weight:700;letter-spacing:.13em;color:#9a9a9a}
+.panel{width:min(100% - 36px,460px);margin:auto;box-sizing:border-box;padding:40px 36px 25px;border:1px solid #e3e3e3;background:#fff;border-radius:12px;box-shadow:0 18px 44px rgba(0,0,0,.045)}
+.mark{width:52px;height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:11px;background:#111;color:#fff;font-weight:800;font-size:17px;letter-spacing:-.05em;line-height:1.15;margin-bottom:34px}
+.mark span{font-weight:600;font-size:8px;letter-spacing:.11em;color:#aaa;margin-top:3px}
+.eyebrow{font-size:10px;font-weight:700;letter-spacing:.15em;color:#858585;margin-bottom:13px}
+.panel h1{font-size:31px;line-height:1.13;letter-spacing:-.045em;margin:0 0 14px;font-weight:650}
+.sub{font-size:13px;line-height:1.75;color:#737373;margin:0 0 28px}
+.sub strong{color:#222;word-break:break-word}
+.form{display:flex;flex-direction:column;gap:10px}
+.form label{font-size:12px;font-weight:650;letter-spacing:-.01em}
+.form input{height:44px;border:1px solid #d9d9d9;background:#fff;border-radius:6px;font-family:inherit;font-size:14px;color:#111;padding:0 14px;outline:0;min-width:0}
+.form input:focus{border-color:#222;box-shadow:0 0 0 3px #eee}
+.primary{margin-top:9px;background:#171717;color:#fff;padding:0 17px;min-height:46px;border:1px solid #171717;border-radius:6px;font-weight:650;display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-size:13px;gap:18px;width:100%}
+.primary:hover:not(:disabled){background:#333}.primary:disabled{opacity:.5;cursor:wait}
+.note{font-size:11px;line-height:1.6;color:#999;margin:18px 0 4px}
+.subActions{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:20px}.subActions button{background:none;border:none;color:#696969;font-size:11px;text-decoration:underline;cursor:pointer;padding:0}.subActions button:disabled{opacity:.5;cursor:default}
+.error{background:#fff4f4;border:1px solid #f5dddd;color:#a12424;font-size:12px;line-height:1.6;padding:12px;margin:19px 0 0;border-radius:5px}
+.verified{padding:12px;background:#f5f5f5;border-radius:5px;font-size:12px;color:#444;margin:-5px 0 16px;word-wrap:break-word}
+.progress{height:2px;background:linear-gradient(90deg,#efefef,#333,#efefef);margin-top:18px}
+.bottom{border-top:1px solid #eee;margin-top:37px;padding-top:20px;display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:9px;letter-spacing:.04em;color:#aaa}
+.bottom a{color:#555;text-decoration:none;white-space:nowrap}
+.footer{padding:20px clamp(20px,4vw,64px);display:flex;justify-content:space-between;gap:12px;font-size:10px;color:#999;letter-spacing:.09em}
+@media(max-width:540px){.top{height:66px}.topLabel{display:none}.panel{margin:28px auto;padding:30px 23px 20px}.panel h1{font-size:27px}.footer{font-size:9px}.footer span{display:none}}

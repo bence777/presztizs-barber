@@ -17,6 +17,7 @@ export default function BookingPage() {
           <div className={styles.headerRight}>
             <span className={styles.headerTag}>ONLINE IDŐPONTFOGLALÁS</span>
             <a href="/foglalasaim" className={styles.back}>FOGLALÁSAIM ↗</a>
+            <a href="/eszkozeim" className={styles.back}>ESZKÖZEIM ↗</a>
             <a href="/" className={styles.back}>VISSZA A FŐOLDALRA <span aria-hidden="true">↗</span></a>
           </div>
         </header>
