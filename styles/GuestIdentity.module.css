@@ -1,0 +1,36 @@
+.container { color: #111; width: 100%; max-width: 690px; }
+.form, .welcome, .ready { display: flex; align-items: flex-start; flex-direction: column; gap: 0; width: 100%; }
+.kicker { font: 700 10px/1.4 Arial, sans-serif; letter-spacing: .19em; color: #858585; margin-bottom: 16px; }
+.form h3, .welcome h3, .ready h3 { font: 400 clamp(32px, 3.2vw, 50px)/1.07 "Bodoni Moda", Georgia, serif; letter-spacing: -.055em; margin: 0 0 18px; }
+.form h3 em, .welcome h3 em, .ready h3 em { font-weight: 400; }
+.form > p:not(.disclaimer), .welcome > p:not(.disclaimer), .ready > p:not(.disclaimer) { color: #777; font: 13px/1.8 Arial,sans-serif; margin: 0 0 27px; max-width: 490px; }
+.field { display: flex; flex-direction: column; gap: 10px; width: 100%; margin-bottom: 22px; }
+.field > span { font: 700 10px Arial, sans-serif; letter-spacing: .12em; color: #666; }
+.field input { border: 1px solid #d6d6d6; border-radius: 0; box-shadow: none; background: #fafafa; color: #111; height: 57px; width: 100%; padding: 0 17px; font: 15px Arial, sans-serif; outline: 0; }
+.field input:focus { border-color: #111; background: white; }
+.field input::placeholder { color: #aaa; }
+.field .otp { font: 600 clamp(24px, 3vw, 33px) Arial, sans-serif; letter-spacing: .26em; max-width: 300px; font-variant-numeric: tabular-nums; }
+.twoFields { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; width: 100%; }
+.primary, .secondary { border-radius: 0; font: 700 10px Arial, sans-serif; letter-spacing: .13em; padding: 0 26px; min-height: 56px; text-align: center; cursor: pointer; }
+.primary { background: #111; color: #fff; border: 1px solid #111; }
+.primary:hover:not(:disabled) { background: #303030; }
+.secondary { border: 1px solid #111; color: #111; background: transparent; }
+.secondary:hover:not(:disabled) { background: #f0f0f0; }
+.primary:disabled, .secondary:disabled { opacity: .46; cursor: default; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 24px 0 0; }
+.masked { font: 13px Arial, sans-serif; color: #555; }
+.avatar { width: 76px; height: 76px; display: grid; place-items: center; border-radius: 50%; border: 1px solid #ccc; font: 400 38px/1 Georgia,serif; margin-bottom: 24px; }
+.disclaimer { color: #999; font: 11px/1.8 Arial, sans-serif; max-width: 500px; margin: 19px 0 0; }
+.remember { display: flex; align-items: center; gap: 11px; font: 12px Arial,sans-serif; color: #444; cursor: pointer; margin: 0 0 28px; }
+.remember input { width: 16px; height: 16px; accent-color: #111; cursor: pointer; }
+.subActions { display: flex; align-items: center; flex-wrap: wrap; gap: 18px; margin-top: 20px; }
+.subActions button { background: none; border: 0; padding: 0; text-decoration: underline; text-underline-offset: 4px; cursor: pointer; color: #555; font: 700 10px Arial,sans-serif; }
+.subActions button:disabled { opacity: .5; cursor: default; text-decoration: none; }
+.verifiedEmail { font: 11px Arial,sans-serif; color: #4b4b4b; margin-top: -5px; }
+.profileData { display: grid; grid-template-columns: 110px 1fr; gap: 14px 20px; border-block: 1px solid #dedede; width: 100%; padding: 23px 0; margin-bottom: 22px; }
+.profileData span { color: #888; font: 700 10px/1.6 Arial, sans-serif; letter-spacing: .11em; }
+.profileData strong { color: #111; font: 400 16px/1.5 Arial,sans-serif; overflow-wrap: anywhere; }
+.error { padding: 13px 16px; border: 1px solid #bcbcbc; background: #f3f3f3; color: #303030; font: 12px/1.5 Arial,sans-serif; margin-top: 16px; }
+.notice { font: 13px/1.8 Arial,sans-serif; color: #555; padding: 22px; border: 1px solid #dedede; }
+.loading { color: #888; font: 13px/1.7 Arial,sans-serif; padding: 22px 0; }
+@media(max-width:600px){.twoFields { grid-template-columns:1fr; gap:0; }.actions {flex-direction:column;align-items:stretch;width:100%;}.primary,.secondary{width:100%;}.profileData{grid-template-columns:74px 1fr;}.form h3,.welcome h3,.ready h3{font-size:36px;}}
