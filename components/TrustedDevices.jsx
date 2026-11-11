@@ -3,7 +3,7 @@ import {useRouter} from 'next/router';
 import styles from '../styles/TrustedDevices.module.css';
 
 const displayDate = iso => new Intl.DateTimeFormat('hu-HU', {
-  dateStyle:'medium',timeStyle:'short',timeZone:'Europe/Debrecen',
+  dateStyle:'medium',timeStyle:'short',timeZone:'Europe/Budapest',
 }).format(new Date(iso));
 
 async function request(url,body,method='GET') {

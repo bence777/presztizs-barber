@@ -56,7 +56,7 @@
 .actionRow {
   display: flex;
   justify-content: space-between;
-  align-items: end;
+  align-items: flex-end;
   gap: 40px;
   margin-top: clamp(54px, 6vw, 96px);
   padding-top: 28px;

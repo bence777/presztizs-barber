@@ -1,6 +1,6 @@
 .panel{--bg:#fff;--text:#121212;--muted:#686868;--line:#e5e5e5;--surface:#f8f8f8;--button:#151515;max-width:1080px;margin:0 auto;padding:48px clamp(18px,4vw,56px) 64px;background:var(--bg);color:var(--text);font:14px/1.6 Arial,Helvetica,sans-serif;min-height:65vh}
 .guest{--bg:#0e0e0e;--text:#f7f7f7;--muted:#aaa;--line:#303030;--surface:#181818;--button:#fff}
-.heading{display:flex;align-items:start;justify-content:space-between;gap:26px;padding-bottom:30px;border-bottom:1px solid var(--line)}
+.heading{display:flex;align-items:flex-start;justify-content:space-between;gap:26px;padding-bottom:30px;border-bottom:1px solid var(--line)}
 .heading>div{max-width:720px}.eyebrow{font-size:10px;font-weight:700;letter-spacing:.16em;color:var(--muted)}
 .heading h1{font-size:clamp(29px,4vw,48px);line-height:1.1;letter-spacing:-.06em;font-weight:600;margin:15px 0}
 .heading p{color:var(--muted);margin:0;max-width:580px}

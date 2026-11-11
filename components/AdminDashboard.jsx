@@ -3,7 +3,7 @@ import {useRouter} from 'next/router';
 import styles from '../styles/AdminDashboard.module.css';
 
 const HOUR_START=8,HOUR_END=21,MINUTE_PX=1.26;
-const ZONE='Europe/Debrecen';
+const ZONE='Europe/Budapest';
 const WEEKDAYS=['H','K','Sze','Cs','P','Szo','V'];
 const WEEK_NAMES=['Hétfő','Kedd','Szerda','Csütörtök','Péntek','Szombat','Vasárnap'];
 const STATUS={confirmed:'Megerősítve',cancelled:'Lemondva',completed:'Teljesítve',no_show:'Nem jelent meg'};

@@ -4,7 +4,7 @@ import { formatPrice } from "../data/bookingConfig";
 import GuestIdentity from "./GuestIdentity";
 import styles from "../styles/BookingWizard.module.css";
 
-const TIMEZONE = "Europe/Debrecen";
+const TIMEZONE = "Europe/Budapest";
 const STEPS = ["Szolgáltatás", "Barber", "Időpont", "Adataid"];
 const WEEKDAYS = ["H", "K", "Sze", "Cs", "P", "Szo", "V"];
 const MONTHS = [
