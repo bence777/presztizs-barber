@@ -67,3 +67,22 @@ A példacím helyett a valós barber e-mailjét használd. Ettől az új foglal�
 
 ## Ha az e-mailben még a régi szöveg szerepel
 A korábbi `bookingEmail.js` sablonban az állt, hogy a vendég vegye fel a kapcsolatot a szalonnal. Ez **a régi verzió**, nem a foglaláskezelő frissítése. Másold felül a `lib/server/bookingEmail.js` fájlt, állítsd be a `NEXT_PUBLIC_SITE_URL` értékét (lokálisan `http://localhost:3000`), indítsd újra a Next.js szervert, majd készíts **új tesztfoglalást**. A már elküldött e-mail nem változik meg.
+
+## Vercel-szerű adminnaptár (2026-11-11)
+
+A `/admin/foglalasok` most önálló foglaláskezelő dashboard:
+
+- Nap, hét és hónap nézet, kattintható naptáresemények, időpont-felvétel üres sávra kattintva.
+- Listanézet és keresés / barber- és státuszszűrő.
+- A jobboldali panelen létrehozás, szerkesztés, állapotváltás és végleges törlés.
+- Ütközést az adatbázis zárja ki (nem lehet ugyanaz a barber egyszerre két aktív foglaláson).
+- Az admin által felvett vendégek név/e-mail/telefon adatai közvetlenül a foglalásban tárolódnak. Az e-mail opcionális, de e-mail nélkül értesítés nem küldhető a vendégnek.
+- Az e-mailes értesítés külön bejelölhető (alapból kikapcsolt, hogy teszteléskor ne küldjünk véletlenül leveleket).
+- A `DELETE` valóban végleg törli a foglalást. Ha csak lemondás kell, állítsd az állapotot `Lemondva` értékre: így megmarad az előzmény.
+- Az `is_demo`-val jelölt tesztfoglalások nem változtak meg; a jelölés szerkesztéskor megmarad.
+- A meglévő mini-profilos vendégek a saját foglalásaikat továbbra is kezelhetik. Új, manuális vendégfoglalás az e-mailes azonosítása után automatikusan a fiókjához kapcsolódik a `/foglalasaim` oldalon.
+- Külön barber-fiókkal belépve a szerveroldali API-k kizárólag a hozzárendelt barber foglalásait engedik módosítani.
+
+**Szükséges adatbázisséma:** `supabase/sql/admin_dashboard_manual_bookings.sql`. A kapcsolt Presztízs Barber projektben már végrehajtottam; nem kell újra futtatni.
+
+**Telepítés:** a frissítés ZIP tartalmát másold a Next.js projektedbe úgy, hogy az azonos fájlokat felülírod. Ezt követően: `npm run dev`, majd `http://localhost:3000/admin/foglalasok`. A bejelentkezés változatlan, a meglévő Supabase/Resend környezeti változókat használd.
