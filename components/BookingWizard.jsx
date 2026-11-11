@@ -101,28 +101,28 @@ export default function BookingWizard() {
         if (!response.ok) throw new Error(data.error || "Nem érhető el a foglalórendszer.");
         return data;
       })
-      .then(data => { if (active) setCatalog({services:data.services || [],barbers:data.barbers || []}); })
+      .then(data => { if (active) setCatalog({ services: data.services || [], barbers: data.barbers || [] }); })
       .catch(error => { if (active) setCatalogError(error.message); })
-      .finally(() => { if(active) setCatalogLoading(false); });
+      .finally(() => { if (active) setCatalogLoading(false); });
     return () => { active = false; };
   }, []);
 
   useEffect(() => {
     if (!serviceId || !barberId) return;
     const controller = new AbortController();
-    const month = `${monthParts(visibleMonth).year}-${String(monthParts(visibleMonth).month + 1).padStart(2,"0")}`;
+    const month = `${monthParts(visibleMonth).year}-${String(monthParts(visibleMonth).month + 1).padStart(2, "0")}`;
     setAvailabilityLoading(true);
     setAvailabilityError("");
     setAvailableDays({});
-    fetch(`/api/booking/availability?${new URLSearchParams({service:serviceId,barber:barberId,month})}`, {
-      cache:"no-store", signal:controller.signal,
+    fetch(`/api/booking/availability?${new URLSearchParams({ service: serviceId, barber: barberId, month })}`, {
+      cache: "no-store", signal: controller.signal,
     }).then(async response => {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Nem sikerült lekérni az időpontokat.");
       return data;
-    }).then(data => { if(!controller.signal.aborted) setAvailableDays(data.days || {}); })
-    .catch(error => { if(!controller.signal.aborted) setAvailabilityError(error.message); })
-    .finally(() => { if(!controller.signal.aborted) setAvailabilityLoading(false); });
+    }).then(data => { if (!controller.signal.aborted) setAvailableDays(data.days || {}); })
+      .catch(error => { if (!controller.signal.aborted) setAvailabilityError(error.message); })
+      .finally(() => { if (!controller.signal.aborted) setAvailabilityLoading(false); });
     return () => controller.abort();
   }, [serviceId, barberId, visibleMonth, refreshAvailability]);
 
@@ -199,23 +199,23 @@ export default function BookingWizard() {
 
 
   async function confirmBooking() {
-    if(bookingBusy || !canReview || !date || !time || !serviceId || !barberId) return;
+    if (bookingBusy || !canReview || !date || !time || !serviceId || !barberId) return;
     setBookingBusy(true);
     setBookingError("");
     try {
       const response = await fetch("/api/booking/create", {
-        method:"POST", credentials:"same-origin", cache:"no-store",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({serviceId,barberId,date,time}),
+        method: "POST", credentials: "same-origin", cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ serviceId, barberId, date, time }),
       });
-      const data = await response.json().catch(()=>({}));
-      if(!response.ok) {
-        if(response.status===401) {setVerified(false);setPerson({name:'',email:'',phone:''});setShowPreview(false);}
-        if(response.status===409) { setStep(2);setShowPreview(false);setTime(null);setRefreshAvailability(n=>n+1); }
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        if (response.status === 401) { setVerified(false); setPerson({ name: '', email: '', phone: '' }); setShowPreview(false); }
+        if (response.status === 409) { setStep(2); setShowPreview(false); setTime(null); setRefreshAvailability(n => n + 1); }
         throw new Error(data.error || "Nem sikerült véglegesíteni a foglalást.");
       }
       setConfirmedBooking(data.booking);
-    } catch(error) { setBookingError(error.message); }
+    } catch (error) { setBookingError(error.message); }
     finally { setBookingBusy(false); }
   }
 
@@ -345,8 +345,9 @@ export default function BookingWizard() {
                   onClick={() => selectBarber("any")}
                   aria-pressed={barberId === "any"}
                 >
-                  <span className={styles.anyVisual} aria-hidden="true">✳</span>
-                  <span className={styles.barberCardText}><strong>Bárki</strong><small>Nincs preferenciám</small></span>
+                  <span className={styles.anyVisual} aria-hidden="true">
+                    {"✳\uFE0E"}
+                  </span>                  <span className={styles.barberCardText}><strong>Bárki</strong><small>Nincs preferenciám</small></span>
                   <span className={styles.barberCheck} aria-hidden="true" />
                 </button>
                 {BARBERS.map((item) => (
@@ -378,8 +379,8 @@ export default function BookingWizard() {
                   <div className={styles.calendarHead}>
                     <h3>{MONTHS[month]} <span>{year}</span></h3>
                     <div className={styles.monthControls}>
-                      <button type="button" aria-label="Előző hónap" onClick={() => { setDate(null);setTime(null);setVisibleMonth((m) => Math.max(earliestMonth, m - 1)); }} disabled={visibleMonth <= earliestMonth}>Előző</button>
-                      <button type="button" aria-label="Következő hónap" onClick={() => { setDate(null);setTime(null);setVisibleMonth((m) => Math.min(latestMonth, m + 1)); }} disabled={visibleMonth >= latestMonth}>Következő</button>
+                      <button type="button" aria-label="Előző hónap" onClick={() => { setDate(null); setTime(null); setVisibleMonth((m) => Math.max(earliestMonth, m - 1)); }} disabled={visibleMonth <= earliestMonth}>Előző</button>
+                      <button type="button" aria-label="Következő hónap" onClick={() => { setDate(null); setTime(null); setVisibleMonth((m) => Math.min(latestMonth, m + 1)); }} disabled={visibleMonth >= latestMonth}>Következő</button>
                     </div>
                   </div>
                   <div className={styles.weekdays}>{WEEKDAYS.map((name) => <span key={name}>{name}</span>)}</div>
@@ -457,7 +458,7 @@ export default function BookingWizard() {
                     <div><dt>Időpont</dt><dd>{formatDay(confirmedBooking.local_date)} · {confirmedBooking.local_time}</dd></div>
                     <div><dt>Ár</dt><dd>{formatPrice(confirmedBooking.price_huf)}</dd></div>
                   </dl>
-                  <p className={styles.formNote}>A foglalásod elmentettük. A visszaigazoló e-mailben is megtalálod a foglaláskezelő hivatkozását.</p><a href="/foglalasaim" className={styles.mainButton} style={{marginTop:18}}>Foglalásaim kezelése</a>
+                  <p className={styles.formNote}>A foglalásod elmentettük. A visszaigazoló e-mailben is megtalálod a foglaláskezelő hivatkozását.</p><a href="/foglalasaim" className={styles.mainButton} style={{ marginTop: 18 }}>Foglalásaim kezelése</a>
                 </div>
               ) : !showPreview ? (
                 <div className={styles.detailsAuth}>
