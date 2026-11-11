@@ -247,52 +247,7 @@ export default function BookingWizard() {
 
   return (
     <div className={styles.wrapper}>
-      <aside className={styles.summary} aria-label="Foglalás összegzése">
-        <nav className={styles.mobileSteps} aria-label="Foglalási lépések mobilon">
-          {STEPS.map((label, index) => (
-            <button
-              type="button"
-              key={label}
-              className={`${styles.mobileStep} ${index === step ? styles.mobileStepActive : ""} ${index < step ? styles.mobileStepFinished : ""}`}
-              onClick={() => { if (canOpen(index)) { setStep(index); setShowPreview(false); } }}
-              disabled={!canOpen(index)}
-              aria-current={index === step ? "step" : undefined}
-            >
-              <span className={styles.mobileStepCircle}>{String(index + 1).padStart(2, "0")}</span>
-              <span className={styles.mobileStepLabel}>{label}</span>
-            </button>
-          ))}
-        </nav>
-        <div className={styles.summaryRows}>
-          <div className={`${styles.summaryRow} ${step === 0 ? styles.summaryRowActive : ""}`}>
-            <div>
-              <small>01 / SZOLGÁLTATÁS</small>
-              <strong>{service?.name || "Választásra vár"}</strong>
-            </div>
-            {service && <button type="button" onClick={() => { setStep(0); setShowPreview(false); }} aria-label="Szolgáltatás módosítása">Módosítás</button>}
-          </div>
-          <div className={`${styles.summaryRow} ${step === 1 ? styles.summaryRowActive : ""}`}>
-            <div>
-              <small>02 / BARBER</small>
-              <strong>{barberId === "any" ? "Bármelyik barber" : barber?.name || "Választásra vár"}</strong>
-            </div>
-            {barberId && <button type="button" onClick={() => { setStep(1); setShowPreview(false); }} aria-label="Barber módosítása">Módosítás</button>}
-          </div>
-          <div className={`${styles.summaryRow} ${step === 2 ? styles.summaryRowActive : ""}`}>
-            <div>
-              <small>03 / IDŐPONT</small>
-              <strong>{date ? `${date.slice(5).replace("-", ".")}. · ${time || "Válassz időpontot"}` : "Választásra vár"}</strong>
-            </div>
-            {date && <button type="button" onClick={() => { setStep(2); setShowPreview(false); }} aria-label="Időpont módosítása">Módosítás</button>}
-          </div>
-          <div className={`${styles.summaryRow} ${step === 3 ? styles.summaryRowActive : ""}`}>
-            <div>
-              <small>04 / ADATAID</small>
-              <strong>{verified ? person.name : "Választásra vár"}</strong>
-            </div>
-            {verified && <button type="button" onClick={() => { setStep(3); setShowPreview(false); }} aria-label="Adataid módosítása">Módosítás</button>}
-          </div>
-        </div>
+      <aside className={styles.summary} aria-label="Várható összeg">
         <div className={styles.summaryBottom} aria-live="polite">
           <span>Várható összeg</span>
           <strong>{service ? formatPrice(service.price) : "— Ft"}</strong>
@@ -302,7 +257,6 @@ export default function BookingWizard() {
       <section id="foglalasi-folyamat" ref={workspaceRef} className={styles.workspace} aria-label="Időpontfoglaló lépések">
         <div className={styles.topline}>
           <span>FOGLALÁSI FOLYAMAT</span>
-          <span>0{step + 1} / 04</span>
         </div>
 
         <nav className={styles.steps} aria-label="Foglalási lépések">

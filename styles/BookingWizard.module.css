@@ -1,49 +1,18 @@
 .wrapper { width: 100%; background: #fff; color: #111; font-family: Arial, Helvetica, sans-serif; }
+/* Compact price strip: step navigation lives in the white panel below. */
 .summary {
-  display: flex; width: 100%; min-width: 0; align-items: center;
+  display: flex; justify-content: flex-end; align-items: center;
+  min-height: 68px; width: 100%;
+  padding: 10px clamp(23px, 4.8vw, 74px);
   background: #111; color: #f6f6f6;
   border-top: 1px solid #303030;
-  padding: 0 clamp(23px, 4.8vw, 74px);
-  min-height: 125px;
 }
-.summaryRows {
-  flex: 1; min-width: 0;
-  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
-  align-self: stretch; align-items: stretch;
-  gap: clamp(12px, 2.5vw, 34px);
-}
-.summaryRow {
-  display: flex; justify-content: space-between; align-items: center; gap: 9px;
-  min-width: 0; position: relative;
-  padding: 17px 0;
-}
-.summaryRow > div { min-width: 0; display: flex; flex-direction: column; gap: 10px; }
-.summaryRow small {
-  font: 600 11px/1.3 Arial, sans-serif; letter-spacing: .12em;
-  color: #aaa; white-space: nowrap;
-}
-.summaryRow strong {
-  font: 400 clamp(12px, 1.17vw, 17px)/1.4 Arial, sans-serif;
-  color: #f4f4f4; overflow-wrap: anywhere;
-}
-.summaryRowActive::after { content: ''; position: absolute; bottom: 0; height: 2px; width: 70%; background: #ededed; left: 0; }
-.summaryRow button {
-  border: 0; background: transparent; color: #a9a9a9;
-  text-decoration: underline; text-underline-offset: 3px;
-  font: 10px/1.4 Arial, sans-serif; cursor: pointer; padding: 3px 0;
-}
-.summaryRow button:hover { color: #fff; }
 .summaryBottom {
-  display: flex; flex-direction: column; align-items: flex-end; justify-content: center;
-  width: clamp(155px, 16vw, 250px); align-self: stretch;
-  border-left: 1px solid #3b3b3b;
-  margin-left: clamp(20px, 2.9vw, 42px);
-  padding: 12px 0 12px clamp(17px, 2vw, 34px);
-  gap: 9px;
+  display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: baseline;
+  gap: 7px 20px;
 }
-.summaryBottom span { font: 400 14px/1.3 Arial, sans-serif; color: #b7b7b7; white-space: nowrap; }
-.summaryBottom strong { font: 400 31px/1.2 Georgia, serif; letter-spacing: -.035em; white-space: nowrap; }
-.mobileSteps { display: none; }
+.summaryBottom span { font: 400 13px/1.35 Arial, sans-serif; color: #b7b7b7; }
+.summaryBottom strong { font: 400 29px/1.2 Georgia, serif; letter-spacing: -.035em; white-space: nowrap; }
 .workspace {
   width: 100%; min-width: 0; min-height: 480px; background: #fdfdfd; color: #151515;
   display: flex; flex-direction: column;
@@ -180,33 +149,28 @@
 .review dd { text-align: right; margin: 0; overflow-wrap: anywhere; font: 400 17px/1.45 Georgia, serif; }
 .demoFooter { width: 100%; display: flex; justify-content: space-between; gap: 15px; padding: 22px clamp(23px,4.8vw,74px); border-top: 1px solid #eee; color: #aaa; font: 500 9px/1.5 Arial, sans-serif; letter-spacing: .14em; }
 @media (max-width: 1120px) {
-  .summaryRows { gap: 12px; }
-  .summaryRow { align-items: flex-start; flex-direction: column; justify-content: center; }
-  .summaryRow button { padding: 0; }
-  .summaryBottom { width: 175px; margin-left: 20px; }
   .step { gap: 9px; font-size: 13px; }
   .step:not(:last-child)::after { display: none; }
   .barberGrid { gap: 10px; }
 }
 @media (max-width: 800px) {
-  .summary { min-height: 0; padding: 14px 23px 20px; flex-direction: column; }
-  .summaryRows { display: none; }
-  .mobileSteps { display: grid; width: 100%; grid-template-columns: repeat(4,minmax(0,1fr)); padding: 7px 0 22px; }
-  .mobileStep { display: flex; position: relative; flex-direction: column; gap: 10px; align-items: center; padding: 0; border: 0; background: transparent; color: #999; cursor: pointer; min-width: 0; }
-  .mobileStep:not(:last-child)::after { content: ''; position: absolute; top: 19px; left: calc(50% + 22px); width: calc(100% - 44px); border-top: 1px solid #525252; }
-  .mobileStep:disabled { cursor: not-allowed; }
-  .mobileStepCircle { display: grid; place-items: center; width: 39px; height: 39px; border-radius: 50%; background: #303030; border: 1px solid #3c3c3c; color: #fff; font: 500 12px/1 Arial, sans-serif; }
-  .mobileStepActive .mobileStepCircle { color: #111; background: #fff; border-color: #fff; }
-  .mobileStepFinished .mobileStepCircle { background: #545454; color: #fff; }
-  .mobileStepLabel { font: 400 12px/1.3 Arial, sans-serif; white-space: nowrap; }
-  .mobileStepActive .mobileStepLabel { color: #fefefe; }
-  .summaryBottom { width: 100%; min-height: 62px; padding: 0 20px; margin: 0; border: 1px solid #555; border-radius: 17px; flex-direction: row; justify-content: space-between; align-items: center; background: #252525; }
-  .summaryBottom span { font-size: 13px; }
-  .summaryBottom strong { font-size: 25px; }
-  .steps { display: none; }
-  .topline { padding: 25px 23px 0; }
-  .topline span:first-child { display: none; }
-  .content { padding: 27px 23px 55px; }
+  .summary { min-height: 56px; padding: 10px 23px; }
+  .summaryBottom { gap: 10px; }
+  .summaryBottom span { font-size: 12px; }
+  .summaryBottom strong { font-size: 24px; }
+  .topline { padding: 20px 23px 2px; font-size: 10px; }
+  .steps { gap: 7px; padding-inline: 23px; }
+  .step {
+    min-width: 0; flex-direction: column; align-items: center;
+    gap: 8px; padding: 13px 0 18px;
+    font-size: 11px; text-align: center;
+  }
+  .step:not(:last-child)::after {
+    display: block; top: 30px; left: calc(50% + 23px);
+    right: calc(-50% + 23px); width: auto;
+  }
+  .stepNumber { width: 36px; height: 36px; font-size: 12px; }
+  .content { padding: 23px 23px 55px; }
   .sectionHead { margin-bottom: 28px; }
   .sectionHead h2 { font-size: clamp(37px, 6vw, 48px); }
   .serviceRow { min-height: 79px; padding: 14px 18px; border-radius: 15px; }
@@ -216,9 +180,11 @@
 }
 @media (max-width: 500px) {
   .summary { padding-inline: 18px; }
-  .mobileStepLabel { font-size: 11px; }
-  .topline { padding-inline: 23px; }
-  .topline span:last-child { font-size: 12px; }
+  .topline { padding: 16px 17px 0; font-size: 9px; }
+  .steps { padding-inline: 12px; gap: 4px; }
+  .step { gap: 7px; font-size: 10px; }
+  .stepNumber { width: 33px; height: 33px; font-size: 11px; }
+  .step:not(:last-child)::after { top: 29px; left: calc(50% + 21px); right: calc(-50% + 21px); }
   .content { padding: 24px 17px 46px; }
   .eyebrow { display: none; }
   .sectionHead h2 { font-size: clamp(34px, 9vw, 42px); margin: 0 0 13px; }
@@ -254,7 +220,9 @@
 }
 @media (max-width: 350px) {
   .summary { padding-inline: 12px; }
-  .mobileStepLabel { font-size: 10px; }
+  .topline { padding-inline: 12px; }
+  .steps { padding-inline: 6px; }
+  .step { font-size: 9px; }
   .content { padding-inline: 12px; }
   .serviceRow { gap: 8px; padding-inline: 11px; }
   .serviceMeta { min-width: 65px; }
