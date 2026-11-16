@@ -86,7 +86,7 @@
   color: #989898;
 }
 @media (max-width: 900px) {
-  .editorial { grid-template-columns: 1fr; gap: 60px; margin-top: 85px; margin-bottom: 105px; }
+  .editorial { grid-template-columns: minmax(0, 1fr); gap: 60px; margin-top: 85px; margin-bottom: 105px; }
   .entries { width: 100%; }
 }
 @media (max-width: 600px) {
@@ -100,4 +100,7 @@
   .intro { font-size: 13px; }
   .entry { grid-template-columns: 25px 1fr; gap: 14px; padding: 22px 0 24px; }
   .entry h3 { font-size: 34px; }
+}
+@media (max-width: 360px) {
+  .headline h2 { font-size: 49px; }
 }
