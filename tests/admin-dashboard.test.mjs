@@ -19,11 +19,14 @@ globalThis.fetch=async(raw,opts={})=>{
  if(table==='booking_services')value=service;
  if(table==='booking_staff')value=staff;
  if(table==='guest_profiles')value=[];
+ if(table==='booking_hours')value=[{opens:'09:00:00',closes:'12:00:00'},{opens:'13:00:00',closes:'18:00:00'}];
+ if(table==='booking_time_off')value=[];
  if(table==='booking_appointments'){
    if(method==='POST'){saved=body;value=[{id:bookingId,...body}];}
    else if(method==='PATCH'){saved=body;booking={...booking,...body};value=[booking];}
    else if(method==='DELETE'){saved='deleted';value=[{id:bookingId}];}
    else if(u.searchParams.get('guest_email'))value=u.searchParams.get('guest_email')==='eq.linked@example.com'?[{user_id:userId}]:[];
+   else if(u.searchParams.get('starts_at'))value=[];
    else value=[booking];
  }
  return {ok:true,status:200,text:async()=>JSON.stringify(value)};

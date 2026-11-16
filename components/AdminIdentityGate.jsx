@@ -100,9 +100,9 @@ export default function AdminIdentityGate({children}) {
 
   if(phase==='ready' && manager) return cloneElement(children,{onAdminLogout:async()=>{try{await logout();}catch(e){setError(e.message);setPhase('unavailable');}},adminManager:manager});
   return <main className={styles.screen}>
-    <div className={styles.top}><a href="/" className={styles.brand}>P<span>.</span> <strong>Presztízs Barber</strong></a><span className={styles.topLabel}>STUDIO / MANAGEMENT</span></div>
+    <div className={styles.top}><a href="/" className={styles.brand}>D<span>.</span> <strong>DEMETERS</strong></a><span className={styles.topLabel}>STUDIO / MANAGEMENT</span></div>
     <section className={styles.panel} aria-live="polite">
-      <div className={styles.mark}>PB <span>ADMIN</span></div>
+      <div className={styles.mark}>D <span>ADMIN</span></div>
       <div className={styles.eyebrow}>KEZELŐI FELÜLET</div>
       {phase==='loading' && <><h1>Azonosítás ellenőrzése</h1><p className={styles.sub}>Megnézzük, be vagy-e jelentkezve a szalon kezelői fiókjába.</p><div className={styles.progress}/></>}
       {phase==='email' && <><h1>Üdv újra.</h1><p className={styles.sub}>Lépj be a szalon kezelői e-mail-címével. Ez a vendégprofiltól független belépés.</p>
@@ -128,6 +128,6 @@ export default function AdminIdentityGate({children}) {
       {error&&<p role="alert" className={styles.error}>{error}</p>}
       <div className={styles.bottom}><span>SECURE ACCESS · SUPABASE AUTH</span><a href="/foglalasaim">Vendég vagyok</a></div>
     </section>
-    <footer className={styles.footer}>© PRESZTÍZS BARBER <span>SAJÁT KEZELŐI AZONOSÍTÁS</span></footer>
+    <footer className={styles.footer}>© DEMETERS <span>SAJÁT KEZELŐI AZONOSÍTÁS</span></footer>
   </main>;
 }

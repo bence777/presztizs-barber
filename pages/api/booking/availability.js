@@ -7,9 +7,8 @@ export default async function handler(req,res) {
   if([service,barber,month].some(x=>typeof x!=="string")) return res.status(400).json({error:"Érvénytelen paraméterek."});
   try {
     const {days,hasWorkingHours}=await getMonthAvailability({serviceId:service,barberId:barber,month});
-    // Csak anonim szabad idősávokat tartalmaz: rövid CDN cache.
-    // A tényleges foglalást a szerver mindig friss DB-adatokkal ellenőrzi.
-    res.setHeader("Vercel-CDN-Cache-Control", "public, s-maxage=8, stale-while-revalidate=5");
+    // Absences and cancellations must affect the next request immediately.
+    res.setHeader("Vercel-CDN-Cache-Control", "no-store");
     return res.status(200).json({days,hasWorkingHours});
   } catch(error) {
     if(error instanceof BookingDbError && error.status===400) return res.status(400).json({error:"Érvénytelen dátum vagy szolgáltatás."});

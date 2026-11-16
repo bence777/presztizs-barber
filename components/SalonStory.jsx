@@ -45,7 +45,7 @@ export default function SalonStory() {
               hogy minden részlete a helyén van.
             </p>
             <p className={styles.copy}>
-              A Presztízsben a figyelem, a precizitás és a karakteres végeredmény
+              A DEMETERS-ben a figyelem, a precizitás és a karakteres végeredmény
               ugyanannak a történetnek a része.
             </p>
 

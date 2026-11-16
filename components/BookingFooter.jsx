@@ -8,7 +8,7 @@ export default function BookingFooter() {
         <div className={styles.wrap}>
           <div className={styles.topline}>
             <span>05 / IDŐPONTFOGLALÁS</span>
-            <span>PRESZTÍZS BARBER</span>
+            <span>DEMETERS</span>
           </div>
           <div className={styles.center}>
             <span className={styles.overTitle}>A KÖVETKEZŐ VÁGÁSOD</span>
@@ -25,15 +25,15 @@ export default function BookingFooter() {
           </div>
           <div className={styles.bottomline}>
             <span>MINDEN VÁGÁSNAK KARAKTERE VAN.</span>
-            <span>01 — 05 / PRESZTÍZS</span>
+            <span>01 — 05 / DEMETERS</span>
           </div>
         </div>
       </section>
       <footer className={styles.footer} id="kapcsolat">
         <div className={styles.footerInner}>
           <div className={styles.footerTop}>
-            <a className={styles.brand} href="#teteje" aria-label="Presztízs Barber – az oldal tetejére">
-              PRESZTÍZS <em>Barber</em>
+            <a className={styles.brand} href="#teteje" aria-label="DEMETERS – az oldal tetejére">
+              DEMETERS
             </a>
             <nav aria-label="Lábléc navigáció" className={styles.links}>
               <a href="#szolgaltatasok">Szolgáltatások</a>
@@ -43,7 +43,7 @@ export default function BookingFooter() {
             </nav>
           </div>
           <div className={styles.footerBottom}>
-            <span>© {new Date().getFullYear()} PRESZTÍZS BARBER</span>
+            <span>© {new Date().getFullYear()} DEMETERS</span>
             <span>MINDEN VÁGÁSNAK KARAKTERE VAN.</span>
             <a href="#teteje">VISSZA AZ ELEJÉRE</a>
           </div>

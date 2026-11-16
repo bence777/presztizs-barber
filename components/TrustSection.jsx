@@ -30,7 +30,7 @@ export default function TrustSection() {
       <div className={styles.wrap}>
         <div className={styles.kicker}>
           <span>04 / {hasReviews ? "VENDÉGVÉLEMÉNYEK" : "AMIBEN HISZÜNK"}</span>
-          <span>PRESZTÍZS BARBER — DEBRECEN</span>
+          <span>DEMETERS — DEBRECEN</span>
         </div>
 
         <div className={styles.editorial}>
@@ -76,7 +76,7 @@ export default function TrustSection() {
         </div>
         <div className={styles.signoff} aria-hidden="true">
           <span>PRECISION IS PERSONAL.</span>
-          <span>EST. / PRESZTÍZS</span>
+          <span>EST. / DEMETERS</span>
         </div>
       </div>
     </section>

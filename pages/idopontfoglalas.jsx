@@ -8,14 +8,14 @@ export default function BookingPage() {
   return (
     <>
       <Head>
-        <title>Időpontfoglalás | Presztízs Barber</title>
-        <meta name="description" content="Válaszd ki a szolgáltatást, a barbert és a neked megfelelő időpontot a Presztízs Barber foglalási felületén." />
+        <title>Időpontfoglalás | DEMETERS</title>
+        <meta name="description" content="Válaszd ki a szolgáltatást, a barbert és a neked megfelelő időpontot a DEMETERS foglalási felületén." />
         <meta name="robots" content="noindex, nofollow" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
       <main className={styles.page}>
         <header className={styles.header}>
-          <a href="/" className={styles.brand} aria-label="Presztízs Barber — főoldal">Presztízs <em>Barber</em></a>
+          <a href="/" className={styles.brand} aria-label="DEMETERS — főoldal">DEMETERS</a>
           <nav id="booking-page-menu" className={`${styles.headerRight} ${menuOpen ? styles.menuOpen : ""}`} aria-label="Foglalási navigáció">
             <a href="/foglalasaim" className={styles.back} onClick={() => setMenuOpen(false)}>Foglalásaim</a>
             <a href="/eszkozeim" className={styles.back} onClick={() => setMenuOpen(false)}>Eszközeim</a>
@@ -27,7 +27,7 @@ export default function BookingPage() {
           </button>
         </header>
         <div className={styles.intro}>
-          <div className={styles.introMeta}>01 / PRESZTÍZS BARBER</div>
+          <div className={styles.introMeta}>01 / DEMETERS</div>
           <div className={styles.introMain}>
             <h1>A következő <em>vágásod.</em></h1>
             <p>Válassz szolgáltatást, barbert és időpontot. A többit bízd ránk.</p>
@@ -35,7 +35,7 @@ export default function BookingPage() {
         </div>
         <BookingWizard />
         <footer className={styles.footer}>
-          <span>© PRESZTÍZS BARBER</span>
+          <span>© DEMETERS</span>
           <span>MINDEN VÁGÁSNAK KARAKTERE VAN.</span>
         </footer>
       </main>

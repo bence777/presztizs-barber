@@ -18,12 +18,12 @@ test('Public catalog deduplicates concurrent requests and reuses cache',async()=
   assert.equal(calls[0].options.credentials,'omit');
 });
 
-test('Availability is keyed per service, barber and month and cached',async()=>{
+test('Availability deduplicates concurrent requests but never reuses stale slots',async()=>{
   const key = availabilityKey('hajvagas','barber-1','2026-11');
   assert.equal(key,'hajvagas|barber-1|2026-11');
   const [a,b] = await Promise.all([loadPublicAvailability('hajvagas','barber-1','2026-11'),loadPublicAvailability('hajvagas','barber-1','2026-11')]);
   assert.deepEqual(a,b);
-  assert.deepEqual(getCachedAvailability('hajvagas','barber-1','2026-11'),a);
+  assert.equal(getCachedAvailability('hajvagas','barber-1','2026-11'),null);
   assert.equal(calls.filter(x=>x.url.includes('/availability')).length,1);
   invalidateCachedAvailability('hajvagas','barber-1','2026-11');
   assert.equal(getCachedAvailability('hajvagas','barber-1','2026-11'),null);

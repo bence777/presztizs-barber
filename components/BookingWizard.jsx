@@ -90,6 +90,8 @@ export default function BookingWizard() {
   const lastRefreshRef = useRef(0);
   const [availabilityError, setAvailabilityError] = useState("");
   const [refreshAvailability, setRefreshAvailability] = useState(0);
+  const selectedSlotRef=useRef({date,time});
+  selectedSlotRef.current={date,time};
   const [bookingBusy, setBookingBusy] = useState(false);
   const [bookingError, setBookingError] = useState("");
   const [confirmedBooking, setConfirmedBooking] = useState(null);
@@ -113,13 +115,11 @@ export default function BookingWizard() {
     lastRefreshRef.current = refreshAvailability;
     const cached = !force && getCachedAvailability(serviceId, barberId, month);
     setAvailabilityError("");
-    setDate(null);
-    setTime(null);
     if (cached) {
       setAvailableDays(cached.days || {});
       setHasWorkingHours(cached.hasWorkingHours !== false);
       setAvailabilityLoading(false);
-    } else {
+    } else if (!force) {
       setAvailableDays({});
       setHasWorkingHours(null);
       setAvailabilityLoading(true);
@@ -129,20 +129,24 @@ export default function BookingWizard() {
         if (!active) return;
         setAvailableDays(data.days || {});
         setHasWorkingHours(data.hasWorkingHours !== false);
-        // A következő hónapot alacsony prioritással előtöltjük.
-        // Így a naptárlapozás rendszerint azonnali lesz.
-        const nextIndex = visibleMonth + 1;
-        const now = getTodayInDebrecen();
-        if (nextIndex <= monthIndex(addDays(now.date, 60))) {
-          const next = monthParts(nextIndex);
-          const nextMonth = `${next.year}-${String(next.month + 1).padStart(2, "0")}`;
-          loadPublicAvailability(serviceId, barberId, nextMonth).catch(() => {});
-        }
+        const selected=selectedSlotRef.current;
+        if(selected.date&&!data.days?.[selected.date]){setDate(null);setTime(null);}
+        else if(selected.time&&!data.days?.[selected.date]?.some(slot=>slot.value===selected.time)){setTime(null);}
       })
       .catch(error => { if (active) setAvailabilityError(error.message); })
       .finally(() => { if (active) setAvailabilityLoading(false); });
     return () => { active = false; };
   }, [serviceId, barberId, visibleMonth, refreshAvailability]);
+
+  useEffect(()=>{setDate(null);setTime(null)},[serviceId,barberId,visibleMonth]);
+  useEffect(()=>{
+    if(!serviceId||!barberId||step!==2)return;
+    const refresh=()=>{if(document.visibilityState==='visible')setRefreshAvailability(v=>v+1)};
+    const timer=setInterval(refresh,15000);
+    window.addEventListener('focus',refresh);
+    document.addEventListener('visibilitychange',refresh);
+    return()=>{clearInterval(timer);window.removeEventListener('focus',refresh);document.removeEventListener('visibilitychange',refresh)};
+  },[serviceId,barberId,step]);
 
   // A szolgáltatás vagy barber előre kiválasztható a főoldalról:
   // /idopontfoglalas?service=skin-fade&barber=mark
@@ -470,7 +474,7 @@ export default function BookingWizard() {
             </>
           )}
         </div>
-        <div className={styles.demoFooter}><span>FOGLALÁS / PRESZTÍZS BARBER</span><span>EUROPE / Debrecen</span></div>
+        <div className={styles.demoFooter}><span>FOGLALÁS / DEMETERS</span><span>EUROPE / Debrecen</span></div>
       </section>
     </div>
   );

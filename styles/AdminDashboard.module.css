@@ -26,3 +26,60 @@
 
 /* Text navigation replaces arrow-only controls. */
 .dateNav .iconButton{width:auto;min-width:48px;padding:0 9px;font-size:11px}
+
+/* DEMETERS keeps the light calendar and muted blue appointment palette. */
+.stats{grid-template-columns:repeat(3,minmax(0,1fr))}
+.statisticsToolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;font-size:12px;color:#777}
+.statisticsToolbar label{display:flex;align-items:center;gap:12px;font-weight:600;color:#444}
+.statisticsToolbar input{font:inherit;padding:8px;border:1px solid #ddd;border-radius:6px;background:#fff;min-height:40px;color:#333}
+.statisticsToolbar>span{font-size:11px}
+.timetable{max-height:68vh;scroll-behavior:auto}
+.nowLine{position:absolute;left:0;right:0;height:2px;background:#3983d5;z-index:7;pointer-events:none}
+.nowLine:before{content:'';position:absolute;width:7px;height:7px;left:-3px;top:-2px;background:#3983d5;border-radius:50%}
+.nowLine span{position:absolute;right:3px;bottom:3px;color:#2867ae;font-size:10px;background:#fff;padding:1px 3px;border-radius:3px}
+.closedSlot{background:repeating-linear-gradient(135deg,#f5f6f8,#f5f6f8 5px,#eef0f3 5px,#eef0f3 6px);cursor:default;opacity:1}
+.absenceBlock{position:absolute;z-index:2;border:1px solid #ccd7e5;border-left:3px solid #8296b0;border-radius:5px;background:repeating-linear-gradient(135deg,#e9eef5,#e9eef5 7px,#e2e9f2 7px,#e2e9f2 8px);color:#536881;text-align:left;padding:6px;overflow:hidden;display:flex;flex-direction:column;gap:4px;font-size:11px}
+.absenceBlock strong{position:sticky;top:6px;font-size:11px}
+.absenceBlock span{font-size:10px;overflow:hidden;text-overflow:ellipsis}
+.breakBlock{background:repeating-linear-gradient(135deg,#f4f3ef,#f4f3ef 7px,#e9e7df 7px,#e9e7df 8px);border-color:#d8d5c9;color:#7b7563}
+.absenceRow{display:flex;align-items:flex-start;flex-direction:column;gap:8px;text-align:left;width:100%;padding:20px;background:#fff;border:0;border-top:1px solid #eee;color:#555;font-size:12px;min-height:70px}
+.absenceRow:hover{background:#f7f9fc}
+.absenceRow>span:last-child{color:#526988;font-size:11px}
+.formGrid textarea{font:inherit;resize:vertical;min-width:0;width:100%;border:1px solid #dedede;border-radius:6px;padding:10px;color:#222;background:white}
+.helpText{font-size:12px;color:#777;line-height:1.6}
+.quickActions{display:flex;gap:8px;flex-wrap:wrap;margin-top:22px}
+.manualDot{position:absolute;right:5px;top:5px;width:5px;height:5px;border-radius:50%;background:#526988}
+.calendarEvent>span:last-of-type{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#666}
+.shell button:focus-visible,.shell a:focus-visible{outline:2px solid #4384cd;outline-offset:2px}
+@media(max-width:710px){
+ .singleDay .weekHeader,.singleDay .timetable{min-width:0}
+ .singleDay .calendarEvent{padding:7px;font-size:12px}
+ .singleDay .calendarEvent strong{font-size:12px}
+ .singleDay .calendarEvent>span:last-of-type{display:block}
+ .singleDay .eventTime{font-size:10px}
+ .statisticsToolbar{align-items:flex-start;flex-direction:column;gap:8px}
+ .stats{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .statCard{padding:12px 9px;min-height:95px}.statLabel{font-size:10px;align-items:flex-start}.statLabel svg{display:none}.statValue{font-size:24px}.statValue span{display:block;margin-top:5px;font-size:9px}
+ .dateNav{flex-wrap:wrap;gap:4px}.dateNav strong{flex-basis:100%;padding:8px 4px}
+ .dateNav button,.viewSwitch button,.mobileTabs button{min-height:40px}
+ .mobileTabs{flex-wrap:wrap}.toolbarRight{flex-wrap:wrap;gap:8px}
+ .topbar{padding:0 10px}.topbar .topRight{gap:8px}.topRight>a{display:none}
+ .headingActions{flex-wrap:wrap}.timetable{max-height:65vh}
+ .formGrid input,.formGrid select,.formGrid textarea{font-size:16px;min-height:44px}
+ .searchField input{font-size:16px}.filterRight select{min-height:44px}
+ .absenceBlock{font-size:11px}.absenceRow{min-height:80px}
+}
+@media(prefers-reduced-motion:reduce){.drawer,.drawerBackdrop{animation:none}}
+.calendarDate{border:1px solid #e4e4e4;border-radius:5px;font:inherit;padding:7px 5px;color:#666;max-width:135px;background:#fff;min-height:36px}
+.monthAbsence{display:block;width:100%;text-align:left;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;border:1px solid #ccd7e5;border-radius:3px;background:#e5ebf3;color:#536881;font-size:10px;margin-bottom:3px;padding:4px}
+@media(max-width:710px){.calendarDate{min-height:40px;font-size:14px}.dateNav strong{margin-left:0}}
+@media(max-width:710px){.sidebar{display:none}}
+.shell .closedSlot:disabled{cursor:default;opacity:1}
+.singleDay .calendarEvent{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto;gap:1px 5px;padding:3px 6px;align-content:center}
+.singleDay .calendarEvent strong{grid-column:1;grid-row:1;font-size:12px}
+.singleDay .eventTime{grid-column:2;grid-row:1;font-size:9px}
+.singleDay .calendarEvent>span:last-of-type{grid-column:1/-1;grid-row:2;font-size:10px;line-height:1.2}
+.singleDay .calendarEvent{padding:1px 6px;gap:0 5px}
+.singleDay .calendarEvent strong{line-height:1.15}
+.singleDay .eventTime{line-height:1.15}
+.singleDay .calendarEvent>span:last-of-type{line-height:1.1}

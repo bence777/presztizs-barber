@@ -1,1 +1,19 @@
-{"name":"presztizs-editorial","version":"1.0.0","private":true,"scripts":{"dev":"next dev","build":"next build","start":"next start"},"dependencies":{"framer-motion":"^14.12.0","next":"^14.2.35","react":"^18.3.1","react-dom":"^18.3.1"}}
+{
+  "name": "presztizs-editorial",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "node --experimental-default-type=module --test tests/*.test.mjs",
+    "test:db": "node tests/database.integration.mjs",
+    "test:ui": "node tests/calendar.browser.mjs"
+  },
+  "dependencies": {
+    "framer-motion": "^14.12.0",
+    "next": "^14.2.35",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}

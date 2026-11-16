@@ -12,7 +12,7 @@ export default async function handler(req,res){
     if(!guest) return res.status(401).json({error:"Az időpont véglegesítéséhez újra azonosítanod kell magad."});
     const profile=await getProfile(guest);
     if(!profile) return res.status(400).json({error:"Először mentsd a vendégadataidat."});
-    const booking=await placeBooking({userId:guest.user.id,guestEmail:guest.user.email,serviceId,barberId,date,time});
+    const booking=await placeBooking({userId:guest.user.id,guestEmail:guest.user.email,guestName:profile.full_name,guestPhone:profile.phone,serviceId,barberId,date,time});
     let emailSent={guest:false,staff:false};
     try { emailSent=await emailBookingReceipt({email:guest.user.email,name:profile.full_name,booking:{...booking,guest_email:guest.user.email}}); }
     catch (emailError) {console.error("[booking/create] notification",emailError.message);}
