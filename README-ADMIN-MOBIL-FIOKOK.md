@@ -1,41 +1,52 @@
-# DEMETERS: saját fodrászfiókok és mobilos admin
+# DEMETERS: e-mailes fodrászfiókok, Supabase Auth és mobilos admin
 
-## Változások
+## Fodrász és fiók hozzáadása
 
-- A főadmin **Fiókok** menüpontjában saját felhasználóneves/jelszavas belépést hozhat létre minden meglévő fodrászhoz. Előkészített nevek és azonosítók: Demeter Tamás / `demeter.tamas`, Fodrász 2 / `fodrasz.2`, Fodrász 3 / `fodrasz.3`. A jelszót a főadmin adja meg; nincs közös vagy forráskódba írt alapjelszó.
-- A fodrász az `/admin` oldalon a **Fodrász belépés** lapon használja a saját felhasználónevét és jelszavát. Az eddigi főadmin- és e-mailes OTP-belépés az **E-mailes belépés** lapon megmaradt.
-- A személyes fiók csak a hozzárendelt fodrász naptárát, foglalásait, vendégeit, statisztikáit és szabadságait érheti el. Másik fodrászra váltó szűrő és fiókkezelő menüpont csak főadminnak jelenik meg. Az API- és adatbázis-védelem változatlanul kikényszeríti a scope-ot.
-- A főadmin szerkesztheti a fodrász nevét, új jelszót állíthat be, tilthatja és újra engedélyezheti a belépést. A felhasználónév meglévő fióknál nem változtatható, más fodrászhoz nem rendelhető át. A főadminfiókok nem módosíthatók ezzel a végponttal. A tiltás nem töröl foglalást; a jelszócsere visszavonja az adott személy korábbi admineszközeit is.
-- A **Szabadságok** nézetben az egyetlen létrehozási művelet az **Új távollét**. Nincs Új foglalás gomb, vendégkereső, foglalásstátusz, foglalási statisztika vagy közelgő foglaláslista. Hónapválasztó és főadminnál fodrászszűrő tartozik hozzá.
-- A **Foglalások** nézet a kiválasztott hónap listája, telefonon soronként kártyává rendezve. A **Fiókok** nézetben csak a fiókkezeléshez kapcsolódó műveletek vannak. A naptár havi statisztikái összecsukhatók. A globális oldalsávból kikerült az Új foglalás gyorsművelet.
-- A napi és heti naptár minden foglalása **76 px magas**, és kitölti az adott nap oszlopának azonos szélességét. Az időtartam nem változtatja a kártyaméretet: a pontos kezdés, befejezés és időtartam feliratként szerepel. A vendégnév és a szolgáltatás külön sorban olvasható.
-- Az egy időszakra eső foglalások egymás alá kerülnek, nem zsugorodnak az aktív fodrászok számának megfelelő keskeny sávokra. A közös félórás sorok szükség esetén együtt növekednek, a hét napjainak idővonalai együtt maradnak. A foglalhatóság és a valódi időtartam továbbra is az adatbázisban tárolt intervallum alapján ellenőrzött. A heti nézet oldalra görgethető; alapértelmezett telefonos nézet a nap.
-- Telefonon fix alsó navigáció, legalább 44 px-es fontos kezelőszervek, teljes szélességű egyoszlopos űrlapok, 16 px-es mezőszöveg és képernyőn belül maradó panelek vannak. A naptár a munkakezdéshez görget, a jelenlegi idő vonala nem takarja ki a vendégneveket.
+A főadmin **Fiókok** oldalán:
 
-## Hitelesítés és adatbázis
+- **Saját fiók létrehozása**: meglévő fodrászhoz saját e-mail-cím kapcsolható.
+- **Új fodrász hozzáadása**: új név és saját e-mail-cím megadásával új fodrász és hozzá tartozó Auth-fiók készül. A munkarend opcionálisan átvehető egy meglévő fodrásztól. Munkarend nélkül a fodrász a munkarend megadásáig nem foglalható.
+- **E-mailes fiók hozzáadása**: egy meglévő fodrászhoz további saját e-mailes belépés rendelhető. A korábbi hozzáférés külön letiltható.
+- Kezdő jelszó opcionálisan megadható egy teljesen új Auth-felhasználóhoz (12–128 karakter). Üresen hagyva e-mailes belépési kóddal használható a fiók.
 
-Nem készült új adatbázisséma vagy migráció. A meglévő `booking_managers`, `booking_staff`, `trusted_devices` és Supabase Auth bővítésével működik. A felhasználónévhez nem kézbesíthető, belső `@staff.demeters.invalid` Auth-azonosító tartozik; ez nem kitalált valós postafiók, és nem küldünk rá levelet. A jelszavakat a Supabase Auth tárolja, az alkalmazás nem ment nyers jelszót saját táblába vagy naplóba.
+A név és az e-mail-cím kötelező. Nincs automatikusan generált `.invalid` e-mail-cím vagy közös alapjelszó. A korábban felhasználónévvel létrehozott fiókok belépése kompatibilitási célból megmaradt; új ilyen fiók nem hozható létre.
 
-A fiók létrehozásakor először letiltott jogosultságsor készül. Az Auth-fiók sikeres létrehozása után aktiválható. Ha az Auth-kérés hibázik, nincs használható aktív belépés; a művelet újrapróbálható. A fodrászfiókok szerveroldali kezelése kizárólag ellenőrzött főadminnak engedélyezett. A sikeres jelszavas belépés ugyanazt a külön HttpOnly adminmunkamenetet és külön megbízható admineszközt hozza létre, mint az eddigi OTP-s belépés. A vendégmunkamenet nem használható adminmunkamenetként.
+## Mi történik mentéskor?
 
-A kapcsolt éles Supabase-projekten kizárólag olvasási ellenőrzés történt: két meglévő owner és három aktív fodrász van, saját barber belépés még nincs; az előző migráció admineszközre szűrt RLS-segédfüggvénye már jelen van. A szerverkulcs Auth Admin API-hozzáférése olvasási kéréssel ellenőrzött (HTTP 200). Ebben a körben nem módosult az éles adatbázis, nem jött létre éles Auth-fiók, nem ment ki e-mail és nem történt Vercel-telepítés.
+1. A szerver ellenőrzi az aktív főadminjogot, az e-mail-címet és a fodrászhozzárendelést. Főadminfiókot nem alakít át fodrászfiókká, és más fodrászhoz kötött e-mailt nem rendel át.
+2. Új fodrásznál stabil, a mentés újrapróbálásakor is változatlan azonosítóval előkészíti a `booking_staff` sort. A félkész fodrász és a kezdeti kezelői jogosultság inaktív.
+3. Megkeresi a valódi e-mail-címet a Supabase Auth felhasználói között. Ha nincs, az Auth Admin API-val létrehozza, majd az Auth felhasználóazonosítójával külön lekéréssel visszaellenőrzi a mentett rekordot. Így a felhasználó **azonnal megjelenik a Supabase Dashboard → Authentication → Users felületén**, már az első belépés előtt.
+4. Ha az e-mailhez már létezik Auth-felhasználó, ugyanaz az azonosító kapcsolódik a fodrászhoz. Nem készül duplikált személy, nem változik a meglévő jelszó vagy a megerősített e-mail állapota. Ilyenkor a kezdő jelszó mezőt üresen kell hagyni; a szerver egy megadott új jelszót visszautasít.
+5. A kiválasztott munkarendet másolja, majd befejezi a fodrász és a `booking_managers` jogosultság mentését. A sikeres válasz az Auth-felhasználó azonosítóját is tartalmazza. A felület enélkül nem jelez sikeres fióklétrehozást.
 
-Használat az új kód telepítése után: főadmin → Fiókok → adott fodrász → Saját fiók létrehozása → név, felhasználónév, legalább 12 karakteres saját jelszó → Fiók mentése. A belépési adatokat a főadmin adja át a fodrásznak.
+A fióklistán külön látszik, hogy a Supabase Auth-fiók létrejött-e. Sikertelen Auth-kérés nem aktivál új hozzáférést. A félkész létrehozás folytatható; újrapróbáláskor nem jön létre még egy fodrász, másolat Auth-fiók vagy azonos munkarend.
+
+A fiók mentése nem küld meghívólevelet. A fodrász az `/admin` oldalon a saját címére **belépési kódot kér**, és az első bejelentkezéskor megerősíti az e-mail-címét. Az Auth-sor létrejötte és a cím megerősítése külön állapot: a létrehozás nem állítja önkényesen megerősítettre a személy e-mail-címét. A már beállított saját jelszó a Jelszavas belépés lapon is használható, e-mail-címmel. A korábbi főadmin-OTP-belépés megmaradt.
+
+A fodrász csak a hozzárendelt naptárat, foglalásokat, vendégeket, statisztikákat és távolléteket érheti el. A jogosultságok ellenőrzése szerveroldalon és a meglévő RLS-szabályokon keresztül is történik. A Supabase titkos kulcsa kizárólag a szerveren használható.
+
+## Naptár és mobil
+
+- A Szabadságok oldalon csak távolléthez tartozó műveletek vannak: Új távollét, hónapválasztás, főadminnál fodrászszűrés. Nincs Új foglalás, vendégkereső vagy foglalási statisztika.
+- A foglaláslista a kiválasztott hónapot mutatja, telefonon kártyákká rendezve. A fiókkezelő csak a fiókokhoz kapcsolódó műveleteket tartalmazza. A havi statisztikák a naptárban összecsukhatók.
+- Minden napi/heti foglaláskártya 76 px magas, és az adott nap oszlopának azonos szélességét tölti ki. A kezdés, befejezés és időtartam feliratként szerepel. Az egyidejű foglalások egymás alá kerülnek. A valódi időtartam és ütközésellenőrzés adatbázis-intervallumokon alapul.
+- Telefonon napi alapnézet, oldalra görgethető heti nézet, alsó navigáció, nagy kezelőszervek és egyoszlopos űrlapok vannak. A naptár munkakezdéshez görget; az idővonal nem takarja ki a vendégneveket.
+
+## Adatbázis és telepítés
+
+Ehhez a frissítéshez **nincs új SQL-migráció**. A meglévő `booking_staff`, `booking_managers`, `booking_hours`, `trusted_devices` és Supabase Auth szolgálja ki. A korábbi admin-RLS-migráció továbbra is szükséges; a már frissített projekten nem kell újra futtatni.
+
+A változások helyben készültek. A böngészős tesztek mesterséges API-válaszokat használnak; nem hoztak létre éles felhasználót és nem küldtek levelet. Az éles fiók a főadmin mentésekor, az új kód telepítése után készül el. Nem történt Vercel-telepítés vagy éles adatbázismódosítás.
 
 ## Ellenőrzés
 
-- `npm test`: 53 sikeres alkalmazásteszt, benne jogosultság, fióklétrehozás, hibás létrehozás utáni újrapróbálás, idegen/owner fiók védelme, jelszócsere és személyes belépés.
-- `npm run test:ui`: 18 sikeres böngészős funkcióellenőrzés, benne manuális foglalás, szabadságkezelés és főadmin fióklétrehozás/tiltás.
-- `npm run test:responsive`: 35 sikeres ellenőrzés 320, 360, 390, 430, 768, 1024 és 1440 px szélességen. Minden szélességen naptár, azonos méretű kártyák, párhuzamos foglalások, heti görgetés, szabadságoldal/űrlap, lista, fiókkezelés/űrlap, személyes belépés és jogosultságtól függő navigáció.
-- `npm run build`: sikeres Next.js production build. A böngészős tesztek mesterséges API-válaszokat használnak, nem éles fiókokat hoznak létre. A korábbi RLS- és tranzakciós adatbázisvédelem nem változott; annak 19 külön helyi PostgreSQL-tesztje megmaradt.
+- `npm test`: 61 sikeres alkalmazásteszt. Külön ellenőrzött az Auth-létrehozás és visszaolvasás a jogosultság aktiválása előtt, meglévő Auth-fiók újrafelhasználása, jelszavának megőrzése, új fodrász hozzáadása, munkarend átvétele, részleges hiba utáni ismételt mentés, kizárólagos főadminjog és idegen fiók védelme.
+- `npm run test:ui`: 19 böngészős funkcióellenőrzés, benne e-mailes fiók mentése és teljesen új fodrász hozzáadása.
+- `npm run test:responsive`: 35 ellenőrzés 320, 360, 390, 430, 768, 1024 és 1440 px szélességen, az új e-mailes és fodrász-hozzáadó űrlappal együtt.
+- `npm run build`: Next.js production build.
 
-A két böngészőteszt-parancs előtt a már dokumentált QA-eszközök szükségesek (`DEMETERS_QA_MODULES=/private/tmp/demeters-qa`, telepített Playwright és Chromium/Brave, helyi előnézet a 3100 porton). A `test:responsive` ugyanazokat a környezeti változókat használja, mint a `test:ui`.
+A böngészőtesztekhez a korábban használt külön QA-eszközök és a 3100 porton futó helyi előnézet szükséges. Példa: `DEMETERS_QA_MODULES=/private/tmp/demeters-qa DEMETERS_BROWSER='/Applications/Brave Browser.app/Contents/MacOS/Brave Browser' npm run test:ui`.
 
-## Fájlok
+## Az e-mailes frissítés fájljai
 
-- `components/AdminDashboard.jsx`, `components/AdminTimeOff.jsx`, `components/AdminIdentityGate.jsx`
-- új `components/AdminStaffAccounts.jsx`, `lib/client/calendarLayout.mjs`, `lib/server/staffAccounts.js`
-- új `pages/api/admin/staff-accounts.js`, `pages/api/admin/auth/password.js`
-- `styles/AdminDashboard.module.css`, `styles/AdminAccess.module.css`
-- `tests/calendar.browser.mjs`, új `tests/admin-responsive.browser.mjs`, új `tests/staff-accounts.test.mjs`
-- `package.json`, ez a dokumentum és az előző adminleírás aktuális állapotjelzése
+`lib/server/staffAccounts.js`, `components/AdminStaffAccounts.jsx`, `components/AdminIdentityGate.jsx`, `pages/api/admin/auth/password.js`, `styles/AdminDashboard.module.css`, `tests/staff-accounts.test.mjs`, `tests/calendar.browser.mjs`, `tests/admin-responsive.browser.mjs`, ez a leírás. A meglévő `pages/api/admin/staff-accounts.js` API a bővített szolgáltatást használja változatlan főadmin-ellenőrzéssel.

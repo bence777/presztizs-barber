@@ -20,8 +20,9 @@ async function adminApi(url, body) {
 export default function AdminIdentityGate({children}) {
   const [phase,setPhase] = useState('loading');
   const [email,setEmail] = useState('');
-  const [method,setMethod] = useState('password');
+  const [method,setMethod] = useState('email');
   const [loginName,setLoginName] = useState('');
+  const [legacyLogin,setLegacyLogin] = useState(false);
   const [password,setPassword] = useState('');
   const [code,setCode] = useState('');
   const [remember,setRemember] = useState(false);
@@ -103,7 +104,7 @@ export default function AdminIdentityGate({children}) {
   function passwordLogin(event){
     event.preventDefault();
     action(async()=>{
-      const result=await adminApi('password',{loginName,password,remember});
+      const result=await adminApi('password',{...(legacyLogin?{loginName}:{email:loginName}),password,remember});
       if(!result.manager)throw new Error('A belépés nem sikerült.');
       setPassword('');setManager(result.manager);setPhase('ready');
     });
@@ -116,13 +117,13 @@ export default function AdminIdentityGate({children}) {
       <div className={styles.mark}>D <span>ADMIN</span></div>
       <div className={styles.eyebrow}>KEZELŐI FELÜLET</div>
       {phase==='loading' && <><h1>Azonosítás ellenőrzése</h1><p className={styles.sub}>Megnézzük, be vagy-e jelentkezve a szalon kezelői fiókjába.</p><div className={styles.progress}/></>}
-      {phase==='email' && <><div className={styles.loginMethods}><button type="button" aria-pressed={method==='password'} onClick={()=>{setMethod('password');setError('')}}>Fodrász belépés</button><button type="button" aria-pressed={method==='email'} onClick={()=>{setMethod('email');setError('')}}>E-mailes belépés</button></div><h1>Üdv újra.</h1>{method==='password'?<><p className={styles.sub}>Lépj be a saját felhasználóneveddel. A hozzáférésedet a szalon főadminja állítja be.</p>
+      {phase==='email' && <><div className={styles.loginMethods}><button type="button" aria-pressed={method==='password'} onClick={()=>{setMethod('password');setError('')}}>Jelszavas belépés</button><button type="button" aria-pressed={method==='email'} onClick={()=>{setMethod('email');setError('')}}>Belépési kód</button></div><h1>Üdv újra.</h1>{method==='password'?<><p className={styles.sub}>Lépj be a saját e-mail-címeddel és meglévő jelszavaddal. Új fióknál először kérj belépési kódot.</p>
         <form className={styles.form} onSubmit={passwordLogin}>
-          <label htmlFor="staff-login">Felhasználónév</label><input id="staff-login" required autoComplete="username" autoCapitalize="none" spellCheck={false} value={loginName} onChange={e=>setLoginName(e.target.value)} placeholder="demeter.tamas"/>
+          <label htmlFor="staff-login">{legacyLogin?'Korábbi felhasználónév':'E-mail-cím'}</label><input id="staff-login" type={legacyLogin?'text':'email'} inputMode={legacyLogin?'text':'email'} required autoComplete="username" autoCapitalize="none" spellCheck={false} value={loginName} onChange={e=>setLoginName(e.target.value)} placeholder={legacyLogin?'Korábbi azonosító':'sajat@email.hu'}/>
           <label htmlFor="staff-password">Jelszó</label><input id="staff-password" type="password" autoComplete="current-password" required maxLength={128} value={password} onChange={e=>setPassword(e.target.value)}/>
           <label className={styles.remember}><input type="checkbox" checked={remember} onChange={e=>setRemember(e.target.checked)}/> Megjegyzés ezen az eszközön 7 napig</label>
           <button className={styles.primary} disabled={busy} type="submit">{busy?'Belépés…':'Bejelentkezés'}</button>
-        </form><p className={styles.note}>Elfelejtett jelszó esetén kérj új jelszót a főadmintól.</p>
+        </form><p className={styles.note}>Jelszó helyett belépési kódot is kérhetsz az e-mail-címedre.</p><div className={styles.subActions}><button type="button" onClick={()=>{setLegacyLogin(!legacyLogin);setLoginName('');setError('')}}>{legacyLogin?'Belépés e-mail-címmel':'Korábbi felhasználóneves fiókom van'}</button></div>
       </>:<><p className={styles.sub}>Lépj be a szalon kezelői e-mail-címével. Ez a vendégprofiltól független belépés.</p>
         <form onSubmit={sendCode} className={styles.form}>
           <label htmlFor="admin-auth-email">Kezelői e-mail-cím</label>

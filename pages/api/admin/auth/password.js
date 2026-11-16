@@ -6,7 +6,7 @@ export const config={api:{bodyParser:{sizeLimit:'2kb'}}};
 export default async function handler(req,res){
  if(!jsonOnly(req,res,'POST'))return;
  try {
-  const {session,manager}=await staffPasswordLogin(req.body?.loginName,req.body?.password);
+  const {session,manager}=await staffPasswordLogin(req.body?.email??req.body?.loginName,req.body?.password);
   const remember=req.body?.remember===true,expiry=Date.now()+(remember?7*24:12)*3600000;
   const credential=await registerTrustedDevice(req,{userId:session.user.id,scope:'admin',expiresAt:expiry});
   setAdminCookies(res,session,session.user.id,undefined,remember);setDeviceCookie(res,'admin',credential,expiry,remember);

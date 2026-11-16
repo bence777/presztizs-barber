@@ -1,6 +1,6 @@
 # DEMETERS adminfrissítés – 2026. november 16.
 
-**Újabb frissítés:** a saját felhasználóneves fodrászbelépés és a mobilos javítások leírása a [README-ADMIN-MOBIL-FIOKOK.md](README-ADMIN-MOBIL-FIOKOK.md) fájlban található. Az alábbi telepítési állapot az első fejlesztési kör történeti leírása; az újabb, kizárólag olvasási ellenőrzés már megtalálta az éles projektben az admineszközre szűrő RLS-függvényt.
+**Újabb frissítés:** a saját e-mailes fodrászbelépés, az új fodrász hozzáadása és a mobilos javítások leírása a [README-ADMIN-MOBIL-FIOKOK.md](README-ADMIN-MOBIL-FIOKOK.md) fájlban található. Az alábbi telepítési állapot az első fejlesztési kör történeti leírása; az újabb, kizárólag olvasási ellenőrzés már megtalálta az éles projektben az admineszközre szűrő RLS-függvényt.
 
 A meglévő Next.js Pages Router, Supabase Auth, e-mailes OTP, külön admin/vendég sütik, megbízható eszközök és foglalási táblák bővítése. Új foglalási rendszer vagy új futásidejű függőség nincs.
 

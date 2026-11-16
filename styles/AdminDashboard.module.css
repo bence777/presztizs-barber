@@ -75,3 +75,5 @@
 .dateNav .iconButton{flex:0 0 auto;white-space:nowrap}.dateNav strong{max-width:100%}
 .footer a{display:flex;align-items:center;min-height:44px;font-size:11px;color:#777;letter-spacing:0}
 .formGrid .checkboxLabel{min-height:44px}.lowerTitle>button{min-height:44px;padding:8px}.dayNumber,.addInDay{min-width:44px;min-height:44px}.monthEvent{height:44px;line-height:32px}
+.accountIntro{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:22px}.accountIntro>.helpText{margin:0;max-width:680px}.accountIntro>button{flex-shrink:0}.accountCard>.ghostButton,.accountCard>.primaryButton{margin-top:20px}
+@media(max-width:710px){.accountIntro{flex-direction:column;gap:16px}.accountIntro>button{width:100%}}
