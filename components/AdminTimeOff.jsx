@@ -8,8 +8,8 @@ export function absenceForm(row,date,staffId) {
   return row?.id?{id:row.id,staffId:row.staff_id,startDate:day(row.starts_at),endDate:day(row.all_day?new Date(Date.parse(row.ends_at)-1):row.ends_at),allDay:row.all_day,startTime:row.daily_start?.slice(0,5)||time(row.starts_at),endTime:row.daily_end?.slice(0,5)||time(row.ends_at),reason:row.reason||'',kind:row.kind||'leave'}:
     {staffId,startDate:date,endDate:date,allDay:true,startTime:'12:00',endTime:'13:00',reason:'',kind:'leave'};
 }
-export function AbsenceList({rows,staff,onEdit,onNew}) {
-  return <section className={styles.absenceList} aria-label="Szabadságok és szünetek"><div className={styles.lowerTitle}><div><h2>Szabadságok és szünetek</h2><p>A naptárban kiválasztott időszak távollétei</p></div><button className={styles.ghostButton} onClick={onNew}>+ Új távollét</button></div>
+export function AbsenceList({rows,staff,onEdit}) {
+  return <section className={styles.absenceList} aria-label="Szabadságok és szünetek"><div className={styles.lowerTitle}><div><h2>Szabadságok és szünetek</h2><p>A kiválasztott hónap távollétei</p></div></div>
     {!rows.length&&<p className={styles.noResults}>Nincs rögzített távollét ebben az időszakban.</p>}
     {rows.map(row=><button key={row.id} className={styles.absenceRow} onClick={()=>onEdit(row)}><strong>{staff.find(s=>s.id===row.staff_id)?.name||'Fodrász'} · {row.kind==='break'?'Szünet':'Szabadság'}</strong><span>{day(row.starts_at)} – {day(row.all_day?new Date(Date.parse(row.ends_at)-1):row.ends_at)} · {row.all_day?'Egész nap':`${row.daily_start?.slice(0,5)||time(row.starts_at)}–${row.daily_end?.slice(0,5)||time(row.ends_at)}`}</span>{row.reason&&<small>{row.reason}</small>}<span>Szerkesztés</span></button>)}
   </section>;

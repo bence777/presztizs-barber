@@ -25,3 +25,6 @@
 .bottom a{color:#555;text-decoration:none;white-space:nowrap}
 .footer{padding:20px clamp(20px,4vw,64px);display:flex;justify-content:space-between;gap:12px;font-size:10px;color:#999;letter-spacing:.09em}
 @media(max-width:540px){.top{height:66px}.topLabel{display:none}.panel{margin:28px auto;padding:30px 23px 20px}.panel h1{font-size:27px}.footer{font-size:9px}.footer span{display:none}}
+.loginMethods{display:grid;grid-template-columns:1fr 1fr;gap:5px;background:#f3f4f6;padding:4px;border-radius:7px;margin-bottom:26px}.loginMethods button{min-height:44px;border:0;border-radius:5px;background:transparent;color:#777;font-size:12px;cursor:pointer}.loginMethods button[aria-pressed=true]{background:white;color:#222;box-shadow:0 1px 4px #0001}.form .remember{display:flex;align-items:center;gap:9px;font-size:11px;font-weight:400;line-height:1.5}.form .remember input{width:17px;height:17px;flex:none;padding:0}.form input{font-size:16px}.panel{margin:40px auto}.top{flex-shrink:0}
+@media(max-width:540px){.panel{margin:24px auto}.loginMethods button{font-size:11px}.bottom{flex-wrap:wrap}.brand{font-size:18px}}
+.form .remember{min-height:44px}

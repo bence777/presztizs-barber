@@ -8,7 +8,8 @@
     "start": "next start",
     "test": "node --experimental-default-type=module --test tests/*.test.mjs",
     "test:db": "node tests/database.integration.mjs",
-    "test:ui": "node tests/calendar.browser.mjs"
+    "test:ui": "node tests/calendar.browser.mjs",
+    "test:responsive": "node tests/admin-responsive.browser.mjs"
   },
   "dependencies": {
     "framer-motion": "^14.12.0",

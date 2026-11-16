@@ -20,6 +20,9 @@ async function adminApi(url, body) {
 export default function AdminIdentityGate({children}) {
   const [phase,setPhase] = useState('loading');
   const [email,setEmail] = useState('');
+  const [method,setMethod] = useState('password');
+  const [loginName,setLoginName] = useState('');
+  const [password,setPassword] = useState('');
   const [code,setCode] = useState('');
   const [remember,setRemember] = useState(false);
   const [manager,setManager] = useState(null);
@@ -97,6 +100,14 @@ export default function AdminIdentityGate({children}) {
     });
   }
   function switchAccount(){action(logout);}
+  function passwordLogin(event){
+    event.preventDefault();
+    action(async()=>{
+      const result=await adminApi('password',{loginName,password,remember});
+      if(!result.manager)throw new Error('A belépés nem sikerült.');
+      setPassword('');setManager(result.manager);setPhase('ready');
+    });
+  }
 
   if(phase==='ready' && manager) return cloneElement(children,{onAdminLogout:async()=>{try{await logout();}catch(e){setError(e.message);setPhase('unavailable');}},adminManager:manager});
   return <main className={styles.screen}>
@@ -105,12 +116,19 @@ export default function AdminIdentityGate({children}) {
       <div className={styles.mark}>D <span>ADMIN</span></div>
       <div className={styles.eyebrow}>KEZELŐI FELÜLET</div>
       {phase==='loading' && <><h1>Azonosítás ellenőrzése</h1><p className={styles.sub}>Megnézzük, be vagy-e jelentkezve a szalon kezelői fiókjába.</p><div className={styles.progress}/></>}
-      {phase==='email' && <><h1>Üdv újra.</h1><p className={styles.sub}>Lépj be a szalon kezelői e-mail-címével. Ez a vendégprofiltól független belépés.</p>
+      {phase==='email' && <><div className={styles.loginMethods}><button type="button" aria-pressed={method==='password'} onClick={()=>{setMethod('password');setError('')}}>Fodrász belépés</button><button type="button" aria-pressed={method==='email'} onClick={()=>{setMethod('email');setError('')}}>E-mailes belépés</button></div><h1>Üdv újra.</h1>{method==='password'?<><p className={styles.sub}>Lépj be a saját felhasználóneveddel. A hozzáférésedet a szalon főadminja állítja be.</p>
+        <form className={styles.form} onSubmit={passwordLogin}>
+          <label htmlFor="staff-login">Felhasználónév</label><input id="staff-login" required autoComplete="username" autoCapitalize="none" spellCheck={false} value={loginName} onChange={e=>setLoginName(e.target.value)} placeholder="demeter.tamas"/>
+          <label htmlFor="staff-password">Jelszó</label><input id="staff-password" type="password" autoComplete="current-password" required maxLength={128} value={password} onChange={e=>setPassword(e.target.value)}/>
+          <label className={styles.remember}><input type="checkbox" checked={remember} onChange={e=>setRemember(e.target.checked)}/> Megjegyzés ezen az eszközön 7 napig</label>
+          <button className={styles.primary} disabled={busy} type="submit">{busy?'Belépés…':'Bejelentkezés'}</button>
+        </form><p className={styles.note}>Elfelejtett jelszó esetén kérj új jelszót a főadmintól.</p>
+      </>:<><p className={styles.sub}>Lépj be a szalon kezelői e-mail-címével. Ez a vendégprofiltól független belépés.</p>
         <form onSubmit={sendCode} className={styles.form}>
           <label htmlFor="admin-auth-email">Kezelői e-mail-cím</label>
           <input id="admin-auth-email" type="email" autoComplete="email" value={email} placeholder="barber@email.hu" maxLength={254} onChange={e=>setEmail(e.target.value)} required autoFocus/>
           <button className={styles.primary} type="submit" disabled={busy||!EMAIL_OK.test(email.trim())}>{busy?'Kód küldése…':'Ellenőrző kód küldése'} </button>
-        </form><p className={styles.note}>Csak előzetesen engedélyezett szalonkezelők és barberek kapnak kódot. A vendégbelépés nem ad kezelői hozzáférést.</p>
+        </form><p className={styles.note}>Csak előzetesen engedélyezett szalonkezelők és barberek kapnak kódot. A vendégbelépés nem ad kezelői hozzáférést.</p></>}
       </>}
       {phase==='code' && <><h1>Ellenőrizd az e-mailed.</h1><p className={styles.sub}>Ha a megadott címhez aktív kezelői jogosultság tartozik, elküldtük az egyszer használatos belépési kódot ide: <strong>{email}</strong></p>
         <form onSubmit={verifyCode} className={styles.form}>

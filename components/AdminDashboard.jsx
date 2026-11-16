@@ -3,8 +3,10 @@ import {useRouter} from 'next/router';
 import styles from '../styles/AdminDashboard.module.css';
 import AdminTimeOff,{AbsenceList,absenceForm} from './AdminTimeOff';
 import useDialog from '../lib/client/useDialog';
+import AdminStaffAccounts from './AdminStaffAccounts';
+import {buildCalendarLayout,CALENDAR_CARD_HEIGHT} from '../lib/client/calendarLayout.mjs';
 
-const HOUR_START=8,HOUR_END=21,MINUTE_PX=1.26;
+const HOUR_START=8,HOUR_END=21;
 const ZONE='Europe/Budapest';
 const WEEKDAYS=['H','K','Sze','Cs','P','Szo','V'];
 const WEEK_NAMES=['Hétfő','Kedd','Szerda','Csütörtök','Péntek','Szombat','Vasárnap'];
@@ -50,7 +52,7 @@ const duration=b=>Math.max(15,Math.round((new Date(b.ends_at)-new Date(b.starts_
 const api=async(url,options={})=>{const r=await fetch(url,{cache:'no-store',credentials:'same-origin',...options});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Szerverhiba történt.');return d};
 const forRange=(date,mode,tab)=>{
   if(tab==='absence')return {from:startMonth(date),to:offsetDay(endMonth(date),1)};
-  if(tab==='list')return {from:offsetDay(date,-45),to:offsetDay(date,76)};
+  if(tab==='list')return {from:startMonth(date),to:offsetDay(endMonth(date),1)};
   if(mode==='day')return {from:date,to:offsetDay(date,1)};
   if(mode==='month'){const from=startWeek(startMonth(date));return {from,to:offsetDay(from,42)}};
   const from=startWeek(date);return {from,to:offsetDay(from,7)};
@@ -64,6 +66,7 @@ export default function AdminDashboard({onAdminLogout,adminManager}){
   const [cursor,setCursor]=useState(today);
   const [view,setView]=useState('week');
   const [tab,setTab]=useState('calendar');
+  const [statsOpen,setStatsOpen]=useState(false);
   const [bookings,setBookings]=useState([]);
   const [timeOff,setTimeOff]=useState([]),[hours,setHours]=useState([]);
   const [absenceEditor,setAbsenceEditor]=useState(null);
@@ -72,6 +75,7 @@ export default function AdminDashboard({onAdminLogout,adminManager}){
   const [now,setNow]=useState(()=>new Date());
   const calendarRef=useRef(null);
   const [options,setOptions]=useState({services:[],staff:[],manager:null});
+  const isOwner=(options.manager?.role||adminManager?.role)==='owner';
   const [loading,setLoading]=useState(true);
   const [refreshVersion,setRefreshVersion]=useState(0);
   const fetchSerial=useRef(0);
@@ -90,13 +94,14 @@ export default function AdminDashboard({onAdminLogout,adminManager}){
   const bookingDialog=useDialog(drawerOpen,()=>{if(!saving)closeDrawer()});
   useEffect(()=>{if(window.matchMedia('(max-width:710px)').matches)setView('day');const timer=setInterval(()=>setNow(new Date()),30000);return()=>clearInterval(timer)},[]);
   useEffect(()=>{if(view!=='month'&&tab==='calendar'&&calendarRef.current)calendarRef.current.scrollTop=0},[view,tab]);
-  useEffect(()=>{let live=true;setStatsLoading(true);setStatsError('');api(`/api/admin/statistics?month=${statsMonth}&staffId=${encodeURIComponent(filterStaff)}`).then(data=>{if(live)setStatistics(data.statistics)}).catch(e=>{if(live){setStatistics(null);setStatsError(e.message)}}).finally(()=>{if(live)setStatsLoading(false)});return()=>{live=false}},[statsMonth,filterStaff,refreshVersion]);
+  useEffect(()=>{let live=true;setStatsLoading(true);setStatsError('');if(tab!=='calendar')return;api(`/api/admin/statistics?month=${statsMonth}&staffId=${encodeURIComponent(filterStaff)}`).then(data=>{if(live)setStatistics(data.statistics)}).catch(e=>{if(live){setStatistics(null);setStatsError(e.message)}}).finally(()=>{if(live)setStatsLoading(false)});return()=>{live=false}},[statsMonth,filterStaff,refreshVersion,tab]);
   const load=useCallback(async()=>{
     const serial=++fetchSerial.current;
     setLoading(true);setError('');
-    try {const data=await api(`/api/admin/calendar?from=${range.from}&to=${range.to}&staffId=${encodeURIComponent(filterStaff)}`);if(serial===fetchSerial.current){setBookings(data.bookings||[]);setTimeOff(data.timeOff||[]);setHours(data.hours||[]);}}
+    if(tab==='accounts'){setLoading(false);return;}
+    try {const data=await api(tab==='absence'?`/api/admin/time-off?from=${range.from}&to=${range.to}&staffId=${encodeURIComponent(filterStaff)}`:`/api/admin/calendar?from=${range.from}&to=${range.to}&staffId=${encodeURIComponent(filterStaff)}`);if(serial===fetchSerial.current){setBookings(data.bookings||[]);setTimeOff(data.timeOff||[]);setHours(data.hours||[]);}}
     catch(e){if(serial===fetchSerial.current)setError(e.message)}finally{if(serial===fetchSerial.current)setLoading(false)}
-  },[range.from,range.to,filterStaff]);
+  },[range.from,range.to,filterStaff,tab]);
   useEffect(()=>{let live=true;api('/api/admin/options').then(data=>{if(live){setOptions(data);if(data.manager?.role==='barber')setFilterStaff(data.manager.staff_id);}}).catch(e=>{if(live)setError(e.message)});return()=>{live=false}},[]);
   useEffect(()=>{load()},[load,refreshVersion]);
   useEffect(()=>{if(drawerOpen||absenceEditor)return;const refresh=()=>{if(document.visibilityState==='visible')load()};const timer=setInterval(refresh,30000);window.addEventListener('focus',refresh);return()=>{clearInterval(timer);window.removeEventListener('focus',refresh)}},[load,drawerOpen,absenceEditor]);
@@ -116,7 +121,6 @@ export default function AdminDashboard({onAdminLogout,adminManager}){
     if(search){const t=[b.guest_name,b.guest_email,b.guest_phone,b.service_name,b.staff_name].join(' ').toLocaleLowerCase('hu-HU');if(!t.includes(search.toLocaleLowerCase('hu-HU').trim()))return false;}
     return true;
   }),[bookings,filterStaff,filterStatus,search]);
-  const counters={all:filtered.length};
   const byDay=useMemo(()=>{const map=new Map();for(const b of filtered){if(tab==='calendar'&&filterStatus==='all'&&b.status==='cancelled')continue;const d=dateKey(b.starts_at);map.set(d,[...(map.get(d)||[]),b]);}for(const arr of map.values())arr.sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at));return map},[filtered,tab,filterStatus]);
   const serviceOptions=options.services,staffOptions=options.staff;
   const visibleStaff=filterStaff==='all'?staffOptions:staffOptions.filter(s=>s.id===filterStaff);
@@ -125,7 +129,7 @@ export default function AdminDashboard({onAdminLogout,adminManager}){
   const calendarEnd=Math.min(24,Math.max(HOUR_END,...staffHours.map(h=>Math.ceil((Number(h.closes.slice(0,2))*60+Number(h.closes.slice(3,5)))/60)),...bookings.map(b=>Math.ceil(minutes(b.ends_at)/60))));
   const currentBooking=selectedId?bookings.find(x=>x.id===selectedId):null;
   const heading=tab==='absence'?new Intl.DateTimeFormat('hu-HU',{year:'numeric',month:'long',timeZone:'UTC'}).format(new Date(cursor+'T12:00:00Z')):view==='day'?fullDate(cursor):view==='month'?new Intl.DateTimeFormat('hu-HU',{year:'numeric',month:'long',timeZone:'UTC'}).format(new Date(cursor+'T12:00:00Z')):`${shortDate(startWeek(cursor))} – ${shortDate(offsetDay(startWeek(cursor),6))}, ${cursor.slice(0,4)}`;
-  function move(direction){setCursor(old=>{if(tab==='list')return offsetDay(old,30*direction);if(tab==='absence'){const [y,m]=old.split('-').map(Number);return new Date(Date.UTC(y,m-1+direction,1)).toISOString().slice(0,10)}if(view==='day')return offsetDay(old,direction);if(view==='week')return offsetDay(old,7*direction);const [y,m]=old.split('-').map(Number);return new Date(Date.UTC(y,m-1+direction,15)).toISOString().slice(0,10)})}
+  function move(direction){setCursor(old=>{if(tab==='list'||tab==='absence'){const [y,m]=old.split('-').map(Number);return new Date(Date.UTC(y,m-1+direction,1)).toISOString().slice(0,10)}if(view==='day')return offsetDay(old,direction);if(view==='week')return offsetDay(old,7*direction);const [y,m]=old.split('-').map(Number);return new Date(Date.UTC(y,m-1+direction,15)).toISOString().slice(0,10)})}
   function selectBooking(b){setSelectedId(b.id);setForm(parseBooking(b));setIsAdding(false);setDrawerOpen(true);window.history.replaceState({},'',`/admin/foglalasok?booking=${encodeURIComponent(b.id)}`)}
   function newBooking(day=cursor,time='10:00',staffId=filterStaff==='all'?'':filterStaff){if(!serviceOptions.length||!staffOptions.length){setError('A szolgáltatások és a barberek még nem töltődtek be.');return;}setSelectedId(null);setIsAdding(true);setForm(emptyForm(day,time,staffId,serviceOptions,staffOptions));setDrawerOpen(true);window.history.replaceState({},'','/admin/foglalasok')}
   function closeDrawer(){setDrawerOpen(false);setSelectedId(null);setIsAdding(false);setForm(null);window.history.replaceState({},'','/admin/foglalasok')}
@@ -146,83 +150,84 @@ export default function AdminDashboard({onAdminLogout,adminManager}){
   }
   async function markBooking(status){if(!selectedId||saving)return;setSaving(true);setError('');try{await api('/api/admin/change-status',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:selectedId,status})});setToast(status==='completed'?'Szolgáltatás teljesítettnek jelölve.':'Foglalás lemondva.');closeDrawer();setRefreshVersion(x=>x+1)}catch(e){setError(e.message)}finally{setSaving(false)}}
   function openAbsence(row){setAbsenceEditor(absenceForm(row,cursor,filterStaff==='all'?staffOptions.find(s=>s.active)?.id||'':filterStaff));}
-  const pageTitle=tab==='calendar'?'Naptár':tab==='absence'?'Szabadságok':'Foglalások';
+  const pageTitle=tab==='calendar'?'Naptár':tab==='absence'?'Szabadságok':tab==='accounts'?'Fodrászfiókok':'Foglalások';
+  const pageDescription={calendar:'Időpontok, vendégek és szabad helyek.',list:'A kiválasztott hónap foglalásainak kezelése.',absence:'Szabadságok és szünetek rögzítése, módosítása.',accounts:'Saját belépés minden fodrásznak, elkülönített hozzáféréssel.'}[tab];
+  const monthHeading=new Intl.DateTimeFormat('hu-HU',{year:'numeric',month:'long',timeZone:'UTC'}).format(new Date(cursor+'T12:00:00Z'));
+  const navigation=[['calendar','Naptár','calendar'],['list','Foglalások','list'],['absence','Szabadságok','clock'],...(isOwner?[['accounts','Fiókok','users']]:[])];
+  function navigate(id){setTab(id);setSearch('');setFilterStatus('all');setError('');window.scrollTo({top:0,behavior:'instant'});}
+  const ownName=staffOptions.find(s=>s.id===adminManager?.staff_id)?.name;
+  const daysShown=view==='day'?[cursor]:Array.from({length:7},(_,i)=>offsetDay(startWeek(cursor),i));
+  const calendarLayout=buildCalendarLayout(daysShown,byDay,calendarStart,calendarEnd,minutes);
+  const scrolledRange=useRef('');
+  useEffect(()=>{
+    if(tab!=='calendar'||view==='month'){scrolledRange.current='';return;}
+    if(loading||!calendarRef.current||!staffHours.length)return;
+    const key=`${view}:${cursor}:${filterStaff}`;if(scrolledRange.current===key)return;
+    const opens=Math.min(...staffHours.map(h=>{const [hour,minute]=h.opens.split(':').map(Number);return hour*60+minute}));
+    calendarRef.current.scrollTop=calendarLayout.position(opens);scrolledRange.current=key;
+  },[tab,view,cursor,filterStaff,loading,staffHours,calendarLayout]);
   const upcoming=filtered.filter(b=>b.status==='confirmed'&&new Date(b.starts_at)>=new Date()).sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at)).slice(0,5);
 
-  function eventCard(b,layout={}) {const d=duration(b);return <button type="button" key={b.id} className={`${styles.calendarEvent} ${styles['event_'+b.status]||''}`} style={layout} title={`${timeKey(b.starts_at)} • ${b.guest_name} – ${b.service_name}`} onClick={e=>{e.stopPropagation();selectBooking(b)}}><span className={styles.eventTime}>{timeKey(b.starts_at)} · {d}p</span><strong>{b.guest_name||'Vendég'}</strong><span>{b.service_name}{filterStaff==='all'?` · ${b.staff_name}`:''}</span>{b.is_manual&&<i className={styles.manualDot} title="Manuális foglalás"/>}</button>}
+  function eventCard(b,layout={}) {const d=duration(b);return <button type="button" key={b.id} className={`${styles.calendarEvent} ${styles['event_'+b.status]||''}`} style={layout} title={`${timeKey(b.starts_at)} • ${b.guest_name} – ${b.service_name}`} onClick={e=>{e.stopPropagation();selectBooking(b)}}><span className={styles.eventTime}>{timeKey(b.starts_at)}–{timeKey(b.ends_at)} · {d}p</span><strong>{b.guest_name||'Vendég'}</strong><span>{b.service_name}{filterStaff==='all'?` · ${b.staff_name}`:''}</span>{b.is_manual&&<i className={styles.manualDot} title="Manuális foglalás"/>}</button>}
   function dayColumn(day){
-    const entries=(byDay.get(day)||[]);
-    const laneStaff=filterStaff==='all'?staffOptions.filter(s=>s.active||entries.some(b=>b.staff_id===s.id)):staffOptions.filter(s=>s.id===filterStaff);
-    const lanes=Math.max(1,laneStaff.length);
+    const entries=byDay.get(day)||[];
     const weekday=new Date(day+'T12:00Z').getUTCDay();
     const minuteOf=time=>{const [h,m]=time.slice(0,5).split(':').map(Number);return h*60+m};
-    const localMs=(d,t)=>Date.parse(`${d}T${t}:00Z`); // for clipping local wall-clock positions only
-    const dayStart=localMs(day,'00:00');
-    return <div className={styles.dayColumn} key={day} style={{height:(calendarEnd-calendarStart)*60*MINUTE_PX}}>
-      {Array.from({length:(calendarEnd-calendarStart)*2},(_,i)=>{
-        const minute=calendarStart*60+i*30;
-        const open=hours.some(h=>laneStaff.some(s=>s.id===h.staff_id)&&h.weekday===weekday&&minute>=minuteOf(h.opens)&&minute<minuteOf(h.closes));
-        return <button key={i} type="button" aria-label={`${open?'Új foglalás':'Munkaidőn kívül'}: ${day} ${pad(Math.floor(minute/60))}:${pad(minute%60)}`} disabled={!open||loading} className={`${styles.slot} ${!open?styles.closedSlot:''}`} style={{top:(minute-calendarStart*60)*MINUTE_PX,height:30*MINUTE_PX}} onClick={()=>newBooking(day,`${pad(Math.floor(minute/60))}:${pad(minute%60)}`)}/>;
+    const localMs=(d,t)=>Date.parse(`${d}T${t}:00Z`),dayStart=localMs(day,'00:00');
+    const absences=timeOff.filter(o=>visibleStaff.some(staff=>staff.id===o.staff_id)&&dateKey(o.starts_at)<=day&&dateKey(new Date(Date.parse(o.ends_at)-1))>=day).map(o=>{
+      const start=o.daily_start?minuteOf(o.daily_start):Math.max(0,(localMs(dateKey(o.starts_at),timeKey(o.starts_at))-dayStart)/60000);
+      const end=o.daily_end?minuteOf(o.daily_end):Math.min(1440,(localMs(dateKey(o.ends_at),timeKey(o.ends_at))-dayStart)/60000);
+      return {...o,start:Math.max(start,calendarStart*60),end:Math.min(end,calendarEnd*60)};
+    }).filter(o=>o.end>o.start);
+    return <div className={styles.dayColumn} key={day} style={{height:calendarLayout.height}}>
+      {calendarLayout.rows.map(row=>{
+        const open=visibleStaff.some(staff=>hours.some(h=>h.staff_id===staff.id&&h.weekday===weekday&&row.minute>=minuteOf(h.opens)&&row.minute<minuteOf(h.closes)));
+        const available=visibleStaff.some(staff=>hours.some(h=>h.staff_id===staff.id&&h.weekday===weekday&&row.minute>=minuteOf(h.opens)&&row.minute<minuteOf(h.closes))&&!absences.some(o=>o.staff_id===staff.id&&o.start<row.minute+30&&o.end>row.minute)&&!bookings.some(b=>b.staff_id===staff.id&&b.status!=='cancelled'&&dateKey(b.starts_at)===day&&minutes(b.starts_at)<row.minute+30&&minutes(b.ends_at)>row.minute));
+        return <button key={row.minute} type="button" aria-label={`${available?'Új foglalás':open?'Foglalt időszak':'Munkaidőn kívül'}: ${day} ${pad(Math.floor(row.minute/60))}:${pad(row.minute%60)}`} disabled={!available||loading} className={`${styles.slot} ${!open?styles.closedSlot:''}`} style={{top:row.top,height:row.height}} onClick={()=>newBooking(day,`${pad(Math.floor(row.minute/60))}:${pad(row.minute%60)}`)}/>;
       })}
-      {timeOff.flatMap(o=>{
-        if(!laneStaff.some(s=>s.id===o.staff_id))return [];
-        const first=dateKey(o.starts_at),last=dateKey(o.ends_at);
-        if(day<first||day>last)return [];
-        let begin=o.daily_start?minuteOf(o.daily_start):Math.max(0,(localMs(first,timeKey(o.starts_at))-dayStart)/60000);
-        let end=o.daily_end?minuteOf(o.daily_end):Math.min(1440,(localMs(last,timeKey(o.ends_at))-dayStart)/60000);
-        begin=Math.max(begin,calendarStart*60);end=Math.min(end,calendarEnd*60);
-        if(end<=begin)return [];
-        const lane=Math.max(0,laneStaff.findIndex(s=>s.id===o.staff_id));
-        return <button type="button" key={o.id} className={`${styles.absenceBlock} ${o.kind==='break'?styles.breakBlock:''}`} style={{top:(begin-calendarStart*60)*MINUTE_PX,height:Math.max(28,(end-begin)*MINUTE_PX),left:`calc(${lane*100/lanes}% + 2px)`,width:`calc(${100/lanes}% - 4px)`}} onClick={()=>openAbsence(o)} title={`${o.reason||''} · ${laneStaff[lane]?.name||''}`}><strong>{o.kind==='break'?'Szünet':'Szabadság'}</strong><span>{laneStaff[lane]?.name}{o.reason?` · ${o.reason}`:''}</span></button>;
-      })}
-      {entries.map(b=>{
-        const m=minutes(b.starts_at),lane=Math.max(0,laneStaff.findIndex(s=>s.id===b.staff_id));
-        return eventCard(b,{top:(m-calendarStart*60)*MINUTE_PX+2,height:Math.max(30,Math.min(duration(b),1440-m)*MINUTE_PX-4),left:`calc(${lane*100/lanes}% + 3px)`,width:`calc(${100/lanes}% - 6px)`});
-      })}
-      {day===dateKey(now)&&minutes(now)>=calendarStart*60&&minutes(now)<calendarEnd*60&&<div className={styles.nowLine} style={{top:(minutes(now)-calendarStart*60)*MINUTE_PX}} aria-label={`Jelenlegi idő: ${timeKey(now)}`}><span>{timeKey(now)}</span></div>}
+      {absences.map(o=><button type="button" key={o.id} className={`${styles.absenceBlock} ${o.kind==='break'?styles.breakBlock:''}`} style={{top:calendarLayout.position(o.start),height:Math.max(34,calendarLayout.position(o.end)-calendarLayout.position(o.start)),left:3,width:'calc(100% - 6px)'}} onClick={()=>openAbsence(o)}><strong>{o.kind==='break'?'Szünet':'Szabadság'}</strong><span>{staffOptions.find(s=>s.id===o.staff_id)?.name}{o.reason?` · ${o.reason}`:''}</span></button>)}
+      {entries.map(b=>eventCard(b,{top:calendarLayout.positions.get(b.id),height:CALENDAR_CARD_HEIGHT,left:6,width:'calc(100% - 12px)'}))}
+      {day===dateKey(now)&&minutes(now)>=calendarStart*60&&minutes(now)<calendarEnd*60&&<div className={styles.nowLine} style={{top:calendarLayout.position(minutes(now))}} aria-label={`Jelenlegi idő: ${timeKey(now)}`}><span>{timeKey(now)}</span></div>}
     </div>}
-  const daysShown=view==='day'?[cursor]:Array.from({length:7},(_,i)=>offsetDay(startWeek(cursor),i));
 
   return <div className={styles.shell}>
     <aside className={styles.sidebar}>
       <div className={styles.logoArea}><span className={styles.logo}>D<span>.</span></span><div><strong>DEMETERS</strong><small>STUDIO MANAGEMENT</small></div></div>
       <div className={styles.navSection}>WORKSPACE</div>
-      <nav className={styles.sideNav} aria-label="Kezelőfelület">
-        <button type="button" className={tab==='calendar'?styles.navActive:''} onClick={()=>setTab('calendar')}><Icon name="calendar" size={17}/> Naptár</button>
-        <button type="button" className={tab==='list'?styles.navActive:''} onClick={()=>setTab('list')}><Icon name="list" size={17}/> Foglalások <span className={styles.navCount}>{counters.all}</span></button>
-      </nav>
-      <button type="button" className={styles.navSimple} onClick={()=>setTab('absence')}><Icon name="clock" size={17}/> Szabadságok</button><div className={styles.sidebarDivider}/>
-      <div className={styles.navSection}>GYORS MŰVELETEK</div>
-      <button type="button" className={styles.navSimple} onClick={()=>newBooking()}><Icon name="plus" size={17}/> Új foglalás</button>
+      <nav className={styles.sideNav} aria-label="Kezelőfelület">{navigation.map(([id,label,icon])=><button key={id} type="button" title={label} className={tab===id?styles.navActive:''} onClick={()=>navigate(id)}><Icon name={icon} size={18}/><span>{label}</span></button>)}</nav>
+      <div className={styles.sidebarDivider}/>
       <a className={styles.navSimple} href="/admin/eszkozok"><Icon name="settings" size={17}/> Eszközök kezelése</a>
       <a className={styles.navSimple} href="/idopontfoglalas">Vendégoldal</a>
       <div className={styles.sidebarFoot}><div className={styles.onlineDot}/> <span>Adatkapcsolat · Supabase</span><small>EUROPE / Debrecen</small></div>
     </aside>
     <div className={styles.main}>
-      <header className={styles.topbar}><div className={styles.breadcrumb}><span>DEMETERS</span><span className={styles.slash}>/</span><strong>{pageTitle}</strong></div><div className={styles.topRight}><span className={styles.topTime}>MAGYARORSZÁG · GMT+1/+2</span><a href="/admin/eszkozok" title="Eszközök kezelése" style={{fontSize:12,color:"#555",textDecoration:"none"}}>Eszközök</a><a href="/" title="Weboldal megnyitása">Főoldal</a><span className={styles.avatar} title={adminManager?.email||'Kezelői fiók'}>D</span>{onAdminLogout&&<button type="button" onClick={onAdminLogout} title="Kilépés a kezelői fiókból" style={{background:'transparent',border:'1px solid #ddd',borderRadius:6,padding:'7px 11px',fontSize:11,color:'#666',cursor:'pointer'}}>Kijelentkezés</button>}</div></header>
+      <header className={styles.topbar}><div className={styles.breadcrumb}><span>DEMETERS</span><span className={styles.slash}>/</span><strong>{pageTitle}</strong></div><div className={styles.topRight}><span className={styles.topTime}>MAGYARORSZÁG · GMT+1/+2</span><a href="/admin/eszkozok" title="Eszközök kezelése" style={{fontSize:12,color:"#555",textDecoration:"none"}}>Eszközök</a><a href="/" title="Weboldal megnyitása">Főoldal</a><span className={styles.avatar} title={ownName||'Kezelői fiók'}>D</span>{onAdminLogout&&<button type="button" onClick={onAdminLogout} title="Kilépés a kezelői fiókból" style={{background:'transparent',border:'1px solid #ddd',borderRadius:6,padding:'7px 11px',fontSize:11,color:'#666',cursor:'pointer'}}>Kijelentkezés</button>}</div></header>
+      <nav className={styles.sectionNav} aria-label="Mobil kezelőfelület">{navigation.map(([id,label,icon])=><button key={id} type="button" aria-current={tab===id?'page':undefined} onClick={()=>navigate(id)}><Icon name={icon} size={20}/><span>{label}</span></button>)}</nav>
       <div className={styles.content}>
-        <div className={styles.headingRow}><div><div className={styles.overline}>FOGLALÁSKEZELŐ / ADMIN</div><h1>{pageTitle}</h1><p>Az összes időpontod. Egy helyen, átláthatóan.</p></div><div className={styles.headingActions}><button type="button" className={styles.ghostButton} onClick={()=>setRefreshVersion(x=>x+1)} disabled={loading}><Icon name="refresh" size={16}/><span>Frissítés</span></button><button type="button" className={styles.primaryButton} onClick={()=>newBooking()}><Icon name="plus" size={17}/> Új foglalás</button></div></div>
-        <div className={styles.statisticsToolbar}><label>Statisztikai hónap <input aria-label="Statisztikai hónap" type="month" required value={statsMonth} onChange={e=>{if(/^\d{4}-(0[1-9]|1[0-2])$/.test(e.target.value))setStatsMonth(e.target.value)}}/></label><span>Csak valós foglalások · hajvágás: teljesített szolgáltatások</span></div>
+        <div className={styles.headingRow}><div><div className={styles.overline}>{isOwner?'SZALON / FŐADMIN':'SAJÁT FIÓK'}</div><h1>{pageTitle}</h1><p>{pageDescription}</p>{!isOwner&&ownName&&<span className={styles.ownCalendar}>Saját fiók · {ownName}</span>}</div><div className={styles.headingActions}><button type="button" className={styles.ghostButton} onClick={()=>setRefreshVersion(x=>x+1)} disabled={loading}><Icon name="refresh" size={16}/><span>Frissítés</span></button>{tab!=='accounts'&&<button type="button" className={styles.primaryButton} onClick={()=>tab==='absence'?openAbsence():newBooking()}><Icon name="plus" size={17}/>{tab==='absence'?'Új távollét':'Új foglalás'}</button>}</div></div>
+        {tab==='calendar'&&<details className={styles.statisticsPanel} open={statsOpen} onToggle={e=>setStatsOpen(e.currentTarget.open)}><summary>Havi statisztikák</summary><div className={styles.statisticsToolbar}><label>Statisztikai hónap <input aria-label="Statisztikai hónap" type="month" required value={statsMonth} onChange={e=>{if(/^\d{4}-(0[1-9]|1[0-2])$/.test(e.target.value))setStatsMonth(e.target.value)}}/></label><span>Csak valós foglalások · hajvágás: teljesített szolgáltatások</span></div>
         {statsError&&<p role="alert" className={styles.error}>{statsError}</p>}
         <div className={styles.stats}>
           {[['Összes foglalás',statistics?.total,'calendar'],['Havi hajvágások',statistics?.haircuts,'scissors'],['Mai foglalások',statistics?.today,'clock']].map(([title,num,icon])=><div className={styles.statCard} key={title}><div className={styles.statLabel}><span>{title}</span><Icon name={icon} size={16}/></div><div className={styles.statValue}>{statsLoading||num==null?'–':num}<span> / {title==='Mai foglalások'?'ma':statsMonth}</span></div></div>)}
         </div>
+        </details>}
         {error&&<div role="alert" className={styles.error}><Icon name="info" size={17}/>{error}<button type="button" aria-label="Hiba bezárása" onClick={()=>setError('')}><Icon name="close" size={15}/></button></div>}
-        <div className={styles.workspace}>
-          <div className={styles.toolbar}><div className={styles.dateNav}><button type="button" className={styles.iconButton} aria-label="Előző" onClick={()=>move(-1)}>Előző</button><button type="button" className={styles.iconButton} aria-label="Következő" onClick={()=>move(1)}>Következő</button><button type="button" className={styles.todayButton} onClick={()=>setCursor(today())}>Ma</button><input className={styles.calendarDate} aria-label="Naptár dátuma" type="date" value={cursor} onChange={e=>{if(/^\d{4}-\d{2}-\d{2}$/.test(e.target.value))setCursor(e.target.value)}}/><strong>{tab==='list'?'Foglalási lista':heading}</strong></div>
-            <div className={styles.toolbarRight}><div className={styles.mobileTabs}><button type="button" className={tab==='calendar'?styles.switchActive:''} onClick={()=>setTab('calendar')}>Naptár</button><button type="button" className={tab==='list'?styles.switchActive:''} onClick={()=>setTab('list')}>Lista</button><button type="button" className={tab==='absence'?styles.switchActive:''} onClick={()=>setTab('absence')}>Szabadságok</button></div><div className={styles.viewSwitch}>{tab==='calendar'&&[['day','Nap'],['week','Hét'],['month','Hónap']].map(([id,title])=><button type="button" key={id} className={view===id?styles.switchActive:''} onClick={()=>setView(id)}>{title}</button>)}</div></div>
+        {tab==='accounts'?<AdminStaffAccounts refreshVersion={refreshVersion} onSaved={message=>{setToast(message);api('/api/admin/options').then(setOptions).catch(()=>{})}}/>:<div className={`${styles.workspace} ${tab==='absence'?styles.absenceWorkspace:''}`}>
+          <div className={styles.toolbar}><div className={styles.dateNav}><button type="button" className={styles.iconButton} aria-label="Előző" onClick={()=>move(-1)}>Előző</button><button type="button" className={styles.iconButton} aria-label="Következő" onClick={()=>move(1)}>Következő</button><button type="button" className={styles.todayButton} onClick={()=>setCursor(today())}>{tab==='calendar'?'Ma':'Aktuális hónap'}</button><input className={styles.calendarDate} aria-label={tab==='calendar'?'Naptár dátuma':'Megjelenített hónap'} type={tab==='calendar'?'date':'month'} value={tab==='calendar'?cursor:cursor.slice(0,7)} onChange={e=>{if(tab==='calendar'&&/^\d{4}-\d{2}-\d{2}$/.test(e.target.value))setCursor(e.target.value);else if(/^\d{4}-\d{2}$/.test(e.target.value))setCursor(e.target.value+'-01')}}/><strong>{tab==='calendar'?heading:monthHeading}</strong></div>
+            {tab==='calendar'&&<div className={styles.toolbarRight}><div className={styles.viewSwitch}>{[['day','Nap'],['week','Hét'],['month','Hónap']].map(([id,title])=><button type="button" key={id} className={view===id?styles.switchActive:''} onClick={()=>setView(id)}>{title}</button>)}</div></div>}
           </div>
-          <div className={styles.filters}><label className={styles.searchField}><Icon name="search" size={17}/><input type="search" placeholder="Vendég, e-mail, szolgáltatás keresése…" value={search} onChange={e=>setSearch(e.target.value)}/><span>⌘ K</span></label><div className={styles.filterRight}><span className={styles.filterIcon}><Icon name="filter" size={16}/></span>{options.manager?.role==='owner'&&<select aria-label="Barber szűrése" value={filterStaff} onChange={e=>setFilterStaff(e.target.value)}><option value="all">Összes barber</option>{staffOptions.map(s=><option value={s.id} key={s.id}>{s.name}</option>)}</select>}<select aria-label="Státusz szűrése" value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}><option value="all">Minden állapot</option>{Object.entries(STATUS).map(([id,label])=><option value={id} key={id}>{label}</option>)}</select></div></div>
+          {(tab!=='absence'||isOwner)&&<div className={styles.filters}>{tab!=='absence'&&<label className={styles.searchField}><Icon name="search" size={17}/><input type="search" placeholder="Vendég, e-mail, szolgáltatás keresése…" value={search} onChange={e=>setSearch(e.target.value)}/></label>}<div className={styles.filterRight}><span className={styles.filterIcon}><Icon name="filter" size={16}/></span>{options.manager?.role==='owner'&&<select aria-label="Barber szűrése" value={filterStaff} onChange={e=>setFilterStaff(e.target.value)}><option value="all">Összes barber</option>{staffOptions.map(s=><option value={s.id} key={s.id}>{s.name}</option>)}</select>}{tab!=='absence'&&<select aria-label="Státusz szűrése" value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}><option value="all">Minden állapot</option>{Object.entries(STATUS).map(([id,label])=><option value={id} key={id}>{label}</option>)}</select>}</div></div>}
           <div className={styles.calendarContent}>
             {loading&&<div className={styles.loader} role="status">Foglalások betöltése…</div>}
-            {tab==='absence'?<AbsenceList rows={timeOff} staff={staffOptions} onEdit={openAbsence} onNew={()=>openAbsence()}/>:tab==='list'?<div className={styles.tableWrap}><table className={styles.bookingsTable}><thead><tr><th>VENDÉG</th><th>IDŐPONT</th><th>SZOLGÁLTATÁS</th><th>BARBER</th><th>ÁR</th><th>ÁLLAPOT</th><th/></tr></thead><tbody>{[...filtered].sort((a,b)=>new Date(b.starts_at)-new Date(a.starts_at)).map(b=><tr key={b.id} onClick={()=>selectBooking(b)} tabIndex={0} onKeyDown={e=>{if(e.key==='Enter')selectBooking(b)}}><td><strong>{b.guest_name||'Vendég'}</strong><span>{b.guest_email||'Nincs e-mail'}</span></td><td><strong>{fullDate(dateKey(b.starts_at))}</strong><span>{timeKey(b.starts_at)} – {timeKey(b.ends_at)}</span></td><td>{b.service_name}</td><td>{b.staff_name}</td><td>{formattedPrice(b.price_huf)}</td><td><StatusTag value={b.status}/></td><td></td></tr>)}</tbody></table>{!loading&&!filtered.length&&<div className={styles.noResults}>Nincs találat ebben az időszakban.</div>}</div>
+            {tab==='absence'?<AbsenceList rows={timeOff} staff={staffOptions} onEdit={openAbsence}/>:tab==='list'?<div className={styles.tableWrap}><table className={styles.bookingsTable}><thead><tr><th>VENDÉG</th><th>IDŐPONT</th><th>SZOLGÁLTATÁS</th><th>BARBER</th><th>ÁR</th><th>ÁLLAPOT</th><th/></tr></thead><tbody>{[...filtered].sort((a,b)=>new Date(b.starts_at)-new Date(a.starts_at)).map(b=><tr key={b.id} onClick={()=>selectBooking(b)} tabIndex={0} onKeyDown={e=>{if(e.key==='Enter')selectBooking(b)}}><td><strong>{b.guest_name||'Vendég'}</strong><span>{b.guest_email||'Nincs e-mail'}</span></td><td><strong>{fullDate(dateKey(b.starts_at))}</strong><span>{timeKey(b.starts_at)} – {timeKey(b.ends_at)}</span></td><td>{b.service_name}</td><td>{b.staff_name}</td><td>{formattedPrice(b.price_huf)}</td><td><StatusTag value={b.status}/></td><td></td></tr>)}</tbody></table>{!loading&&!filtered.length&&<div className={styles.noResults}>Nincs találat ebben az időszakban.</div>}</div>
             :view==='month'?<div className={styles.monthCalendar}><div className={styles.monthHeader}>{WEEK_NAMES.map((name,i)=><div key={name}>{name}</div>)}</div><div className={styles.monthGrid}>{Array.from({length:42},(_,i)=>{const d=offsetDay(startWeek(startMonth(cursor)),i);const records=byDay.get(d)||[];return <div className={`${styles.monthCell} ${d.slice(0,7)!==cursor.slice(0,7)?styles.outsideMonth:''} ${d===todayKey?styles.isToday:''}`} key={d}><button type="button" className={styles.dayNumber} onClick={()=>{setCursor(d);setView('day')}}>{dateDay(d)}</button>{timeOff.filter(o=>dateKey(o.starts_at)<=d&&dateKey(new Date(Date.parse(o.ends_at)-1))>=d).map(o=><button key={o.id} type="button" className={styles.monthAbsence} onClick={()=>openAbsence(o)}>{o.kind==='break'?'Szünet':'Szabadság'} · {staffOptions.find(s=>s.id===o.staff_id)?.name}</button>)}{records.slice(0,3).map(b=><button key={b.id} className={`${styles.monthEvent} ${styles['month_'+b.status]||''}`} type="button" onClick={()=>selectBooking(b)}><span>{timeKey(b.starts_at)}</span> {b.guest_name||b.service_name}</button>)}{records.length>3&&<button type="button" className={styles.moreInDay} onClick={()=>{setCursor(d);setView('day')}}>+{records.length-3} további</button>}<button type="button" aria-label={`Új időpont ${d}`} className={styles.addInDay} onClick={()=>newBooking(d)}><Icon name="plus" size={14}/></button></div>})}</div></div>
-            :<div className={`${styles.timeCalendar} ${view==='day'?styles.singleDay:''}`}><div className={styles.weekHeader}><div className={styles.corner}>GMT+1/+2</div>{daysShown.map(day=><button type="button" className={`${styles.dayHeading} ${day===todayKey?styles.todayHeading:''}`} onClick={()=>{setCursor(day);setView('day')}} key={day}><span>{WEEK_NAMES[dayIdx(day)]}</span><strong>{dateDay(day)}</strong></button>)}</div><div ref={calendarRef} className={styles.timetable}><div className={styles.timeRail} style={{height:(calendarEnd-calendarStart)*60*MINUTE_PX}}>{Array.from({length:calendarEnd-calendarStart+1},(_,i)=><span key={i} style={{top:i*60*MINUTE_PX-7}}>{pad(calendarStart+i)}:00</span>)}</div><div className={styles.daysGrid} style={{gridTemplateColumns:`repeat(${daysShown.length},minmax(0,1fr))`}}>{daysShown.map(day=>dayColumn(day))}</div></div></div>}
+            :<div className={`${styles.timeCalendar} ${view==='day'?styles.singleDay:''}`}><div className={styles.weekHeader}><div className={styles.corner}>GMT+1/+2</div>{daysShown.map(day=><button type="button" className={`${styles.dayHeading} ${day===todayKey?styles.todayHeading:''}`} onClick={()=>{setCursor(day);setView('day')}} key={day}><span>{WEEK_NAMES[dayIdx(day)]}</span><strong>{dateDay(day)}</strong></button>)}</div><div ref={calendarRef} className={styles.timetable}><div className={styles.timeRail} style={{height:calendarLayout.height}}>{calendarLayout.rows.map(row=><span key={row.minute} style={{top:row.top+4}}>{pad(Math.floor(row.minute/60))}:{pad(row.minute%60)}</span>)}</div><div className={styles.daysGrid} style={{gridTemplateColumns:`repeat(${daysShown.length},minmax(0,1fr))`}}>{daysShown.map(day=>dayColumn(day))}</div></div></div>}
           </div>
-          <div className={styles.bottomBar}><span><span className={styles.greenDot}/> {loading?'Betöltés…':`${filtered.length} foglalás`} · {view==='month'?'Havi':view==='week'?'Heti':'Napi'} nézet · Debrecen</span><span>Kattints egy időpontra a szerkesztéshez, üres sávra az új foglaláshoz.</span></div>
+          {tab==='calendar'&&<div className={styles.bottomBar}><span><span className={styles.greenDot}/> {loading?'Betöltés…':`${filtered.length} foglalás`} · {view==='month'?'Havi':view==='week'?'Heti':'Napi'} nézet · Debrecen</span><span>Kattints egy időpontra a szerkesztéshez, üres sávra az új foglaláshoz.</span></div>}
         </div>
-        <div className={styles.lowerPanel}><div className={styles.lowerTitle}><div><h2>Következő foglalások</h2><p>A kiválasztott időszakból</p></div><button type="button" onClick={()=>setTab('list')}>Összes megtekintése </button></div><div className={styles.upcomingList}>{upcoming.length?upcoming.map(b=><button type="button" className={styles.upcomingRow} onClick={()=>selectBooking(b)} key={b.id}><div className={styles.upcomingDate}>{dateDay(dateKey(b.starts_at))}<span>{new Intl.DateTimeFormat('hu-HU',{month:'short',timeZone:'UTC'}).format(new Date(dateKey(b.starts_at)+'T12:00:00Z'))}</span></div><div className={styles.upcomingDesc}><strong>{b.guest_name||'Vendég'}</strong><span>{b.service_name} · {b.staff_name}</span></div><strong className={styles.upcomingTime}>{timeKey(b.starts_at)}</strong></button>):<p className={styles.noUpcoming}>Nincs közelgő foglalás a kiválasztott időszakban.</p>}</div></div>
-        <footer className={styles.footer}>DEMETERS <span>ADMIN DASHBOARD / V1</span></footer>
+        }
+        {tab==='calendar'&&<div className={styles.lowerPanel}><div className={styles.lowerTitle}><div><h2>Következő foglalások</h2><p>A kiválasztott időszakból</p></div><button type="button" onClick={()=>setTab('list')}>Összes megtekintése </button></div><div className={styles.upcomingList}>{upcoming.length?upcoming.map(b=><button type="button" className={styles.upcomingRow} onClick={()=>selectBooking(b)} key={b.id}><div className={styles.upcomingDate}>{dateDay(dateKey(b.starts_at))}<span>{new Intl.DateTimeFormat('hu-HU',{month:'short',timeZone:'UTC'}).format(new Date(dateKey(b.starts_at)+'T12:00:00Z'))}</span></div><div className={styles.upcomingDesc}><strong>{b.guest_name||'Vendég'}</strong><span>{b.service_name} · {b.staff_name}</span></div><strong className={styles.upcomingTime}>{timeKey(b.starts_at)}</strong></button>):<p className={styles.noUpcoming}>Nincs közelgő foglalás a kiválasztott időszakban.</p>}</div></div>}
+        <footer className={styles.footer}>DEMETERS <a href="/admin/eszkozok">Saját eszközök</a></footer>
       </div>
     </div>
     {drawerOpen&&form&&<div className={styles.drawerBackdrop} onMouseDown={e=>{if(e.target===e.currentTarget&&!saving)closeDrawer()}}><aside ref={bookingDialog} tabIndex={-1} className={styles.drawer} role="dialog" aria-modal="true" aria-labelledby="booking-drawer-title"><div className={styles.drawerHead}><div><span className={styles.overline}>FOGLALÁS / {isAdding?'ÚJ':'SZERKESZTÉS'}</span><h2 id="booking-drawer-title">{isAdding?'Új foglalás':'Foglalás szerkesztése'}</h2></div><button type="button" className={styles.iconButton} aria-label="Bezárás" onClick={closeDrawer} disabled={saving}><Icon name="close"/></button></div><form onSubmit={saveBooking} className={styles.drawerForm}>
