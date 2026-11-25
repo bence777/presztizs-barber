@@ -12,7 +12,7 @@ test('Booking keeps its selection summary, edit actions and mobile progress', ()
   assert.match(code, /styles\.summaryRows/);
   assert.match(code, /styles\.mobileSteps/);
   for (const label of ['Szolgáltatás', 'Barber', 'Időpont', 'Adataid']) {
-    assert.ok(code.includes(`aria-label="${label} módosítása"`));
+    assert.ok(code.includes(`aria-label={t("${label} módosítása")}`));
   }
   assert.match(code, /STEPS\.map\(\(label, index\)/);
   assert.equal((code.match(/FOGLALÁSI FOLYAMAT/g) || []).length, 1);

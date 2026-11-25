@@ -1,7 +1,9 @@
+import { useLanguage } from './LanguageProvider';
 import {useEffect,useState} from 'react';
 import GuestIdentity from './GuestIdentity';
 import styles from '../styles/BookingManage.module.css';
 export default function BookingIdentityGate({children}) {
+  const { t } = useLanguage();
   const [ready,setReady]=useState(false);
   useEffect(()=>{
     let active=true;
@@ -22,5 +24,5 @@ export default function BookingIdentityGate({children}) {
     return()=>{active=false;clearInterval(interval);window.removeEventListener('focus',onFocus);document.removeEventListener('visibilitychange',onVisible)};
   },[]);
   if(ready)return children;
-  return <section className={styles.gate}><p className={styles.kicker}>BIZTONSÁGOS BELÉPÉS</p><h2>Azonosítsd <em>magad.</em></h2><p>A saját e-mail-címedre küldött ellenőrző kóddal férhetsz hozzá a foglalásokhoz. Ha ezen az eszközön már beléptél, jóváhagyhatod a mentett profilodat.</p><GuestIdentity initialProfile={null} onVerified={profile=>setReady(!!profile)}/></section>;
+  return <section className={styles.gate}><p className={styles.kicker}>{t("BIZTONSÁGOS BELÉPÉS")}</p><h2>{t("Azonosítsd")}{" "}<em>{t("magad.")}</em></h2><p>{t("A saját e-mail-címedre küldött ellenőrző kóddal férhetsz hozzá a foglalásokhoz. Ha ezen az eszközön már beléptél, jóváhagyhatod a mentett profilodat.")}</p><GuestIdentity initialProfile={null} onVerified={profile=>setReady(!!profile)}/></section>;
 }

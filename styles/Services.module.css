@@ -1,7 +1,7 @@
 
 .section {
-  background: #ffffff;
-  color: #111;
+  background: var(--site-background);
+  color: var(--site-ink);
   padding: clamp(100px, 11vw, 170px) 0;
 }
 
@@ -24,7 +24,7 @@
   font-size: 10px;
   font-weight: 600;
   letter-spacing: .22em;
-  color: #757575;
+  color: var(--site-muted);
   margin-bottom: 25px;
 }
 
@@ -67,8 +67,8 @@
 }
 
 .card {
-  background: #f4f4f4;
-  border: 1px solid #e5e5e5;
+  background: var(--site-surface);
+  border: 1px solid var(--site-line);
   min-height: 280px;
   padding: 25px;
   display: flex;
@@ -79,14 +79,14 @@
 }
 
 .card:hover {
-  background: #ededed;
+  background: var(--site-surface-hover);
   transform: translateY(-5px);
 }
 
 .number {
   font: 600 10px Arial, sans-serif;
   letter-spacing: .16em;
-  color: #777777;
+  color: var(--site-muted);
 }
 
 .content {
@@ -132,7 +132,7 @@
 
 .meta span {
   font: 11px Arial, sans-serif;
-  color: #777;
+  color: var(--site-muted);
   white-space: nowrap;
   padding-bottom: 5px;
 }
@@ -141,7 +141,7 @@
   font-family: Georgia, serif;
   font-style: italic;
   font-size: 15px;
-  color: #888888;
+  color: var(--site-muted);
   margin: 35px 0 0;
   text-align: right;
 }

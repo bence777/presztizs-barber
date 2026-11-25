@@ -1,2 +1,3 @@
 import '../styles/globals.css';
-export default function App({ Component, pageProps }) { return <Component {...pageProps} />; }
+import { LanguageProvider } from '../components/LanguageProvider';
+export default function App({ Component, pageProps }) { return <LanguageProvider><Component {...pageProps} /></LanguageProvider>; }

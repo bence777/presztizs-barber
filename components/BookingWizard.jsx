@@ -2,11 +2,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { formatPrice } from "../data/bookingConfig";
 import { getCachedAvailability, invalidateCachedAvailability, loadPublicAvailability, loadPublicCatalog } from "../lib/client/bookingCache.mjs";
+import { useLanguage } from "./LanguageProvider";
+import { matchTeamMember } from "../data/team.mjs";
 import GuestIdentity from "./GuestIdentity";
 import styles from "../styles/BookingWizard.module.css";
 
 const TIMEZONE = "Europe/Budapest";
-const STEPS = ["Szolgáltatás", "Barber", "Időpont", "Adataid"];
+const STEPS = ["Barber", "Szolgáltatás", "Időpont", "Adataid"];
 const WEEKDAYS = ["H", "K", "Sze", "Cs", "P", "Szo", "V"];
 const MONTHS = [
   "január", "február", "március", "április", "május", "június",
@@ -49,9 +51,9 @@ function monthParts(index) {
   return { year: Math.floor(index / 12), month: index % 12 };
 }
 
-function formatDay(iso) {
+function formatDay(iso, locale = "hu-HU") {
   if (!iso) return "Még nincs kiválasztva";
-  return new Intl.DateTimeFormat("hu-HU", {
+  return new Intl.DateTimeFormat(locale, {
     timeZone: "UTC", year: "numeric", month: "long", day: "numeric", weekday: "long",
   }).format(parseUtc(iso));
 }
@@ -69,6 +71,8 @@ function createCalendar(index) {
 
 export default function BookingWizard() {
   const router = useRouter();
+  const { t, locale, language } = useLanguage();
+  const dayLabel = iso => iso ? formatDay(iso, locale) : t("Még nincs kiválasztva");
   const workspaceRef = useRef(null);
   const previousStepRef = useRef(0);
   const [today, setToday] = useState(getTodayInDebrecen);
@@ -153,12 +157,12 @@ export default function BookingWizard() {
   useEffect(() => {
     if (!router.isReady) return;
     const service = SERVICES.find((item) => item.id === router.query.service);
-    const barber = BARBERS.find((item) => item.id === router.query.barber);
-    if (service) setServiceId(service.id);
+    const barber = (router.query.barber === 'any' && BARBERS.length ? { id: 'any' } : BARBERS.find((item) => item.id === router.query.barber)) || matchTeamMember(BARBERS, router.query.barberName);
+    if (service && barber) setServiceId(service.id);
     if (barber) setBarberId(barber.id);
     if (service && barber) setStep(2);
-    else if (service) setStep(1);
-  }, [router.isReady, router.query.service, router.query.barber, catalog]);
+    else if (barber) setStep(1);
+  }, [router.isReady, router.query.service, router.query.barber, router.query.barberName, catalog]);
 
   // A felület állapotát Debrecen szerinti dátumhoz igazítjuk.
   useEffect(() => {
@@ -184,7 +188,7 @@ export default function BookingWizard() {
   const calendar = useMemo(() => createCalendar(visibleMonth), [visibleMonth]);
   const slots = date ? (availableDays[date] || []) : [];
   const canReview = verified && person.name.trim().length >= 2 && /.+@.+\..+/.test(person.email.trim()) && person.phone.replace(/\D/g, "").length >= 7;
-  const canOpen = (index) => index === 0 || (index === 1 && Boolean(serviceId)) ||
+  const canOpen = (index) => index === 0 || (index === 1 && Boolean(barberId)) ||
     (index === 2 && Boolean(serviceId && barberId)) ||
     (index === 3 && Boolean(serviceId && barberId && date && time));
 
@@ -195,17 +199,18 @@ export default function BookingWizard() {
     setShowPreview(false);
     setConfirmedBooking(null);
     setBookingError("");
-    setStep(1);
+    setStep(2);
   }
 
   function selectBarber(id) {
     setBarberId(id);
+    setServiceId(null);
     setDate(null);
     setTime(null);
     setShowPreview(false);
     setConfirmedBooking(null);
     setBookingError("");
-    setStep(2);
+    setStep(1);
   }
 
   function selectDate(next) {
@@ -237,7 +242,7 @@ export default function BookingWizard() {
           invalidateCachedAvailability(serviceId, barberId, date.slice(0, 7));
           setStep(2); setShowPreview(false); setTime(null); setRefreshAvailability(n => n + 1);
         }
-        throw new Error(data.error || "Nem sikerült véglegesíteni a foglalást.");
+        throw new Error(data.error || t("Nem sikerült véglegesíteni a foglalást."));
       }
       invalidateCachedAvailability(serviceId, barberId, date.slice(0, 7));
       setConfirmedBooking(data.booking);
@@ -251,8 +256,8 @@ export default function BookingWizard() {
 
   return (
     <div className={styles.wrapper}>
-      <aside className={styles.summary} aria-label="Foglalás összegzése">
-        <nav className={styles.mobileSteps} aria-label="Foglalási lépések mobilon">
+      <aside className={styles.summary} aria-label={t("Foglalás összegzése")}>
+        <nav className={styles.mobileSteps} aria-label={t("Foglalási lépések mobilon")}>
           {STEPS.map((label, index) => (
             <button
               type="button"
@@ -263,53 +268,53 @@ export default function BookingWizard() {
               aria-current={index === step ? "step" : undefined}
             >
               <span className={styles.mobileStepCircle}>{String(index + 1).padStart(2, "0")}</span>
-              <span className={styles.mobileStepLabel}>{label}</span>
+              <span className={styles.mobileStepLabel}>{t(label)}</span>
             </button>
           ))}
         </nav>
         <div className={styles.summaryRows}>
           <div className={`${styles.summaryRow} ${step === 0 ? styles.summaryRowActive : ""}`}>
             <div>
-              <small>01 / SZOLGÁLTATÁS</small>
-              <strong>{service?.name || "Választásra vár"}</strong>
+              <small>{t("01 / BARBER")}</small>
+              <strong>{barberId === "any" ? t("Bármelyik barber") : barber?.name || t("Választásra vár")}</strong>
             </div>
-            {service && <button type="button" onClick={() => { setStep(0); setShowPreview(false); }} aria-label="Szolgáltatás módosítása">Módosítás</button>}
+            {barberId && <button type="button" onClick={() => { setStep(0); setShowPreview(false); }} aria-label={t("Barber módosítása")}>{t("Módosítás")}</button>}
           </div>
           <div className={`${styles.summaryRow} ${step === 1 ? styles.summaryRowActive : ""}`}>
             <div>
-              <small>02 / BARBER</small>
-              <strong>{barberId === "any" ? "Bármelyik barber" : barber?.name || "Választásra vár"}</strong>
+              <small>{t("02 / SZOLGÁLTATÁS")}</small>
+              <strong>{t(service?.name) || t("Választásra vár")}</strong>
             </div>
-            {barberId && <button type="button" onClick={() => { setStep(1); setShowPreview(false); }} aria-label="Barber módosítása">Módosítás</button>}
+            {service && <button type="button" onClick={() => { setStep(1); setShowPreview(false); }} aria-label={t("Szolgáltatás módosítása")}>{t("Módosítás")}</button>}
           </div>
           <div className={`${styles.summaryRow} ${step === 2 ? styles.summaryRowActive : ""}`}>
             <div>
-              <small>03 / IDŐPONT</small>
-              <strong>{date ? `${date.slice(5).replace("-", ".")}. · ${time || "Válassz időpontot"}` : "Választásra vár"}</strong>
+              <small>{t("03 / IDŐPONT")}</small>
+              <strong>{date ? `${date.slice(5).replace("-", ".")}. · ${time || t("Válassz időpontot")}` : t("Választásra vár")}</strong>
             </div>
-            {date && <button type="button" onClick={() => { setStep(2); setShowPreview(false); }} aria-label="Időpont módosítása">Módosítás</button>}
+            {date && <button type="button" onClick={() => { setStep(2); setShowPreview(false); }} aria-label={t("Időpont módosítása")}>{t("Módosítás")}</button>}
           </div>
           <div className={`${styles.summaryRow} ${step === 3 ? styles.summaryRowActive : ""}`}>
             <div>
-              <small>04 / ADATAID</small>
-              <strong>{verified ? person.name : "Választásra vár"}</strong>
+              <small>{t("04 / ADATAID")}</small>
+              <strong>{verified ? person.name : t("Választásra vár")}</strong>
             </div>
-            {verified && <button type="button" onClick={() => { setStep(3); setShowPreview(false); }} aria-label="Adataid módosítása">Módosítás</button>}
+            {verified && <button type="button" onClick={() => { setStep(3); setShowPreview(false); }} aria-label={t("Adataid módosítása")}>{t("Módosítás")}</button>}
           </div>
         </div>
         <div className={styles.summaryBottom} aria-live="polite">
-          <span>Várható összeg</span>
-          <strong>{service ? formatPrice(service.price) : "— Ft"}</strong>
+          <span>{t("Várható összeg")}</span>
+          <strong>{barberId && service ? formatPrice(service.price) : "— Ft"}</strong>
         </div>
       </aside>
 
-      <section id="foglalasi-folyamat" ref={workspaceRef} className={styles.workspace} aria-label="Időpontfoglaló lépések">
+      <section id="foglalasi-folyamat" ref={workspaceRef} className={styles.workspace} aria-label={t("Időpontfoglaló lépések")}>
         <div className={styles.topline}>
-          <span>FOGLALÁSI FOLYAMAT</span>
+          <span>{t("FOGLALÁSI FOLYAMAT")}</span>
           <span>0{step + 1} / 04</span>
         </div>
 
-        <nav className={styles.steps} aria-label="Foglalási lépések">
+        <nav className={styles.steps} aria-label={t("Foglalási lépések")}>
           {STEPS.map((label, index) => (
             <button
               type="button"
@@ -320,7 +325,7 @@ export default function BookingWizard() {
               aria-current={step === index ? "step" : undefined}
             >
               <span className={styles.stepNumber}>{String(index + 1).padStart(2, "0")}</span>
-              <span>{label}</span>
+              <span>{t(label)}</span>
             </button>
           ))}
         </nav>
@@ -329,40 +334,14 @@ export default function BookingWizard() {
           {step === 0 && (
             <>
               <div className={styles.sectionHead}>
-                <span className={styles.eyebrow}>ELSŐ LÉPÉS</span>
-                <h2>Miben segíthetünk?</h2>
-                <p>Válaszd ki a neked megfelelő szolgáltatást.</p>
+                <span className={styles.eyebrow}>{t("ELSŐ LÉPÉS")}</span>
+                <h2>{t("Kihez szeretnél menni?")}</h2>
+                <p>{t("Van kedvenc barbered? Válaszd ki. Ha nincs, segítünk.")}</p>
               </div>
-              {catalogLoading && <p className={styles.noTimes}>Betöltjük a szolgáltatásokat…</p>}
-              {catalogError && <p className={styles.noTimes} role="alert">{catalogError}</p>}
-              {!catalogLoading && !catalogError && SERVICES.length === 0 && <p className={styles.noTimes}>A szolgáltatások még nincsenek aktiválva. Hamarosan foglalhatsz.</p>}
-              <div className={styles.serviceList}>
-                {SERVICES.map((item, index) => (
-                  <button
-                    type="button"
-                    key={item.id}
-                    className={`${styles.serviceRow} ${serviceId === item.id ? styles.selectedRow : ""}`}
-                    onClick={() => selectService(item.id)}
-                    aria-pressed={serviceId === item.id}
-                  >
-                    <span className={styles.serviceNumber}>0{index + 1}</span>
-                    <span className={styles.serviceText}><strong>{item.name}</strong><small>{item.description}</small></span>
-                    <span className={styles.serviceMeta}><strong>{formatPrice(item.price)}</strong><small>{item.duration} perc</small></span>
-                    <span className={styles.selectMark} aria-hidden="true" />
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-
-          {step === 1 && (
-            <>
-              <div className={styles.sectionHead}>
-                <span className={styles.eyebrow}>MÁSODIK LÉPÉS</span>
-                <h2>Kihez szeretnél menni?</h2>
-                <p>Van kedvenc barbered? Válaszd ki. Ha nincs, segítünk.</p>
-              </div>
-              {BARBERS.length === 0 && <p className={styles.noTimes}>Jelenleg nincs aktív barber.</p>}
+              {!catalogLoading && !catalogError && router.query.barberName && !matchTeamMember(BARBERS, router.query.barberName) && <p className={styles.noTimes} role="status">{t("A kiválasztott fodrász jelenleg nem foglalható online. Válassz az elérhető csapattagok közül.")}</p>}
+              {catalogLoading && <p className={styles.noTimes}>{t("Betöltjük a fodrászokat…")}</p>}
+              {catalogError && <p className={styles.noTimes} role="alert">{t(catalogError)}</p>}
+              {!catalogLoading && !catalogError && BARBERS.length === 0 && <p className={styles.noTimes}>{t("Jelenleg nincs aktív barber.")}</p>}
               <div className={styles.barberGrid}>
                 <button
                   type="button"
@@ -373,7 +352,7 @@ export default function BookingWizard() {
                 >
                   <span className={styles.anyVisual} aria-hidden="true">
                     {"✳\uFE0E"}
-                  </span>                  <span className={styles.barberCardText}><strong>Bárki</strong><small>Nincs preferenciám</small></span>
+                  </span>                  <span className={styles.barberCardText}><strong>{t("Bárki")}</strong><small>{t("Nincs preferenciám")}</small></span>
                   <span className={styles.barberCheck} aria-hidden="true" />
                 </button>
                 {BARBERS.map((item) => (
@@ -385,8 +364,38 @@ export default function BookingWizard() {
                     aria-pressed={barberId === item.id}
                   >
                     <span className={styles.barberImage} style={item.image ? { backgroundImage: `url('${item.image}')` } : undefined} aria-hidden="true" />
-                    <span className={styles.barberCardText}><strong>{item.name}</strong><small>{item.role}</small></span>
+                    <span className={styles.barberCardText}><strong>{t(item.name)}</strong><small>{t(item.role)}</small></span>
                     <span className={styles.barberCheck} aria-hidden="true" />
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {step === 1 && (
+            <>
+              <div className={styles.sectionHead}>
+                <span className={styles.eyebrow}>{t("MÁSODIK LÉPÉS")}</span>
+                <h2>{t("Miben segíthetünk?")}</h2>
+                <p>{t("Válaszd ki a neked megfelelő szolgáltatást.")}</p>
+              </div>
+              {catalogLoading && <p className={styles.noTimes}>{t("Betöltjük a szolgáltatásokat…")}</p>}
+              {catalogError && <p className={styles.noTimes} role="alert">{t(catalogError)}</p>}
+              {!catalogLoading && !catalogError && SERVICES.length === 0 && <p className={styles.noTimes}>{t("A szolgáltatások még nincsenek aktiválva. Hamarosan foglalhatsz.")}</p>}
+              <button className={styles.textButton} type="button" onClick={() => setStep(0)}>{t("Vissza a barberekhez")}</button>
+              <div className={styles.serviceList}>
+                {SERVICES.map((item, index) => (
+                  <button
+                    type="button"
+                    key={item.id}
+                    className={`${styles.serviceRow} ${serviceId === item.id ? styles.selectedRow : ""}`}
+                    onClick={() => selectService(item.id)}
+                    aria-pressed={serviceId === item.id}
+                  >
+                    <span className={styles.serviceNumber}>0{index + 1}</span>
+                    <span className={styles.serviceText}><strong>{t(item.name)}</strong><small>{t(item.description)}</small></span>
+                    <span className={styles.serviceMeta}><strong>{formatPrice(item.price)}</strong><small>{item.duration}{" "}{t("perc")}</small></span>
+                    <span className={styles.selectMark} aria-hidden="true" />
                   </button>
                 ))}
               </div>
@@ -396,21 +405,22 @@ export default function BookingWizard() {
           {step === 2 && (
             <>
               <div className={styles.sectionHead}>
-                <span className={styles.eyebrow}>HARMADIK LÉPÉS</span>
-                <h2>Találjuk meg a napod.</h2>
-                <p>Válassz egy napot a naptárból, majd egy kezdési időpontot.</p>
+                <span className={styles.eyebrow}>{t("HARMADIK LÉPÉS")}</span>
+                <h2>{t("Találjuk meg a napod.")}</h2>
+                <p>{t("Válassz egy napot a naptárból, majd egy kezdési időpontot.")}</p>
               </div>
+              {bookingError && <p className={styles.noTimes} role="alert">{t(bookingError)}</p>}
               <div className={styles.dateGrid}>
                 <div className={styles.calendar}>
                   <div className={styles.calendarHead}>
-                    <h3>{MONTHS[month]} <span>{year}</span></h3>
+                    <h3>{t(MONTHS[month])} <span>{year}</span></h3>
                     <div className={styles.monthControls}>
-                      <button type="button" aria-label="Előző hónap" onClick={() => { setDate(null); setTime(null); setVisibleMonth((m) => Math.max(earliestMonth, m - 1)); }} disabled={visibleMonth <= earliestMonth}>Előző</button>
-                      <button type="button" aria-label="Következő hónap" onClick={() => { setDate(null); setTime(null); setVisibleMonth((m) => Math.min(latestMonth, m + 1)); }} disabled={visibleMonth >= latestMonth}>Következő</button>
+                      <button type="button" aria-label={t("Előző hónap")} onClick={() => { setDate(null); setTime(null); setVisibleMonth((m) => Math.max(earliestMonth, m - 1)); }} disabled={visibleMonth <= earliestMonth}>{t("Előző")}</button>
+                      <button type="button" aria-label={t("Következő hónap")} onClick={() => { setDate(null); setTime(null); setVisibleMonth((m) => Math.min(latestMonth, m + 1)); }} disabled={visibleMonth >= latestMonth}>{t("Következő")}</button>
                     </div>
                   </div>
-                  <div className={styles.weekdays}>{WEEKDAYS.map((name) => <span key={name}>{name}</span>)}</div>
-                  <div className={styles.days} role="group" aria-label={`${year}. ${MONTHS[month]} naptár`}>
+                  <div className={styles.weekdays}>{(language === "en" ? ["M", "T", "W", "T", "F", "S", "S"] : WEEKDAYS).map((name, index) => <span key={index}>{name}</span>)}</div>
+                  <div className={styles.days} role="group" aria-label={`${year}. ${t(MONTHS[month])} ${t("naptár")}`}>
                     {calendar.map((iso, index) => {
                       if (!iso) return <span key={`blank-${index}`} className={styles.blankDay} aria-hidden="true" />;
                       const enabled = !availabilityLoading && Boolean(availableDays[iso]?.length) && iso >= today.date && iso <= maxDate;
@@ -422,27 +432,27 @@ export default function BookingWizard() {
                           onClick={() => selectDate(iso)}
                           className={`${styles.day} ${iso === date ? styles.daySelected : ""} ${iso === today.date ? styles.dayToday : ""}`}
                           aria-pressed={iso === date}
-                          aria-label={formatDay(iso)}
+                          aria-label={dayLabel(iso)}
                         >{Number(iso.slice(-2))}</button>
                       );
                     })}
                   </div>
-                  <p className={styles.calendarNote}><span className={styles.noteDot} /> A szabad napok választhatók · Legfeljebb 60 napra előre</p>
+                  <p className={styles.calendarNote}><span className={styles.noteDot} />{" "}{t("A szabad napok választhatók · Legfeljebb 60 napra előre")}</p>
                 </div>
                 <div className={styles.timePanel}>
                   <div className={styles.timeHead}>
-                    <span>ELÉRHETŐ KEZDÉSEK</span>
-                    <strong>{date ? formatDay(date) : "Előbb válassz napot"}</strong>
+                    <span>{t("ELÉRHETŐ KEZDÉSEK")}</span>
+                    <strong>{date ? dayLabel(date) : t("Előbb válassz napot")}</strong>
                   </div>
-                  {availabilityLoading && <p className={styles.noTimes}>Szabad időpontok betöltése…</p>}
-                  {availabilityError && <p className={styles.noTimes} role="alert">{availabilityError}</p>}
+                  {availabilityLoading && <p className={styles.noTimes}>{t("Szabad időpontok betöltése…")}</p>}
+                  {availabilityError && <p className={styles.noTimes} role="alert">{t(availabilityError)}</p>}
                   {!availabilityLoading && !availabilityError && hasWorkingHours === false && (
-                    <p className={styles.noTimes} role="status">Ehhez a barberhez még nincs munkaidő beállítva. A szalon tudja aktiválni a foglalható napokat.</p>
+                    <p className={styles.noTimes} role="status">{t("Ehhez a barberhez még nincs munkaidő beállítva. A szalon tudja aktiválni a foglalható napokat.")}</p>
                   )}
                   {date && !availabilityLoading && !availabilityError ? (
                     <>
                       {slots.some((slot) => slot.available) ? (
-                        <div className={styles.times} role="group" aria-label="Választható időpontok">
+                        <div className={styles.times} role="group" aria-label={t("Választható időpontok")}>
                           {slots.map((slot) => (
                             <button
                               key={slot.value}
@@ -454,19 +464,19 @@ export default function BookingWizard() {
                             >{slot.value}</button>
                           ))}
                         </div>
-                      ) : <p className={styles.noTimes}>Erre a napra már nincs szabad időpont. Válassz másik napot.</p>}
+                      ) : <p className={styles.noTimes}>{t("Erre a napra már nincs szabad időpont. Válassz másik napot.")}</p>}
                     </>
                   ) : !availabilityLoading && !availabilityError && hasWorkingHours !== false ? (
                     <div className={styles.emptyTimes}>
                       <span className={styles.emptyIcon} aria-hidden="true">◷</span>
-                      <p>Kattints egy napra a naptárban, és itt megjelennek az időpontok.</p>
+                      <p>{t("Kattints egy napra a naptárban, és itt megjelennek az időpontok.")}</p>
                     </div>
                   ) : null}
                 </div>
               </div>
               <div className={styles.stepActions}>
-                <button className={styles.textButton} type="button" onClick={() => setStep(1)}>Vissza a barberekhez</button>
-                <button className={styles.mainButton} type="button" disabled={!date || !time} onClick={() => setStep(3)}>Tovább az adatokhoz</button>
+                <button className={styles.textButton} type="button" onClick={() => setStep(1)}>{t("Vissza a szolgáltatásokhoz")}</button>
+                <button className={styles.mainButton} type="button" disabled={!date || !time} onClick={() => setStep(3)}>{t("Tovább az adatokhoz")}</button>
               </div>
             </>
           )}
@@ -474,53 +484,53 @@ export default function BookingWizard() {
           {step === 3 && (
             <>
               <div className={styles.sectionHead}>
-                <span className={styles.eyebrow}>UTOLSÓ LÉPÉS</span>
-                <h2>{confirmedBooking ? "A foglalásod sikeres." : showPreview ? "Ellenőrizd a részleteket." : "Azonosítsd magad."}</h2>
-                <p>{confirmedBooking ? "Az időpontodat rögzítettük a rendszerben." : showPreview ? "Az időpont a véglegesítésig még szabad lehet másoknak is." : "E-mailes azonosítással gyorsan és biztonságosan foglalhatsz."}</p>
+                <span className={styles.eyebrow}>{t("UTOLSÓ LÉPÉS")}</span>
+                <h2>{confirmedBooking ? t("A foglalásod sikeres.") : showPreview ? t("Ellenőrizd a részleteket.") : t("Azonosítsd magad.")}</h2>
+                <p>{confirmedBooking ? t("Az időpontodat rögzítettük a rendszerben.") : showPreview ? t("Az időpont a véglegesítésig még szabad lehet másoknak is.") : t("E-mailes azonosítással gyorsan és biztonságosan foglalhatsz.")}</p>
               </div>
               {confirmedBooking ? (
                 <div className={styles.review} role="status" aria-live="polite">
-                  <div className={styles.reviewAlert}><span aria-hidden="true">✓</span><div><strong>Időpont lefoglalva!</strong><p>Foglalási azonosító: {confirmedBooking.id}</p></div></div>
+                  <div className={styles.reviewAlert}><span aria-hidden="true">✓</span><div><strong>{t("Időpont lefoglalva!")}</strong><p>{t("Foglalási azonosító:")}{" "}{confirmedBooking.id}</p></div></div>
                   <dl>
-                    <div><dt>Szolgáltatás</dt><dd>{confirmedBooking.service_name}</dd></div>
+                    <div><dt>{t("Szolgáltatás")}</dt><dd>{t(confirmedBooking.service_name)}</dd></div>
                     <div><dt>Barber</dt><dd>{confirmedBooking.staff_name}</dd></div>
-                    <div><dt>Időpont</dt><dd>{formatDay(confirmedBooking.local_date)} · {confirmedBooking.local_time}</dd></div>
-                    <div><dt>Ár</dt><dd>{formatPrice(confirmedBooking.price_huf)}</dd></div>
+                    <div><dt>{t("Időpont")}</dt><dd>{dayLabel(confirmedBooking.local_date)} · {confirmedBooking.local_time}</dd></div>
+                    <div><dt>{t("Ár")}</dt><dd>{formatPrice(confirmedBooking.price_huf)}</dd></div>
                   </dl>
-                  <p className={styles.formNote}>A foglalásod elmentettük. A visszaigazoló e-mailben is megtalálod a foglaláskezelő hivatkozását.</p><a href="/foglalasaim" className={styles.mainButton} style={{ marginTop: 18 }}>Foglalásaim kezelése</a>
+                  <p className={styles.formNote}>{t("A foglalásod elmentettük. A visszaigazoló e-mailben is megtalálod a foglaláskezelő hivatkozását.")}</p><a href="/foglalasaim" className={styles.mainButton} style={{ marginTop: 18 }}>{t("Foglalásaim kezelése")}</a>
                 </div>
               ) : !showPreview ? (
                 <div className={styles.detailsAuth}>
                   <GuestIdentity onVerified={handleVerified} initialProfile={verified ? person : null} />
                   <div className={styles.stepActions}>
-                    <button className={styles.textButton} type="button" onClick={() => setStep(2)}>Vissza az időponthoz</button>
-                    <button className={styles.mainButton} type="button" disabled={!canReview} onClick={() => setShowPreview(true)}>Foglalás áttekintése</button>
+                    <button className={styles.textButton} type="button" onClick={() => setStep(2)}>{t("Vissza az időponthoz")}</button>
+                    <button className={styles.mainButton} type="button" disabled={!canReview} onClick={() => setShowPreview(true)}>{t("Foglalás áttekintése")}</button>
                   </div>
-                  <p className={styles.formNote}>Az e-mail-címedet ellenőriztük. A végleges foglalás egy külön gombbal történik.</p>
+                  <p className={styles.formNote}>{t("Az e-mail-címedet ellenőriztük. A végleges foglalás egy külön gombbal történik.")}</p>
                 </div>
               ) : (
                 <div className={styles.review} role="region" aria-live="polite">
                   <dl>
-                    <div><dt>Szolgáltatás</dt><dd>{service?.name} · {formatPrice(service?.price || 0)}</dd></div>
-                    <div><dt>Barber</dt><dd>{barberId === "any" ? "Bármelyik elérhető barber" : barber?.name}</dd></div>
-                    <div><dt>Nap és időpont</dt><dd>{formatDay(date)} · {time}</dd></div>
-                    <div><dt>Név</dt><dd>{person.name}</dd></div>
-                    <div><dt>Kapcsolat</dt><dd>{person.email} · {person.phone}</dd></div>
+                    <div><dt>{t("Szolgáltatás")}</dt><dd>{t(service?.name)} · {formatPrice(service?.price || 0)}</dd></div>
+                    <div><dt>Barber</dt><dd>{barberId === "any" ? t("Bármelyik elérhető barber") : barber?.name}</dd></div>
+                    <div><dt>{t("Nap és időpont")}</dt><dd>{dayLabel(date)} · {time}</dd></div>
+                    <div><dt>{t("Név")}</dt><dd>{person.name}</dd></div>
+                    <div><dt>{t("Kapcsolat")}</dt><dd>{person.email} · {person.phone}</dd></div>
                   </dl>
-                  {bookingError && <p role="alert" className={styles.noTimes}>{bookingError}</p>}
+                  {bookingError && <p role="alert" className={styles.noTimes}>{t(bookingError)}</p>}
                   <div className={styles.stepActions}>
-                    <button className={styles.textButton} type="button" disabled={bookingBusy} onClick={() => setShowPreview(false)}>Vissza az adatokhoz</button>
+                    <button className={styles.textButton} type="button" disabled={bookingBusy} onClick={() => setShowPreview(false)}>{t("Vissza az adatokhoz")}</button>
                     <button className={styles.mainButton} type="button" disabled={bookingBusy || !canReview} onClick={confirmBooking}>
-                      {bookingBusy ? "FOGLALÁS FOLYAMATBAN…" : "IDŐPONT VÉGLEGESÍTÉSE"}
+                      {bookingBusy ? t("FOGLALÁS FOLYAMATBAN…") : t("IDŐPONT VÉGLEGESÍTÉSE")}
                     </button>
                   </div>
                 </div>
               )}
-              {bookingError && !showPreview && !confirmedBooking && <p role="alert" className={styles.noTimes}>{bookingError}</p>}
+              {bookingError && !showPreview && !confirmedBooking && <p role="alert" className={styles.noTimes}>{t(bookingError)}</p>}
             </>
           )}
         </div>
-        <div className={styles.demoFooter}><span>FOGLALÁS / DEMETERS</span><span>EUROPE / Debrecen</span></div>
+        <div className={styles.demoFooter}><span>{t("FOGLALÁS / DEMETERS")}</span><span>EUROPE / Debrecen</span></div>
       </section>
     </div>
   );

@@ -1,3 +1,4 @@
+import { useLanguage } from './LanguageProvider';
 import styles from "../styles/TrustSection.module.css";
 
 // Csak valódi, a szalontól ellenőrzött értékelések kerüljenek ide.
@@ -23,30 +24,31 @@ const VALUES = [
 ];
 
 export default function TrustSection() {
+  const { t } = useLanguage();
   const hasReviews = REVIEWS.length > 0;
 
   return (
     <section id="velemenyek" className={styles.section} aria-labelledby="trust-title">
       <div className={styles.wrap}>
         <div className={styles.kicker}>
-          <span>04 / {hasReviews ? "VENDÉGVÉLEMÉNYEK" : "AMIBEN HISZÜNK"}</span>
+          <span>{hasReviews ? t("VENDÉGVÉLEMÉNYEK") : t("AMIBEN HISZÜNK")}</span>
           <span>DEMETERS — DEBRECEN</span>
         </div>
 
         <div className={styles.editorial}>
           <div className={styles.headline}>
-            <span className={styles.smallLabel}>A RÉSZLETEK TESZIK AZ EGÉSZET.</span>
+            <span className={styles.smallLabel}>{t("A RÉSZLETEK TESZIK AZ EGÉSZET.")}</span>
             <h2 id="trust-title">
               {hasReviews ? (
-                <>A vendégeink<br /><em>mondták.</em></>
+                <>{t("A vendégeink")}<br /><em>{t("mondták.")}</em></>
               ) : (
-                <>Nem csak<br /><em>a végeredmény.</em></>
+                <>{t("Nem csak")}<br /><em>{t("a végeredmény.")}</em></>
               )}
             </h2>
             <p className={styles.intro}>
               {hasReviews
-                ? "Néhány szó azoktól, akik már ültek nálunk a székben."
-                : "Az is számít, hogyan jutunk el odáig."}
+                ? t("Néhány szó azoktól, akik már ültek nálunk a székben.")
+                : t("Az is számít, hogyan jutunk el odáig.")}
             </p>
           </div>
 
@@ -67,8 +69,8 @@ export default function TrustSection() {
                   <div className={styles.entry} key={value.index}>
                     <span className={styles.number}>{value.index}</span>
                     <div className={styles.entryBody}>
-                      <h3>{value.title}</h3>
-                      <p className={styles.description}>{value.description}</p>
+                      <h3>{t(value.title)}</h3>
+                      <p className={styles.description}>{t(value.description)}</p>
                     </div>
                   </div>
                 ))}

@@ -1,3 +1,4 @@
+import { useLanguage } from './LanguageProvider';
 import styles from "../styles/SalonStory.module.css";
 
 /**
@@ -8,12 +9,13 @@ const SALON_IMAGE =
   "https://images.unsplash.com/photo-1702865272115-5afdbae975af?w=1400&q=82&fit=crop";
 
 export default function SalonStory() {
+  const { t } = useLanguage();
   return (
     <section id="szalon" className={styles.section} aria-labelledby="salon-title">
       <div className={styles.wrap}>
         <div className={styles.overline}>
-          <span>03 / A SZALON</span>
-          <span>EGY HELY. SAJÁT KARAKTER.</span>
+          <span>{t("A SZALON")}</span>
+          <span>DEMETERS / DEBRECEN</span>
         </div>
 
         <div className={styles.layout}>
@@ -21,7 +23,7 @@ export default function SalonStory() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={SALON_IMAGE}
-              alt="Hangulatkép egy sötét tónusú barbershop belső teréről"
+              alt={t("Hangulatkép egy sötét tónusú barbershop belső teréről")}
               loading="lazy"
               onError={(event) => {
                 event.currentTarget.onerror = null;
@@ -29,46 +31,35 @@ export default function SalonStory() {
               }}
             />
             <figcaption className={styles.photoCaption}>
-              <span>THE SPACE</span>
+              <span>{t("HANGULATKÉP")}</span>
               <span>01 / 02</span>
             </figcaption>
           </figure>
 
           <div className={styles.content}>
-            <span className={styles.smallLabel}>NEM CSAK EGY ÚJABB IDŐPONT.</span>
-            <h2 id="salon-title">
-              A jó stílusnak
-              <em> helye van.</em>
+            <span className={styles.smallLabel}>{t("DEMETER TAMÁS / ALAPÍTÓ")}</span>
+            <h2 id="salon-title">{t("Egy saját hely.")}<em>{" "}{t("Közös szemlélet.")}</em>
             </h2>
-            <p className={styles.lead}>
-              Egy vágás nem attól lesz emlékezetes, hogy hangos. Hanem attól,
-              hogy minden részlete a helyén van.
-            </p>
-            <p className={styles.copy}>
-              A DEMETERS-ben a figyelem, a precizitás és a karakteres végeredmény
-              ugyanannak a történetnek a része.
-            </p>
+            <p className={styles.lead}>{t("Demeter Tamás vagyok, a DEMETERS alapítója. A szalont azért hoztam létre, hogy legyen egy hely, ahol a hajvágás mellett a vendégre is jut idő és figyelem.")}</p>
+            <p className={styles.copy}>{t("Olyan csapattal dolgozom, amelynek ugyanúgy fontos a precíz munka és a személyes odafigyelés. Ismerd meg a fodrászainkat, válaszd ki, kihez szeretnél érkezni, és találkozzunk a szalonban.")}</p>
 
             <div className={styles.detailRow}>
               <div className={styles.detailPhoto}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src="/images/barber-detail.webp"
-                  alt="Közeli részlet egy hajvágásról"
+                  src="/images/demetertamas.webp"
+                  alt="Demeter Tamás"
                   loading="lazy"
                 />
               </div>
               <div className={styles.detailCopy}>
-                <span>01 / A RÉSZLETEK</span>
-                <strong>Nem véletlenül ilyen.</strong>
-                <span>FORMA · RITMUS · PRECIZITÁS</span>
+                <span>DEMETER TAMÁS</span>
+                <strong>{t("A DEMETERS alapítója")}</strong>
+                <span>DEBRECEN</span>
               </div>
             </div>
           </div>
         </div>
-        <p className={styles.disclaimer}>
-          A bemutatófotó hangulatkép; a szalon saját képeire cserélendő.
-        </p>
       </div>
     </section>
   );

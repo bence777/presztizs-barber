@@ -1,196 +1,248 @@
-
 .section {
-  height: 450vh;
   position: relative;
-  background: #050505;
-  color: #fff;
+  background: var(--site-surface);
+  color: var(--site-ink);
+  font-family: Arial, Helvetica, sans-serif;
 }
 
 .sticky {
-  position: sticky;
-  top: 0;
-  height: 100svh;
-  min-height: 550px;
-  overflow: hidden;
-  background: #050505;
+  position: relative;
+  height: min(820px, 92svh);
+  min-height: 620px;
+  padding: clamp(28px, 5svh, 64px) 0 clamp(24px, 4svh, 46px);
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
+  gap: clamp(18px, 3svh, 36px);
+  overflow: clip;
 }
 
-.top {
-  position: absolute;
-  top: 7%;
-  left: 7%;
-  right: 7%;
+.top,
+.bottom,
+.scene {
+  width: calc(100% - clamp(36px, 9.5vw, 150px));
+  max-width: 1410px;
+  margin-inline: auto;
+}
+
+.top,
+.bottom {
   display: flex;
   justify-content: space-between;
-  font: 10px Arial, sans-serif;
-  letter-spacing: .2em;
-  color: #777;
-  z-index: 200;
+  align-items: center;
+  gap: 24px;
+  flex-shrink: 0;
+}
+
+.top h2 {
+  margin: 0;
+  font: 400 clamp(38px, 4.3vw, 64px)/1.1 "Bodoni Moda", Georgia, serif;
+  letter-spacing: -.055em;
+}
+
+.top > span,
+.caption {
+  font-size: 14px;
+  line-height: 1.5;
+  letter-spacing: .14em;
+  color: var(--site-copy);
 }
 
 .scene {
   position: relative;
-  width: 100%;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+  container-type: size;
   perspective: 1300px;
   perspective-origin: 50% 50%;
-  transform-style: preserve-3d;
+  overflow: clip;
+  touch-action: pan-y pinch-zoom;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
 }
+
+.scene:focus-visible {
+  outline: 1px solid var(--site-muted);
+  outline-offset: 4px;
+}
+
+.dragging { cursor: grabbing; }
 
 .card {
   position: absolute;
-  width: clamp(230px, 25vw, 390px);
-  height: clamp(360px, 68vh, 610px);
-  background-position: center;
-  background-size: cover;
-  background-repeat: no-repeat;
-  transform-origin: center center;
-  transform-style: preserve-3d;
+  flex-shrink: 0;
+  background: #171717;
+  color: #fff;
+  transform-origin: center;
   backface-visibility: hidden;
-  will-change: transform, opacity, filter;
-  box-shadow: 0 20px 70px rgba(0,0,0,.45);
+  will-change: transform;
+  box-shadow: 0 5px 14px rgba(0, 0, 0, .07);
+  overflow: hidden;
+}
+
+.activeCard { box-shadow: 0 8px 20px rgba(0, 0, 0, .09); }
+
+.portrait {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: center 35%;
+  filter: grayscale(1) brightness(.96);
+  pointer-events: none;
+}
+
+.portraitShade {
+  position: absolute;
+  inset: 52% 0 0;
+  background: linear-gradient(transparent, rgba(0, 0, 0, .48));
+  pointer-events: none;
+}
+
+.initials {
+  position: absolute;
+  top: 16%;
+  left: 10%;
+  right: 10%;
+  text-align: center;
+  font: 400 clamp(36px, 4vw, 50px)/1 "Bodoni Moda", Georgia, serif;
+  letter-spacing: -.045em;
+  color: #737373;
+  pointer-events: none;
+}
+
+.cardSelect {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  z-index: 1;
+}
+
+.cardSelect:focus-visible {
+  outline: 2px solid #ddd;
+  outline-offset: -5px;
 }
 
 .cardContent {
   position: absolute;
-  bottom: 30px;
-  left: 28px;
-  right: 28px;
+  z-index: 2;
+  left: 9%;
+  right: 9%;
+  bottom: 7%;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  pointer-events: none;
 }
 
-.cardContent span {
-  font: 10px Arial, sans-serif;
-  text-transform: uppercase;
-  letter-spacing: .18em;
-  color: rgba(255,255,255,.75);
+.role {
+  font-size: 14px;
+  line-height: 1.4;
+  letter-spacing: .12em;
+  color: #b5b5b5;
 }
 
 .cardContent h3 {
   font-family: "Bodoni Moda", Georgia, serif;
   font-weight: 400;
-  font-size: clamp(38px, 4vw, 62px);
-  letter-spacing: -.055em;
-  margin: 6px 0 15px;
-  line-height: 1;
+  font-size: clamp(28px, 2.6vw, 38px);
+  letter-spacing: -.045em;
+  margin: 12px 0 24px;
+  line-height: 1.06;
+  overflow-wrap: break-word;
 }
 
 .cardContent a {
-  font: 9px Arial, sans-serif;
-  letter-spacing: .13em;
-  color: #fff;
-  text-decoration: none;
-  border-bottom: 1px solid rgba(255,255,255,.6);
-  padding-bottom: 5px;
+  display: block;
+  max-width: 100%;
+  min-height: 44px;
+  padding: 12px 0;
+  color: #eee;
+  font-size: 14px;
+  line-height: 1.35;
+  letter-spacing: .07em;
+  text-decoration: underline;
+  text-decoration-color: #777;
+  text-underline-offset: 7px;
+  text-decoration-thickness: 1px;
+  overflow-wrap: anywhere;
+  pointer-events: auto;
+  transition: color .2s ease, text-decoration-color .2s ease;
 }
 
-.bottom {
+.cardContent a:hover { color: #fff; text-decoration-color: #fff; }
+.cardContent a:focus-visible { outline: 1px solid #fff; outline-offset: 5px; }
+
+.arrow {
   position: absolute;
-  bottom: 9%;
-  left: 7%;
-  right: 7%;
-  display: flex;
-  justify-content: space-between;
-  font: 10px Arial, sans-serif;
-  letter-spacing: .2em;
-  color: #777;
-  z-index: 200;
+  top: 50%;
+  z-index: 50;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: 1px solid var(--site-line);
+  border-radius: 50%;
+  background: var(--site-surface);
+  color: var(--site-ink);
+  cursor: pointer;
+  transition: background .2s ease, border-color .2s ease;
+}
+.previousArrow { left: max(0px, calc(50% - var(--card-width) / 2 - 76px)); }
+.nextArrow { right: max(0px, calc(50% - var(--card-width) / 2 - 76px)); }
+.arrow:hover:not(:disabled) { background: var(--site-background); border-color: var(--site-muted); }
+.arrow:focus-visible { outline: 2px solid var(--site-ink); outline-offset: 4px; }
+.arrow:disabled { cursor: default; color: var(--site-muted); }
+.counter { font-size: 14px; line-height: 1.4; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.counter > span { color: var(--site-muted); margin-left: 8px; }
+
+.cardContent a[aria-disabled='true'] { cursor: default; }
+
+
+@media (max-width: 760px) {
+  .sticky { min-height: 640px; padding-top: 30px; padding-bottom: 24px; gap: 16px; }
+  .top { align-items: flex-start; }
+  .top > span { max-width: 110px; text-align: right; font-size: 14px; letter-spacing: .06em; }
+  .top h2 { font-size: clamp(36px, 9vw, 48px); }
+  .bottom { flex-direction: column; gap: 8px; }
+  .caption { font-size: 14px; letter-spacing: .08em; }
+  .cardContent h3 { font-size: clamp(28px, 7.6vw, 36px); margin-bottom: 18px; }
+  .cardContent a { font-size: 14px; letter-spacing: .035em; }
+  .role { font-size: 14px; }
+  .initials { top: 14%; font-size: 40px; }
+  .arrow { width: 44px; height: 44px; }
+  .previousArrow { left: max(0px, calc(50% - var(--card-width) / 2 - 58px)); }
+  .nextArrow { right: max(0px, calc(50% - var(--card-width) / 2 - 58px)); }
 }
 
-.progressTrack {
-  position: absolute;
-  bottom: 5%;
-  left: 7%;
-  right: 7%;
-  height: 1px;
-  background: #333;
-  z-index: 200;
+@media (max-height: 620px) {
+  .sticky { gap: 10px; padding-block: 16px; }
+  .top h2 { font-size: 32px; }
+  .top > span, .caption { display: none; }
+  .bottom { flex-direction: row; }
+  .cardContent h3 { font-size: 24px; margin: 6px 0 8px; }
+  .cardContent a { font-size: 12px; min-height: 36px; padding-block: 6px; letter-spacing: 0; }
+  .role { display: none; }
+  .initials { top: 12px; left: 9%; right: auto; font-size: 20px; text-align: left; }
 }
 
-.progressFill {
-  height: 100%;
-  background: #fff;
-}
-
-@media (max-width: 768px) {
-  .section {
-    height: 350vh;
-  }
-
-  .card {
-    width: 58vw;
-    height: 53vh;
-    max-height: 520px;
-  }
-
-  .cardContent {
-    bottom: 22px;
-    left: 18px;
-    right: 18px;
-  }
-
-  .cardContent h3 {
-    font-size: 42px;
-  }
-
-  .top, .bottom {
-    left: 6%;
-    right: 6%;
-    font-size: 8px;
-  }
-
-  .top {
-    top: 8%;
-  }
-
-  .bottom {
-    bottom: 10%;
-  }
-
-  .progressTrack {
-    left: 6%;
-    right: 6%;
-    bottom: 6%;
-  }
+@container (max-height: 380px) {
+  .initials { top: 16px; left: 9%; right: auto; font-size: 24px; text-align: left; }
+  .cardContent h3 { font-size: 26px; margin-block: 8px 14px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .section {
-    height: auto;
-    padding: 100px 6%;
-  }
-
-  .sticky {
-    position: relative;
-    height: auto;
-    min-height: 0;
-    display: block;
-    overflow: visible;
-  }
-
-  .scene {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 18px;
-    height: auto;
-  }
-
-  .card {
-    position: relative;
-    width: 100%;
-    height: 380px;
-    transform: none !important;
-  }
-
-  .top, .bottom, .progressTrack {
-    display: none;
-  }
+  .card { will-change: auto; }
+  .cardContent a, .arrow { transition: none; }
 }

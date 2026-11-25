@@ -1,1 +1,12 @@
-*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0}a{color:inherit}
+:root {
+  color-scheme: light;
+  --site-background: #fff;
+  --site-surface: #f5f5f5;
+  --site-surface-hover: #ebebeb;
+  --site-ink: #151515;
+  --site-copy: #595959;
+  --site-muted: #6b6b6b;
+  --site-line: #dedede;
+}
+
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--site-background);color:var(--site-ink)}a{color:inherit}

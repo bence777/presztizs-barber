@@ -1,3 +1,4 @@
+import { useLanguage } from './LanguageProvider';
 import { useCallback, useEffect, useRef, useState } from "react";
 import styles from "../styles/GuestIdentity.module.css";
 
@@ -19,6 +20,7 @@ async function api(path, options) {
 const validEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 
 export default function GuestIdentity({ onVerified, initialProfile = null }) {
+  const { t } = useLanguage();
   const [view, setView] = useState(initialProfile ? "ready" : "loading");
   const [email, setEmail] = useState(initialProfile?.email || "");
   const [code, setCode] = useState("");
@@ -118,7 +120,7 @@ export default function GuestIdentity({ onVerified, initialProfile = null }) {
 
   function requestCode(event) {
     event?.preventDefault();
-    if (!validEmail(email)) return setError("Adj meg egy érvényes e-mail-címet.");
+    if (!validEmail(email)) return setError(t("Adj meg egy érvényes e-mail-címet."));
     if (cooldown > 0) return;
     run(async () => {
       await api("send-code", { email: email.trim().toLowerCase() });
@@ -131,7 +133,7 @@ export default function GuestIdentity({ onVerified, initialProfile = null }) {
 
   function verifyCode(event) {
     event.preventDefault();
-    if (!/^\d{6,10}$/.test(code)) return setError("6–10 számjegyből álló kódot adj meg.");
+    if (!/^\d{6,10}$/.test(code)) return setError(t("6–10 számjegyből álló kódot adj meg."));
     run(async () => {
       const result = await api("verify-code", { email, code, remember });
       if (result.needsProfile) {
@@ -161,101 +163,99 @@ export default function GuestIdentity({ onVerified, initialProfile = null }) {
   return (
     <div className={styles.container} aria-live="polite">
       {view === "loading" && (
-        <div className={styles.loading}>Ellenőrizzük, hogy jártál-e már nálunk ezen az eszközön…</div>
+        <div className={styles.loading}>{t("Ellenőrizzük, hogy jártál-e már nálunk ezen az eszközön…")}</div>
       )}
 
       {view === "unavailable" && (
-        <div className={styles.notice} role="alert">
-          Az e-mailes azonosítás még nincs elérhető. A foglalási felület többi része kipróbálható.
-        </div>
+        <div className={styles.notice} role="alert">{t("Az e-mailes azonosítás még nincs elérhető. A foglalási felület többi része kipróbálható.")}</div>
       )}
 
       {view === "welcome" && (
         <div className={styles.welcome}>
-          <span className={styles.kicker}>ÜDV ÚJRA</span>
+          <span className={styles.kicker}>{t("ÜDV ÚJRA")}</span>
           <div className={styles.avatar} aria-hidden="true">{(welcome?.name || "V")[0].toUpperCase()}</div>
-          <h3>Te vagy az, <em>{welcome?.name || "Vendég"}?</em></h3>
-          <p>Korábban már azonosítottad magad ezen az eszközön.</p>
+          <h3>{t("Te vagy az,")}{" "}<em>{welcome?.name || t("Vendég")}?</em></h3>
+          <p>{t("Korábban már azonosítottad magad ezen az eszközön.")}</p>
           <span className={styles.masked}>{welcome?.maskedEmail}</span>
           <div className={styles.actions}>
             <button className={styles.primary} type="button" disabled={busy} onClick={acceptRemembered}>
-              {busy ? "EGY PILLANAT…" : "IGEN, ÉN VAGYOK"}
+              {busy ? t("EGY PILLANAT…") : t("IGEN, ÉN VAGYOK")}
             </button>
-            <button className={styles.secondary} type="button" disabled={busy} onClick={newEmail}>NEM ÉN VAGYOK</button>
+            <button className={styles.secondary} type="button" disabled={busy} onClick={newEmail}>{t("NEM ÉN VAGYOK")}</button>
           </div>
-          <p className={styles.disclaimer}>Megosztott eszközön válaszd a „Nem én vagyok” lehetőséget.</p>
+          <p className={styles.disclaimer}>{t("Megosztott eszközön válaszd a „Nem én vagyok” lehetőséget.")}</p>
         </div>
       )}
 
       {view === "email" && (
         <form className={styles.form} onSubmit={requestCode}>
-          <span className={styles.kicker}>JELSZÓ NÉLKÜLI BEJELENTKEZÉS</span>
-          <h3>Elég az <em>e-mail-címed.</em></h3>
-          <p>Ha már foglaltál nálunk, automatikusan megtaláljuk az adataidat. Ha először jársz itt, azonosítás után kérjük be őket.</p>
+          <span className={styles.kicker}>{t("JELSZÓ NÉLKÜLI BEJELENTKEZÉS")}</span>
+          <h3>{t("Elég az")}{" "}<em>{t("e-mail-címed.")}</em></h3>
+          <p>{t("Ha már foglaltál nálunk, automatikusan megtaláljuk az adataidat. Ha először jársz itt, azonosítás után kérjük be őket.")}</p>
           <label className={styles.field}>
-            <span>E-MAIL-CÍM</span>
-            <input type="email" autoComplete="email" autoFocus placeholder="nev@email.hu" value={email} onChange={(e) => setEmail(e.target.value)} required maxLength={254} />
+            <span>{t("E-MAIL-CÍM")}</span>
+            <input type="email" autoComplete="email" autoFocus placeholder={t("nev@email.hu")} value={email} onChange={(e) => setEmail(e.target.value)} required maxLength={254} />
           </label>
-          <button className={styles.primary} disabled={busy || !validEmail(email)} type="submit">{busy ? "KÓD KÜLDÉSE…" : "ELLENŐRZŐ KÓD KÉRÉSE"}</button>
-          <p className={styles.disclaimer}>Az e-mail-cím alapján nem jelenítünk meg más vendégek adatait. A hozzáféréshez kódos ellenőrzés szükséges.</p>
+          <button className={styles.primary} disabled={busy || !validEmail(email)} type="submit">{busy ? t("KÓD KÜLDÉSE…") : t("ELLENŐRZŐ KÓD KÉRÉSE")}</button>
+          <p className={styles.disclaimer}>{t("Az e-mail-cím alapján nem jelenítünk meg más vendégek adatait. A hozzáféréshez kódos ellenőrzés szükséges.")}</p>
         </form>
       )}
 
       {view === "code" && (
         <form className={styles.form} onSubmit={verifyCode}>
-          <span className={styles.kicker}>E-MAIL MEGERŐSÍTÉSE</span>
-          <h3>Érkezett egy <em>kódod.</em></h3>
-          <p>Elküldtük az ellenőrző kódot ide: <strong>{email}</strong></p>
+          <span className={styles.kicker}>{t("E-MAIL MEGERŐSÍTÉSE")}</span>
+          <h3>{t("Érkezett egy")}{" "}<em>{t("kódod.")}</em></h3>
+          <p>{t("Elküldtük az ellenőrző kódot ide:")}{" "}<strong>{email}</strong></p>
           <label className={styles.field}>
-            <span>ELLENŐRZŐ KÓD</span>
+            <span>{t("ELLENŐRZŐ KÓD")}</span>
             <input
               className={styles.otp}
               type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6,10}"
-              maxLength={10} placeholder="Ellenőrző kód" value={code}
+              maxLength={10} placeholder={t("Ellenőrző kód")} value={code}
               onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 10))}
               required autoFocus
             />
           </label>
           <label className={styles.remember}>
             <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
-            <span>Emlékezzen rám ezen az eszközön 60 napig</span>
+            <span>{t("Emlékezzen rám ezen az eszközön 60 napig")}</span>
           </label>
-          <button className={styles.primary} disabled={busy || (code.length < 6 || code.length > 10)} type="submit">{busy ? "ELLENŐRZÉS…" : "E-MAIL MEGERŐSÍTÉSE"}</button>
+          <button className={styles.primary} disabled={busy || (code.length < 6 || code.length > 10)} type="submit">{busy ? t("ELLENŐRZÉS…") : t("E-MAIL MEGERŐSÍTÉSE")}</button>
           <div className={styles.subActions}>
-            <button type="button" disabled={busy || cooldown > 0} onClick={() => requestCode()}> {cooldown > 0 ? `ÚJ KÓD ${cooldown} MP MÚLVA` : "ÚJ KÓD KÉRÉSE"} </button>
-            <button type="button" disabled={busy} onClick={() => { setView("email"); setCode(""); setError(""); }}>MÁSIK E-MAIL</button>
+            <button type="button" disabled={busy || cooldown > 0} onClick={() => requestCode()}> {cooldown > 0 ? t("ÚJ KÓD {seconds} MP MÚLVA", { seconds: cooldown }) : t("ÚJ KÓD KÉRÉSE")} </button>
+            <button type="button" disabled={busy} onClick={() => { setView("email"); setCode(""); setError(""); }}>{t("MÁSIK E-MAIL")}</button>
           </div>
-          <p className={styles.disclaimer}>Ha nem érkezett meg, ellenőrizd a spam mappát is.</p>
+          <p className={styles.disclaimer}>{t("Ha nem érkezett meg, ellenőrizd a spam mappát is.")}</p>
         </form>
       )}
 
       {view === "profile" && (
         <form className={styles.form} onSubmit={saveProfile}>
-          <span className={styles.kicker}>E-MAIL-CÍM ELLENŐRIZVE</span>
-          <h3>Már csak <em>két adat.</em></h3>
-          <p>Csak az első alkalommal kérjük be ezeket. Később a megerősített e-mail-címeddel visszakapod a profilodat.</p>
+          <span className={styles.kicker}>{t("E-MAIL-CÍM ELLENŐRIZVE")}</span>
+          <h3>{t("Már csak")}{" "}<em>{t("két adat.")}</em></h3>
+          <p>{t("Csak az első alkalommal kérjük be ezeket. Később a megerősített e-mail-címeddel visszakapod a profilodat.")}</p>
           <div className={styles.twoFields}>
-            <label className={styles.field}><span>TELJES NÉV</span><input type="text" value={name} onChange={(e) => setName(e.target.value)} maxLength={120} autoComplete="name" required placeholder="Teljes neved" /></label>
-            <label className={styles.field}><span>TELEFONSZÁM</span><input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={24} autoComplete="tel" required placeholder="+36 30 123 4567" /></label>
+            <label className={styles.field}><span>{t("TELJES NÉV")}</span><input type="text" value={name} onChange={(e) => setName(e.target.value)} maxLength={120} autoComplete="name" required placeholder={t("Teljes neved")} /></label>
+            <label className={styles.field}><span>{t("TELEFONSZÁM")}</span><input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={24} autoComplete="tel" required placeholder="+36 30 123 4567" /></label>
           </div>
-          <div className={styles.verifiedEmail}>MEGERŐSÍTVE · {email}</div>
-          <p className={styles.disclaimer}>Az adatokat a vendégprofilodhoz kapcsoljuk a későbbi foglalások megkönnyítésére. Éles indulás előtt az adatkezelési tájékoztatót is közzé kell tenni.</p>
-          <button className={styles.primary} disabled={busy || name.trim().length < 2 || phone.replace(/\D/g, "").length < 7} type="submit">{busy ? "MENTÉS…" : "ADATOK MENTÉSE"}</button>
+          <div className={styles.verifiedEmail}>{t("MEGERŐSÍTVE ·")}{" "}{email}</div>
+          <p className={styles.disclaimer}>{t("Az adatokat a vendégprofilodhoz kapcsoljuk a későbbi foglalások megkönnyítésére.")}</p>
+          <button className={styles.primary} disabled={busy || name.trim().length < 2 || phone.replace(/\D/g, "").length < 7} type="submit">{busy ? t("MENTÉS…") : t("ADATOK MENTÉSE")}</button>
         </form>
       )}
 
       {view === "ready" && profile && (
         <div className={styles.ready}>
-          <span className={styles.kicker}>AZONOSÍTÁS SIKERES</span>
-          <h3>Üdv, <em>{profile.name.split(/\s+/)[0]}.</em></h3>
-          <p>A vendégprofilod készen áll. Nem kell újra megadnod az adataidat.</p>
-          <div className={styles.profileData}><span>NÉV</span><strong>{profile.name}</strong><span>E-MAIL</span><strong>{profile.email}</strong><span>TELEFON</span><strong>{profile.phone}</strong></div>
-          <a href="/eszkozeim" className={styles.secondary} style={{display:"inline-block",textAlign:"center",textDecoration:"none"}}>MEGBÍZHATÓ ESZKÖZÖK KEZELÉSE</a>
-          <button type="button" className={styles.secondary} onClick={newEmail} disabled={busy}>NEM ÉN VAGYOK / KIJELENTKEZÉS</button>
+          <span className={styles.kicker}>{t("AZONOSÍTÁS SIKERES")}</span>
+          <h3>{t("Üdv,")}{" "}<em>{profile.name.split(/\s+/)[0]}.</em></h3>
+          <p>{t("A vendégprofilod készen áll. Nem kell újra megadnod az adataidat.")}</p>
+          <div className={styles.profileData}><span>{t("NÉV")}</span><strong>{profile.name}</strong><span>{t("E-MAIL")}</span><strong>{profile.email}</strong><span>{t("TELEFON")}</span><strong>{profile.phone}</strong></div>
+          <a href="/eszkozeim" className={styles.secondary} style={{display:"inline-block",textAlign:"center",textDecoration:"none"}}>{t("MEGBÍZHATÓ ESZKÖZÖK KEZELÉSE")}</a>
+          <button type="button" className={styles.secondary} onClick={newEmail} disabled={busy}>{t("NEM ÉN VAGYOK / KIJELENTKEZÉS")}</button>
         </div>
       )}
 
-      {error && view !== "unavailable" && <div className={styles.error} role="alert">{error}</div>}
+      {error && view !== "unavailable" && <div className={styles.error} role="alert">{t(error)}</div>}
     </div>
   );
 }
