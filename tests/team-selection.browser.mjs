@@ -30,9 +30,9 @@ try {
     const context = await browser.newContext({ viewport: { width, height: 900 }, reducedMotion: 'reduce' });
     const page = await context.newPage(); await mockCatalog(page);
     await page.goto(base + '/idopontfoglalas');
-    await page.getByRole('button', { name: 'Paliga Zoltán Barber', exact: true }).waitFor();
-    const displayed = await page.locator('[class*="barberGrid"] button strong').allTextContents();
-    assert.deepEqual(displayed, ['Bárki', ...TEAM.map(member => member.name)]);
+    await page.locator('[data-barber-carousel]').waitFor();
+    const displayed = await page.locator('[data-barber-carousel] article h3').allTextContents();
+    assert.deepEqual(displayed, ['Leghamarabbi időpont', ...TEAM.map(member => member.name)]);
     pass(`${width}px booking shows exactly the six home-page barbers, never the legacy profiles`);
     for (let index = 0; index < TEAM.length; index++) {
       await showTeam(page);

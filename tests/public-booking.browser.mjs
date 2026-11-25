@@ -75,7 +75,9 @@ try {
     assert.deepEqual(await steps.getByRole('button').allTextContents(), ['01Barber', '02Service', '03Appointment', '04Your details']);
     assert.equal(await steps.getByRole('button').nth(1).isDisabled(), true);
     assert.equal(await steps.getByRole('button').nth(2).isDisabled(), true);
-    await page.getByRole('button', { name: 'Paliga Zoltán Barber', exact: true }).click();
+    await page.locator('[data-barber-carousel] [aria-roledescription="carousel"]').focus();
+    await page.keyboard.press('ArrowRight');
+    await page.locator('[data-barber-carousel] article[class*="activeCard"]').getByRole('button', { name: 'BOOK AN APPOINTMENT', exact: true }).click();
     await page.getByRole('heading', { name: 'What can we do for you?' }).waitFor();
     assert.equal(await page.getByRole('button', { name: /Clipper haircut/ }).count(), 1);
     await page.screenshot({ path: `${output}/services-${width}.png`, fullPage: true });
@@ -125,7 +127,9 @@ try {
     await page.getByRole('heading', { name: 'What can we do for you?' }).waitFor();
     await page.getByRole('button', { name: /Clipper haircut/ }).click();
     await steps.getByRole('button').first().click();
-    await page.getByRole('button', { name: 'Kovács Tibi Barber', exact: true }).click();
+    await page.locator('[data-barber-carousel] [aria-roledescription="carousel"]').focus();
+    await page.keyboard.press('ArrowRight');
+    await page.locator('[data-barber-carousel] article[class*="activeCard"]').getByRole('button', { name: 'BOOK AN APPOINTMENT', exact: true }).click();
     assert.ok((await page.locator('[class*="summaryBottom"]').innerText()).includes('— Ft'));
     assert.equal(await page.getByRole('button', { name: 'Change service', exact: true }).count(), 0);
     assert.equal(await page.getByRole('button', { name: 'Change appointment', exact: true }).count(), 0);

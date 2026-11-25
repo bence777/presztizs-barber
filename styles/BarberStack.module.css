@@ -7,6 +7,9 @@
 
 .sticky {
   position: relative;
+  background: var(--site-surface);
+  color: var(--site-ink);
+  font-family: Arial, Helvetica, sans-serif;
   height: min(820px, 92svh);
   min-height: 620px;
   padding: clamp(28px, 5svh, 64px) 0 clamp(24px, 4svh, 46px);
@@ -161,8 +164,13 @@
   overflow-wrap: break-word;
 }
 
-.cardContent a {
+.cardAction {
   display: block;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font-family: Arial, Helvetica, sans-serif;
   max-width: 100%;
   min-height: 44px;
   padding: 12px 0;
@@ -179,8 +187,8 @@
   transition: color .2s ease, text-decoration-color .2s ease;
 }
 
-.cardContent a:hover { color: #fff; text-decoration-color: #fff; }
-.cardContent a:focus-visible { outline: 1px solid #fff; outline-offset: 5px; }
+.cardAction:hover { color: #fff; text-decoration-color: #fff; }
+.cardAction:focus-visible { outline: 1px solid #fff; outline-offset: 5px; }
 
 .arrow {
   position: absolute;
@@ -207,7 +215,7 @@
 .counter { font-size: 14px; line-height: 1.4; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .counter > span { color: var(--site-muted); margin-left: 8px; }
 
-.cardContent a[aria-disabled='true'] { cursor: default; }
+.cardAction:disabled, .cardAction[aria-disabled='true'] { cursor: default; }
 
 
 @media (max-width: 760px) {
@@ -218,7 +226,7 @@
   .bottom { flex-direction: column; gap: 8px; }
   .caption { font-size: 14px; letter-spacing: .08em; }
   .cardContent h3 { font-size: clamp(28px, 7.6vw, 36px); margin-bottom: 18px; }
-  .cardContent a { font-size: 14px; letter-spacing: .035em; }
+  .cardAction { font-size: 14px; letter-spacing: .035em; }
   .role { font-size: 14px; }
   .initials { top: 14%; font-size: 40px; }
   .arrow { width: 44px; height: 44px; }
@@ -232,7 +240,7 @@
   .top > span, .caption { display: none; }
   .bottom { flex-direction: row; }
   .cardContent h3 { font-size: 24px; margin: 6px 0 8px; }
-  .cardContent a { font-size: 12px; min-height: 36px; padding-block: 6px; letter-spacing: 0; }
+  .cardAction { font-size: 12px; min-height: 36px; padding-block: 6px; letter-spacing: 0; }
   .role { display: none; }
   .initials { top: 12px; left: 9%; right: auto; font-size: 20px; text-align: left; }
 }
@@ -244,5 +252,5 @@
 
 @media (prefers-reduced-motion: reduce) {
   .card { will-change: auto; }
-  .cardContent a, .arrow { transition: none; }
+  .cardAction, .arrow { transition: none; }
 }

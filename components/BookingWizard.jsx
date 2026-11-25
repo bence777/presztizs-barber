@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { formatPrice } from "../data/bookingConfig";
-import { getCachedAvailability, invalidateCachedAvailability, loadPublicAvailability, loadPublicCatalog } from "../lib/client/bookingCache.mjs";
+import { getCachedAvailability, invalidateCachedAvailability, loadPublicAvailability, loadPublicCatalog, loadEarliestAppointment } from "../lib/client/bookingCache.mjs";
 import { useLanguage } from "./LanguageProvider";
 import { matchTeamMember, resolveBarberSelection } from "../data/team.mjs";
+import BarberCarousel from "./BarberCarousel";
 import GuestIdentity from "./GuestIdentity";
 import styles from "../styles/BookingWizard.module.css";
 
@@ -76,8 +77,15 @@ export default function BookingWizard() {
   const workspaceRef = useRef(null);
   const previousStepRef = useRef(0);
   const preselectionRef = useRef(null);
+  const earliestRequestRef = useRef(null);
+  const stepRef = useRef(0);
   const [today, setToday] = useState(getTodayInDebrecen);
   const [step, setStep] = useState(0);
+  stepRef.current = step;
+  const [earliestRequested, setEarliestRequested] = useState(false);
+  const [earliestLoading, setEarliestLoading] = useState(false);
+  const [earliestResult, setEarliestResult] = useState(null);
+  const [earliestError, setEarliestError] = useState("");
   const [serviceId, setServiceId] = useState(null);
   const [barberId, setBarberId] = useState(null);
   const [date, setDate] = useState(null);
@@ -102,6 +110,19 @@ export default function BookingWizard() {
   const [confirmedBooking, setConfirmedBooking] = useState(null);
   const SERVICES = catalog.services;
   const BARBERS = catalog.barbers;
+  const barberChoices = useMemo(() => [
+    { id: 'any', name: t('Leghamarabbi időpont'), role: t('Az összes fodrász közül'), symbol: '◷' },
+    ...BARBERS,
+  ], [BARBERS, language]);
+
+  useEffect(() => () => { earliestRequestRef.current?.abort(); earliestRequestRef.current = null; }, []);
+  useEffect(() => {
+    if (step !== 2 && earliestRequestRef.current) {
+      earliestRequestRef.current.abort();
+      earliestRequestRef.current = null;
+      setEarliestLoading(false);
+    }
+  }, [step]);
 
   useEffect(() => {
     let active = true;
@@ -113,7 +134,7 @@ export default function BookingWizard() {
   }, []);
 
   useEffect(() => {
-    if (!serviceId || !barberId) return;
+    if (!serviceId || !barberId || earliestLoading || barberId === 'any' && earliestRequested) return;
     let active = true;
     const month = `${monthParts(visibleMonth).year}-${String(monthParts(visibleMonth).month + 1).padStart(2, "0")}`;
     const force = refreshAvailability !== lastRefreshRef.current;
@@ -135,23 +156,22 @@ export default function BookingWizard() {
         setAvailableDays(data.days || {});
         setHasWorkingHours(data.hasWorkingHours !== false);
         const selected=selectedSlotRef.current;
-        if(selected.date&&!data.days?.[selected.date]){setDate(null);setTime(null);}
-        else if(selected.time&&!data.days?.[selected.date]?.some(slot=>slot.value===selected.time)){setTime(null);}
+        if(selected.date&&!data.days?.[selected.date]){setDate(null);setTime(null);setEarliestResult(null);}
+        else if(selected.time&&!data.days?.[selected.date]?.some(slot=>slot.value===selected.time)){setTime(null);setEarliestResult(null);}
       })
       .catch(error => { if (active) setAvailabilityError(error.message); })
       .finally(() => { if (active) setAvailabilityLoading(false); });
     return () => { active = false; };
-  }, [serviceId, barberId, visibleMonth, refreshAvailability]);
+  }, [serviceId, barberId, visibleMonth, refreshAvailability, earliestLoading, earliestRequested]);
 
-  useEffect(()=>{setDate(null);setTime(null)},[serviceId,barberId,visibleMonth]);
   useEffect(()=>{
-    if(!serviceId||!barberId||step!==2)return;
+    if(!serviceId||!barberId||step!==2||earliestLoading||barberId==='any')return;
     const refresh=()=>{if(document.visibilityState==='visible')setRefreshAvailability(v=>v+1)};
     const timer=setInterval(refresh,15000);
     window.addEventListener('focus',refresh);
     document.addEventListener('visibilitychange',refresh);
     return()=>{clearInterval(timer);window.removeEventListener('focus',refresh);document.removeEventListener('visibilitychange',refresh)};
-  },[serviceId,barberId,step]);
+  },[serviceId,barberId,step,earliestLoading]);
 
   // A szolgáltatás vagy barber előre kiválasztható a főoldalról:
   // /idopontfoglalas?service=skin-fade&barber=mark
@@ -163,8 +183,13 @@ export default function BookingWizard() {
     const service = SERVICES.find((item) => item.id === router.query.service);
     const barber = resolveBarberSelection(BARBERS, router.query);
     if (service && barber) setServiceId(service.id);
-    if (barber) setBarberId(barber.id);
-    if (service && barber) setStep(2);
+    if (barber) {
+      setBarberId(barber.id);
+      setEarliestRequested(barber.id === 'any');
+      setEarliestResult(null);
+      setDate(null);setTime(null);
+    }
+    if (service && barber) { setStep(2); if (barber.id === 'any') void findEarliest(service.id); }
     else if (barber) setStep(1);
   }, [router.isReady, router.query.service, router.query.barber, router.query.barberName, catalog, catalogLoading]);
 
@@ -204,9 +229,16 @@ export default function BookingWizard() {
     setConfirmedBooking(null);
     setBookingError("");
     setStep(2);
+    if (earliestRequested) void findEarliest(id);
   }
 
   function selectBarber(id) {
+    earliestRequestRef.current?.abort();
+    earliestRequestRef.current = null;
+    setEarliestLoading(false);
+    setEarliestRequested(id === 'any');
+    setEarliestResult(null);
+    setEarliestError('');
     setBarberId(id);
     setServiceId(null);
     setDate(null);
@@ -218,8 +250,41 @@ export default function BookingWizard() {
   }
 
   function selectDate(next) {
+    setEarliestRequested(false);
+    setEarliestResult(null);
     setDate(next);
     setTime(null);
+  }
+
+  async function findEarliest(nextServiceId) {
+    earliestRequestRef.current?.abort();
+    const request = new AbortController();
+    earliestRequestRef.current = request;
+    setEarliestLoading(true);
+    setEarliestResult(null);
+    setEarliestError('');
+    setDate(null);setTime(null);
+    setAvailableDays({});setAvailabilityError('');setAvailabilityLoading(false);
+    try {
+      const data = await loadEarliestAppointment(nextServiceId, { signal: request.signal });
+      if (request.signal.aborted || earliestRequestRef.current !== request || stepRef.current !== 2) return;
+      if (!data.appointment) {
+        setEarliestError('A következő 60 napban nincs szabad időpont.');
+        return;
+      }
+      const appointment = data.appointment;
+      setBarberId(appointment.barberId);
+      setVisibleMonth(monthIndex(appointment.date));
+      setDate(appointment.date);setTime(appointment.time);
+      setEarliestResult(appointment);
+    } catch (error) {
+      if (!request.signal.aborted && earliestRequestRef.current === request) setEarliestError(error.message);
+    } finally {
+      if (earliestRequestRef.current === request) {
+        earliestRequestRef.current = null;
+        setEarliestLoading(false);
+      }
+    }
   }
 
   function handleVerified(profile) {
@@ -245,6 +310,7 @@ export default function BookingWizard() {
         if (response.status === 409) {
           invalidateCachedAvailability(serviceId, barberId, date.slice(0, 7));
           setStep(2); setShowPreview(false); setTime(null); setRefreshAvailability(n => n + 1);
+          if (earliestRequested) void findEarliest(serviceId);
         }
         throw new Error(data.error || t("Nem sikerült véglegesíteni a foglalást."));
       }
@@ -280,7 +346,7 @@ export default function BookingWizard() {
           <div className={`${styles.summaryRow} ${step === 0 ? styles.summaryRowActive : ""}`}>
             <div>
               <small>{t("01 / BARBER")}</small>
-              <strong>{barberId === "any" ? t("Bármelyik barber") : barber?.name || t("Választásra vár")}</strong>
+              <strong>{barberId === "any" ? t("Leghamarabbi időpont") : barber?.name || t("Választásra vár")}</strong>
             </div>
             {barberId && <button type="button" onClick={() => { setStep(0); setShowPreview(false); }} aria-label={t("Barber módosítása")}>{t("Módosítás")}</button>}
           </div>
@@ -334,45 +400,23 @@ export default function BookingWizard() {
           ))}
         </nav>
 
-        <div className={styles.content}>
+        <div className={`${styles.content} ${step === 0 ? styles.barberContent : ""}`}>
           {step === 0 && (
             <>
               <div className={styles.sectionHead}>
                 <span className={styles.eyebrow}>{t("ELSŐ LÉPÉS")}</span>
                 <h2>{t("Kihez szeretnél menni?")}</h2>
-                <p>{t("Van kedvenc barbered? Válaszd ki. Ha nincs, segítünk.")}</p>
+                <p>{t("Lapozz a fodrászok között, vagy válaszd a leghamarabbi időpontot.")}</p>
               </div>
               {!catalogLoading && !catalogError && router.query.barberName && !matchTeamMember(BARBERS, router.query.barberName) && <p className={styles.noTimes} role="status">{t("A kiválasztott fodrász jelenleg nem foglalható online. Válassz az elérhető csapattagok közül.")}</p>}
               {catalogLoading && <p className={styles.noTimes}>{t("Betöltjük a fodrászokat…")}</p>}
               {catalogError && <p className={styles.noTimes} role="alert">{t(catalogError)}</p>}
               {!catalogLoading && !catalogError && BARBERS.length === 0 && <p className={styles.noTimes}>{t("Jelenleg nincs aktív barber.")}</p>}
-              <div className={styles.barberGrid}>
-                <button
-                  type="button"
-                  disabled={BARBERS.length === 0}
-                  className={`${styles.barberCard} ${styles.anyBarber} ${barberId === "any" ? styles.selectedBarber : ""}`}
-                  onClick={() => selectBarber("any")}
-                  aria-pressed={barberId === "any"}
-                >
-                  <span className={styles.anyVisual} aria-hidden="true">
-                    {"✳\uFE0E"}
-                  </span>                  <span className={styles.barberCardText}><strong>{t("Bárki")}</strong><small>{t("Nincs preferenciám")}</small></span>
-                  <span className={styles.barberCheck} aria-hidden="true" />
-                </button>
-                {BARBERS.map((item) => (
-                  <button
-                    type="button"
-                    key={item.id}
-                    className={`${styles.barberCard} ${barberId === item.id ? styles.selectedBarber : ""}`}
-                    onClick={() => selectBarber(item.id)}
-                    aria-pressed={barberId === item.id}
-                  >
-                    <span className={styles.barberImage} style={item.image ? { backgroundImage: `url('${item.image}')` } : undefined} aria-hidden="true" />
-                    <span className={styles.barberCardText}><strong>{t(item.name)}</strong><small>{t(item.role)}</small></span>
-                    <span className={styles.barberCheck} aria-hidden="true" />
-                  </button>
-                ))}
-              </div>
+              {!catalogLoading && !catalogError && BARBERS.length > 0 && <BarberCarousel
+                barbers={barberChoices}
+                initialBarberId={barberId || 'any'}
+                onChoose={member => selectBarber(member.id)}
+              />}
             </>
           )}
 
@@ -414,20 +458,27 @@ export default function BookingWizard() {
                 <p>{t("Válassz egy napot a naptárból, majd egy kezdési időpontot.")}</p>
               </div>
               {bookingError && <p className={styles.noTimes} role="alert">{t(bookingError)}</p>}
+              {earliestLoading && <p className={styles.earliestNotice} role="status">{t("Megkeressük a legkorábbi szabad időpontot az összes fodrásznál…")}</p>}
+              {earliestError && <p className={styles.earliestNotice} role="alert">{t(earliestError)}</p>}
+              {earliestResult && <div className={styles.earliestNotice} role="status">
+                <strong>{t("A legkorábbi szabad időpont")}</strong>
+                <span>{earliestResult.barberName} · {dayLabel(earliestResult.date)} · {earliestResult.time}</span>
+              </div>}
+              {earliestRequested && !earliestLoading && <button type="button" className={styles.textButton} onClick={() => void findEarliest(serviceId)}>{t("Leghamarabbi időpont újrakeresése")}</button>}
               <div className={styles.dateGrid}>
                 <div className={styles.calendar}>
                   <div className={styles.calendarHead}>
                     <h3>{t(MONTHS[month])} <span>{year}</span></h3>
                     <div className={styles.monthControls}>
-                      <button type="button" aria-label={t("Előző hónap")} onClick={() => { setDate(null); setTime(null); setVisibleMonth((m) => Math.max(earliestMonth, m - 1)); }} disabled={visibleMonth <= earliestMonth}>{t("Előző")}</button>
-                      <button type="button" aria-label={t("Következő hónap")} onClick={() => { setDate(null); setTime(null); setVisibleMonth((m) => Math.min(latestMonth, m + 1)); }} disabled={visibleMonth >= latestMonth}>{t("Következő")}</button>
+                      <button type="button" aria-label={t("Előző hónap")} onClick={() => { setDate(null); setTime(null); setEarliestResult(null); setEarliestRequested(false); setVisibleMonth((m) => Math.max(earliestMonth, m - 1)); }} disabled={earliestLoading || visibleMonth <= earliestMonth}>{t("Előző")}</button>
+                      <button type="button" aria-label={t("Következő hónap")} onClick={() => { setDate(null); setTime(null); setEarliestResult(null); setEarliestRequested(false); setVisibleMonth((m) => Math.min(latestMonth, m + 1)); }} disabled={earliestLoading || visibleMonth >= latestMonth}>{t("Következő")}</button>
                     </div>
                   </div>
                   <div className={styles.weekdays}>{(language === "en" ? ["M", "T", "W", "T", "F", "S", "S"] : WEEKDAYS).map((name, index) => <span key={index}>{name}</span>)}</div>
                   <div className={styles.days} role="group" aria-label={`${year}. ${t(MONTHS[month])} ${t("naptár")}`}>
                     {calendar.map((iso, index) => {
                       if (!iso) return <span key={`blank-${index}`} className={styles.blankDay} aria-hidden="true" />;
-                      const enabled = !availabilityLoading && Boolean(availableDays[iso]?.length) && iso >= today.date && iso <= maxDate;
+                      const enabled = !earliestLoading && !availabilityLoading && Boolean(availableDays[iso]?.length) && iso >= today.date && iso <= maxDate;
                       return (
                         <button
                           key={iso}
@@ -463,7 +514,7 @@ export default function BookingWizard() {
                               type="button"
                               disabled={!slot.available}
                               className={`${styles.time} ${time === slot.value ? styles.timeSelected : ""}`}
-                              onClick={() => setTime(slot.value)}
+                              onClick={() => { setEarliestRequested(false); setEarliestResult(null); setTime(slot.value); }}
                               aria-pressed={time === slot.value}
                             >{slot.value}</button>
                           ))}
@@ -480,7 +531,7 @@ export default function BookingWizard() {
               </div>
               <div className={styles.stepActions}>
                 <button className={styles.textButton} type="button" onClick={() => setStep(1)}>{t("Vissza a szolgáltatásokhoz")}</button>
-                <button className={styles.mainButton} type="button" disabled={!date || !time} onClick={() => setStep(3)}>{t("Tovább az adatokhoz")}</button>
+                <button className={styles.mainButton} type="button" disabled={!date || !time || earliestLoading || availabilityLoading} onClick={() => setStep(3)}>{t("Tovább az adatokhoz")}</button>
               </div>
             </>
           )}
@@ -516,7 +567,7 @@ export default function BookingWizard() {
                 <div className={styles.review} role="region" aria-live="polite">
                   <dl>
                     <div><dt>{t("Szolgáltatás")}</dt><dd>{t(service?.name)} · {formatPrice(service?.price || 0)}</dd></div>
-                    <div><dt>Barber</dt><dd>{barberId === "any" ? t("Bármelyik elérhető barber") : barber?.name}</dd></div>
+                    <div><dt>Barber</dt><dd>{barberId === "any" ? t("Leghamarabbi időpont") : barber?.name}</dd></div>
                     <div><dt>{t("Nap és időpont")}</dt><dd>{dayLabel(date)} · {time}</dd></div>
                     <div><dt>{t("Név")}</dt><dd>{person.name}</dd></div>
                     <div><dt>{t("Kapcsolat")}</dt><dd>{person.email} · {person.phone}</dd></div>

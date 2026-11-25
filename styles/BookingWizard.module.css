@@ -84,6 +84,11 @@
   flex: 1; width: 100%; max-width: 1350px;
   padding: 32px clamp(23px, 4.8vw, 74px) 62px;
 }
+.content.barberContent { max-width: none; padding-inline: 0; padding-bottom: 0; }
+.barberContent > .sectionHead,
+.barberContent > .noTimes { margin-inline: clamp(23px, 4.8vw, 74px); }
+.earliestNotice { display: flex; flex-direction: column; gap: 8px; padding: 20px 24px; margin: 0 0 24px; background: var(--site-surface); color: var(--site-ink); font: 400 16px/1.6 Arial, sans-serif; }
+.earliestNotice strong { font-weight: 600; }
 .sectionHead { margin-bottom: 32px; }
 .eyebrow { font: 600 11px/1.5 Arial, sans-serif; letter-spacing: .18em; color: #666; }
 .sectionHead h2 { font: 400 clamp(38px, 3.9vw, 62px)/1.06 Georgia, 'Times New Roman', serif; letter-spacing: -.057em; margin: 16px 0 12px; }
@@ -106,22 +111,11 @@
 .serviceMeta { display: flex; flex-direction: column; gap: 6px; text-align: left; min-width: 110px; }
 .serviceMeta strong { font: 600 14px/1.15 Arial, sans-serif; white-space: nowrap; }
 .serviceMeta small { font: 400 12px/1.2 Arial, sans-serif; color: #898989; white-space: nowrap; }
-.selectMark, .barberCheck {
+.selectMark {
   flex: none; display: inline-block; width: 22px; height: 22px;
   border: 1.5px solid #444; border-radius: 50%; position: relative;
 }
-.selectedRow .selectMark::before, .selectedBarber .barberCheck::before { content: ''; position: absolute; inset: 5px; background: #141414; border-radius: 50%; }
-.barberGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
-.barberCard { position: relative; min-width: 0; display: flex; flex-direction: column; overflow: hidden; background: #fff; color: #111; border: 1px solid #e3e3e3; border-radius: 15px; text-align: left; cursor: pointer; padding: 0; }
-.barberCard:hover { border-color: #999; }
-.selectedBarber { border-color: #111; box-shadow: 0 0 0 1px #111 inset; }
-.barberImage, .anyVisual { display: block; width: 100%; height: clamp(140px, 17vw, 245px); background-position: center 30%; background-size: cover; filter: grayscale(1); }
-.anyVisual { display: grid; place-items: center; background: var(--site-surface); color: var(--site-ink); font: 400 66px/1 Georgia, serif; }
-.barberCardText { display: flex; flex-direction: column; gap: 7px; padding: 19px 20px 23px; }
-.barberCardText strong { font: 400 28px/1.08 Georgia, serif; letter-spacing: -.045em; }
-.barberCardText small { font: 400 12px/1.5 Arial, sans-serif; color: #888; }
-.barberCheck { position: absolute; bottom: 23px; right: 18px; width: 19px; height: 19px; }
-.selectedBarber .barberCheck::before { inset: 4px; }
+.selectedRow .selectMark::before { content: ''; position: absolute; inset: 5px; background: #141414; border-radius: 50%; }
 .dateGrid { display: grid; grid-template-columns: minmax(0, 1.03fr) minmax(0, .97fr); gap: clamp(20px, 4vw, 64px); align-items: start; }
 .calendar { min-width: 0; }
 .calendarHead { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 22px; }
@@ -187,7 +181,6 @@
   .summaryBottom { width: 175px; margin-left: 20px; }
   .step { gap: 9px; font-size: 13px; }
   .step:not(:last-child)::after { display: none; }
-  .barberGrid { gap: 10px; }
 }
 @media (max-width: 800px) {
   .summary { min-height: 0; padding: 14px 23px 20px; flex-direction: column; }
@@ -235,13 +228,6 @@
   .serviceMeta small { font-size: 11px; }
   .selectMark { width: 20px; height: 20px; }
   .selectedRow .selectMark::before { inset: 4px; }
-  .barberGrid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 11px; }
-  .barberImage, .anyVisual { height: 133px; }
-  .barberCardText { padding: 15px 13px 18px; }
-  .barberCardText strong { font-size: 21px; }
-  .barberCardText small { font-size: 10px; }
-  .barberCheck { right: 10px; bottom: 13px; width: 16px; height: 16px; }
-  .selectedBarber .barberCheck::before { inset: 3px; }
   .calendarHead h3 { font-size: 27px; }
   .monthControls button { padding: 0 9px; font-size: 11px; }
   .weekdays, .days { gap: 4px; }
