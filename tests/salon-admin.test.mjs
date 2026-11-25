@@ -18,7 +18,7 @@ globalThis.fetch=async(raw,opts)=>{
  const url=new URL(raw),table=url.pathname.split('/').pop(),method=opts.method,body=opts.body&&JSON.parse(opts.body);calls.push({table,url,method,body,headers:opts.headers});
  let data=[];
  if(table==='booking_services')data=[service];
- if(table==='booking_staff')data=[{id:'barber-1',name:'Egy',active:true}];
+ if(table==='booking_staff')data=[{id:'barber-1',name:'Paliga Zoltán',active:true}];
  if(table==='booking_hours')data=hours;
  if(table==='booking_time_off')data=method==='GET'?off:method==='DELETE'?[{id}]:[{id,...body}];
  if(table==='booking_statistics')data={total:12,haircuts:3,today:2,month:'2026-11'};

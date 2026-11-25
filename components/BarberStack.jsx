@@ -6,7 +6,7 @@ import {
   useTransform,
   useReducedMotion,
 } from "framer-motion";
-import { TEAM, matchTeamMember } from '../data/team.mjs';
+import { getTeamBarbers, barberBookingHref } from '../data/team.mjs';
 import { loadPublicCatalog } from '../lib/client/bookingCache.mjs';
 import { useLanguage } from './LanguageProvider';
 import styles from "../styles/BarberStack.module.css";
@@ -61,7 +61,7 @@ function Card({ barber, index, count, position, layout, activeIndex, animating, 
         <span className={styles.role}>{t(barber.role || "Fodrász")}</span>
         <h3>{barber.name}</h3>
         <a
-          href={`/idopontfoglalas?${barber.id ? `barber=${encodeURIComponent(barber.id)}` : `barberName=${encodeURIComponent(barber.name)}`}`}
+          href={barberBookingHref(barber)}
           tabIndex={active && !animating ? 0 : -1}
           aria-disabled={animating || undefined}
           draggable="false"
@@ -80,7 +80,7 @@ export default function BarberStack() {
     loadPublicCatalog().then(data => { if (active) setCatalog(data.barbers || []); }).catch(() => {});
     return () => { active = false; };
   }, []);
-  const BARBERS = TEAM.map(member => ({ ...matchTeamMember(catalog, member.name), name: member.name }));
+  const BARBERS = getTeamBarbers(catalog, { includeMissing: true });
   const sceneRef = useRef(null);
   const dragRef = useRef(null);
   const suppressClickRef = useRef(false);
@@ -88,6 +88,7 @@ export default function BarberStack() {
   const animationRef = useRef(null);
   const animatingRef = useRef(false);
   const pendingRef = useRef(null);
+  const selectRef = useRef(null);
   const [animating, setAnimating] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [dragging, setDragging] = useState(false);
@@ -146,6 +147,32 @@ export default function BarberStack() {
       onComplete: () => finishSelection(index, target),
     });
   }
+  selectRef.current = selectBarber;
+
+  useEffect(() => {
+    const scene = sceneRef.current;
+    let total = 0, lastInput = 0, consumed = false;
+    function horizontalWheel(event) {
+      if (event.ctrlKey) return;
+      const dx = event.deltaX || (event.shiftKey ? event.deltaY : 0);
+      const dy = event.shiftKey ? 0 : event.deltaY;
+      if (Math.abs(dx) <= Math.abs(dy) * 1.2 || Math.abs(dx) < 1) return;
+      event.preventDefault();
+      const now = performance.now();
+      if (now - lastInput > 240) { total = 0; consumed = false; }
+      lastInput = now;
+      if (animatingRef.current || dragRef.current?.dragging || consumed) return;
+      const pixels = dx * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? scene.clientWidth : 1);
+      if (Math.sign(total) !== Math.sign(pixels)) total = 0;
+      total += pixels;
+      if (Math.abs(total) >= 55) {
+        consumed = true;
+        selectRef.current(activeRef.current + Math.sign(total));
+      }
+    }
+    scene.addEventListener('wheel', horizontalWheel, { passive: false });
+    return () => scene.removeEventListener('wheel', horizontalWheel);
+  }, []);
 
   useEffect(() => {
     if (!reducedMotion) return;
@@ -156,7 +183,7 @@ export default function BarberStack() {
 
   function pointerDown(event) {
     suppressClickRef.current = false;
-    if (!event.isPrimary || event.button !== 0 || animatingRef.current || event.target.closest('a, [data-carousel-control]')) return;
+    if (!event.isPrimary || event.button !== 0 || animatingRef.current || event.target.closest('[data-carousel-control]')) return;
     dragRef.current = { id: event.pointerId, x: event.clientX, y: event.clientY, origin: position.get(), index: activeRef.current, dragging: false, vertical: false };
   }
 
@@ -164,11 +191,11 @@ export default function BarberStack() {
     const drag = dragRef.current;
     if (!drag || event.pointerId !== drag.id || drag.vertical) return;
     const dx = event.clientX - drag.x, dy = event.clientY - drag.y;
-    if (!drag.dragging && Math.abs(dy) > 14 && Math.abs(dy) > Math.abs(dx)) {
+    if (!drag.dragging && Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx) * 1.2) {
       drag.vertical = true;
       return;
     }
-    if (!drag.dragging && Math.abs(dx) > 16 && Math.abs(dx) > Math.abs(dy) * 1.6) {
+    if (!drag.dragging && Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.2) {
       drag.dragging = true;
       setDragging(true);
       event.currentTarget.setPointerCapture(event.pointerId);
@@ -176,7 +203,7 @@ export default function BarberStack() {
     if (drag.dragging) {
       event.preventDefault();
       // A small, bounded preview follows the hand directly, without spring lag.
-      if (!reducedMotion) position.set(drag.origin - Math.max(-.3, Math.min(.3, dx / layout.firstOffset * .5)));
+      if (!reducedMotion) position.set(drag.origin - Math.max(-.48, Math.min(.48, dx / layout.firstOffset * .65)));
     }
   }
 
@@ -188,8 +215,8 @@ export default function BarberStack() {
     if (!drag.dragging) return;
     suppressClickRef.current = true;
     const dx = event.clientX - drag.x, dy = event.clientY - drag.y;
-    const threshold = Math.max(72, Math.min(110, layout.cardWidth * .27));
-    const deliberate = !cancelled && Math.abs(dx) >= threshold && Math.abs(dx) > Math.abs(dy) * 1.6;
+    const threshold = Math.max(36, Math.min(64, layout.cardWidth * .18));
+    const deliberate = !cancelled && Math.abs(dx) >= threshold && Math.abs(dx) > Math.abs(dy) * 1.2;
     selectBarber(drag.index + (deliberate ? -Math.sign(dx) : 0), !deliberate);
   }
 
@@ -221,6 +248,7 @@ export default function BarberStack() {
           onPointerMove={pointerMove}
           onPointerUp={pointerEnd}
           onPointerCancel={event => pointerEnd(event, true)}
+          onLostPointerCapture={event => { if (event.target === event.currentTarget) pointerEnd(event, true); }}
           onClickCapture={event => { if (suppressClickRef.current) { event.preventDefault(); event.stopPropagation(); suppressClickRef.current = false; } }}
           onDragStart={event => event.preventDefault()}
         >

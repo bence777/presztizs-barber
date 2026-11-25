@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import { formatPrice } from "../data/bookingConfig";
 import { getCachedAvailability, invalidateCachedAvailability, loadPublicAvailability, loadPublicCatalog } from "../lib/client/bookingCache.mjs";
 import { useLanguage } from "./LanguageProvider";
-import { matchTeamMember } from "../data/team.mjs";
+import { matchTeamMember, resolveBarberSelection } from "../data/team.mjs";
 import GuestIdentity from "./GuestIdentity";
 import styles from "../styles/BookingWizard.module.css";
 
@@ -75,6 +75,7 @@ export default function BookingWizard() {
   const dayLabel = iso => iso ? formatDay(iso, locale) : t("Még nincs kiválasztva");
   const workspaceRef = useRef(null);
   const previousStepRef = useRef(0);
+  const preselectionRef = useRef(null);
   const [today, setToday] = useState(getTodayInDebrecen);
   const [step, setStep] = useState(0);
   const [serviceId, setServiceId] = useState(null);
@@ -155,14 +156,17 @@ export default function BookingWizard() {
   // A szolgáltatás vagy barber előre kiválasztható a főoldalról:
   // /idopontfoglalas?service=skin-fade&barber=mark
   useEffect(() => {
-    if (!router.isReady) return;
+    if (!router.isReady || catalogLoading) return;
+    const key = JSON.stringify([router.query.service, router.query.barber, router.query.barberName]);
+    if (preselectionRef.current === key) return;
+    preselectionRef.current = key;
     const service = SERVICES.find((item) => item.id === router.query.service);
-    const barber = (router.query.barber === 'any' && BARBERS.length ? { id: 'any' } : BARBERS.find((item) => item.id === router.query.barber)) || matchTeamMember(BARBERS, router.query.barberName);
+    const barber = resolveBarberSelection(BARBERS, router.query);
     if (service && barber) setServiceId(service.id);
     if (barber) setBarberId(barber.id);
     if (service && barber) setStep(2);
     else if (barber) setStep(1);
-  }, [router.isReady, router.query.service, router.query.barber, router.query.barberName, catalog]);
+  }, [router.isReady, router.query.service, router.query.barber, router.query.barberName, catalog, catalogLoading]);
 
   // A felület állapotát Debrecen szerinti dátumhoz igazítjuk.
   useEffect(() => {

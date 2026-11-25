@@ -54,7 +54,7 @@ try {
     await page.goto(base);
     await page.getByRole('heading', { name: 'Egy saját hely. Közös szemlélet.' }).waitFor();
     assert.ok((await page.locator('#szalon').innerText()).includes('Demeter Tamás'));
-    for (const member of TEAM) assert.equal(await page.getByRole('heading', { name: member.name, exact: true }).count(), 1);
+    assert.deepEqual(await page.locator('#csapat article h3').allTextContents(), TEAM.map(member => member.name));
     assert.equal(await page.locator('#szolgaltatasok').count(), 0);
     assert.ok(!/5500|Minden vágásnak karaktere van/i.test(await page.locator('main').innerText()));
     assert.ok((await page.locator('video').evaluate(element => getComputedStyle(element).filter)).includes('brightness(0.85)'));

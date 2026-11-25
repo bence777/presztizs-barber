@@ -6,13 +6,14 @@ const initialFetch = globalThis.fetch;
 let calls = [];
 globalThis.fetch = async (url,options={}) => {
   calls.push({url:String(url),options});
-  if (String(url).includes('/config')) return { ok:true, json:async()=>({services:[{id:'hajvagas'}],barbers:[{id:'barber-1'}]}) };
+  if (String(url).includes('/config')) return { ok:true, json:async()=>({services:[{id:'hajvagas'}],barbers:[{id:'barber-1',name:'Paliga Zoltán'},{id:'legacy-1',name:'Első Barber'}]}) };
   return { ok:true, json:async()=>({days:{'2026-11-12':[{value:'11:00',available:true}]},hasWorkingHours:true}) };
 };
 
 test('Public catalog deduplicates concurrent requests and reuses cache',async()=>{
   const [a,b] = await Promise.all([loadPublicCatalog(),loadPublicCatalog()]);
   assert.deepEqual(a,b);
+  assert.deepEqual(a.barbers.map(member=>member.id),['barber-1']);
   await loadPublicCatalog();
   assert.equal(calls.filter(x=>x.url.includes('/config')).length,1);
   assert.equal(calls[0].options.credentials,'omit');

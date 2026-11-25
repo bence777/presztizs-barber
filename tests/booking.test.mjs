@@ -8,7 +8,7 @@ const { localToUtcMs, localDay, getMonthAvailability, placeBooking } = await imp
 const stamp=(date,time)=>new Date(localToUtcMs(date,time)).toISOString();
 const rows={
   booking_services: [{id:'hajvagas',name:'Hajvágás',description:'',duration_minutes:45,price_huf:5000,active:true}],
-  booking_staff: [{id:'mark',name:'Márk',role:'Barber',image_url:null,active:true}],
+  booking_staff: [{id:'mark',name:'Paliga Zoltán',role:'Barber',image_url:null,active:true}],
   booking_hours: [{staff_id:'mark',weekday:3,opens:'09:00:00',closes:'18:00:00'}],
   booking_time_off: [{staff_id:'mark',starts_at:stamp('2026-11-11','15:00'),ends_at:stamp('2026-11-11','16:00')}],
   booking_appointments: [{staff_id:'mark',starts_at:stamp('2026-11-11','12:00'),ends_at:stamp('2026-11-11','12:45')}],
@@ -45,6 +45,17 @@ test('Monthly availability uses configured hours, 2h notice and excludes actual 
   assert.equal(times.includes('15:30'),false);
   assert.equal(times.includes('16:00'),true);
   assert.equal(days['2026-11-12'],undefined);
+});
+
+test('any-barber bookings exclude legacy staff hidden from the home page',async()=>{
+  rows.booking_staff.push({id:'legacy',name:'Első Barber',role:'Barber',active:true});
+  rows.booking_hours.push({staff_id:'legacy',weekday:3,opens:'18:00:00',closes:'19:00:00'});
+  const args={serviceId:'hajvagas',month:'2026-11',now:Date.parse('2026-11-11T08:00:00Z'),freshMetadata:true};
+  const result=await getMonthAvailability({...args,barberId:'any'});
+  assert.ok(!result.days['2026-11-11'].some(slot=>slot.value==='18:00'));
+  assert.ok(Object.values(result.candidates).every(day=>Object.values(day).every(ids=>ids.every(id=>id==='mark'))));
+  await assert.rejects(()=>getMonthAvailability({...args,barberId:'legacy'}),error=>error.code==='bad_selection');
+  rows.booking_staff.pop();rows.booking_hours.pop();
 });
 
 test('Booking insert locks in price and staff and returns confirmation',async()=>{

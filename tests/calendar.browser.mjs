@@ -3,6 +3,7 @@ import {createRequire} from 'node:module';
 import {mkdir} from 'node:fs/promises';
 import path from 'node:path';
 import assert from 'node:assert/strict';
+import { TEAM } from '../data/team.mjs';
 const require=createRequire(path.join(process.env.DEMETERS_QA_MODULES||process.cwd(),'package.json'));
 const {chromium}=require('playwright');
 const base=process.env.DEMETERS_PREVIEW_URL||'http://127.0.0.1:3100';
@@ -40,7 +41,7 @@ try {
    else if(u.pathname==='/api/admin/time-off'){
     if(method==='GET'){await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({timeOff})});return;}
     writes.push({method,data});if(method==='DELETE')timeOff=timeOff.filter(o=>o.id!==data.id);else{const o={id:data.id||'77777777-7777-4777-8777-777777777777',staff_id:data.staffId,starts_at:utc(data.startDate,data.allDay?'00:00':data.startTime),ends_at:utc(data.endDate,data.allDay?'23:59':data.endTime),reason:data.reason,all_day:data.allDay,daily_start:data.allDay?null:data.startTime,daily_end:data.allDay?null:data.endTime,kind:data.kind};timeOff=[...timeOff.filter(x=>x.id!==o.id),o];}result={timeOff};
-   }else if(u.pathname==='/api/booking/config')result={services:services.map(s=>({...s,duration:s.duration_minutes,price:s.price_huf})),barbers:staff};
+   }else if(u.pathname==='/api/booking/config')result={services:services.map(s=>({...s,duration:s.duration_minutes,price:s.price_huf})),barbers:staff.map((member,index)=>({...member,name:TEAM[index]?.name||member.name}))};
    else if(u.pathname==='/api/booking/availability')result={days:{'2026-11-17':[{value:'10:00',available:true}]},hasWorkingHours:true};
    else if(u.pathname==='/api/guest/session')result={authenticated:false};
    else return route.abort();
