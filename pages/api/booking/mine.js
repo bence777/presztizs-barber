@@ -1,11 +1,13 @@
 import {getGuest,jsonOnly} from '../../../lib/server/guestAuth';
-import {bookingDb} from '../../../lib/server/bookingDb';
+import {bookingDb,materializeMonthly,localDay} from '../../../lib/server/bookingDb';
 import {appointmentQueryFields,decorateAppointments,claimManualAppointments} from '../../../lib/server/bookingManagement';
 export default async function handler(req,res) {
   if(!jsonOnly(req,res,'GET'))return;
   try {
     const guest=await getGuest(req,res);
     if(!guest)return res.status(401).json({error:'Jelentkezz be e-mailes kóddal.'});
+    const from=localDay(),until=new Date(Date.parse(from+'T12:00Z')+366*86400000).toISOString().slice(0,10);
+    await materializeMonthly(from,until);
     try{await claimManualAppointments(guest)}catch(err){console.warn('[booking/mine] Could not link manual appointments:',err.code||err.message)}
     const selectedId=typeof req.query.booking==='string'?req.query.booking:null;
     if(selectedId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(selectedId)) return res.status(400).json({error:'Érvénytelen foglalási azonosító.'});

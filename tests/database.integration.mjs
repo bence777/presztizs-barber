@@ -37,6 +37,8 @@ try {
  insert into public.booking_services(id,name,duration_minutes,price_huf) values('qa-legacy','Legacy',30,5000);
  insert into public.booking_appointments(user_id,staff_id,service_id,starts_at,ends_at,price_huf) values('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','qa-legacy','qa-legacy','2026-10-01 10:00+02','2026-10-01 10:30+02',5000);`);
  await client.query(await read('supabase/migrations/20261116100053_demeters_salon_admin.sql'));
+ await client.query(await read('supabase/migrations/20261125182900_monthly_appointments.sql'));
+ await client.query(await read('supabase/migrations/20261125183014_secure_monthly_rpcs.sql'));
  await check('migration preserves legacy bookings and backfills their contact snapshots',async()=>{
   const legacy=(await client.query("select guest_name,guest_phone,status from public.booking_appointments where staff_id='qa-legacy'")).rows[0];assert.deepEqual(legacy,{guest_name:'Legacy guest',guest_phone:'+36301112222',status:'confirmed'});
  });
@@ -93,6 +95,58 @@ try {
    await client.query('begin');await insert('qa-one','2026-11-22','10:00');
    const collision=insert('qa-one','2026-11-22','10:00',{conn:other}).then(()=>null,e=>e);await client.query('commit');assert.equal((await collision)?.code,'23P01');
   }finally{await other.end()}
+ });
+ const monthly=async(staff,date,time,{userId=null}={})=>{
+  const start=(await client.query("select ($1::date+$2::time) at time zone 'Europe/Budapest' t",[date,time])).rows[0].t;
+  return (await client.query('select * from public.booking_create_monthly($1::jsonb)',[JSON.stringify({staff_id:staff,service_id:'qa-cut',starts_at:start,ends_at:new Date(+start+1800000),price_huf:5000,status:'confirmed',user_id:userId,guest_name:'Monthly guest',guest_phone:'+36301234567',is_manual:true})])).rows[0];
+ };
+ let recurring;
+ await check('monthly rules clamp month ends, preserve Budapest time through DST, and have no end date',async()=>{
+  await identity(barber);recurring=await monthly('qa-one','2032-01-31','10:00');assert.ok(recurring.monthly_series_id);
+  const rows=(await client.query("select monthly_date::text d,starts_at from public.booking_appointments where monthly_series_id=$1 order by monthly_date",[recurring.monthly_series_id])).rows;
+  assert.equal(rows.length,13);assert.equal(rows[1].d,'2032-02-29');assert.equal(rows[2].starts_at.toISOString(),'2032-03-31T08:00:00.000Z');
+  await identity(null);await client.query("select public.booking_materialize_monthly('2099-02-01','2099-03-01','qa-one')");
+  const distant=(await client.query("select monthly_date::text d,starts_at from public.booking_appointments where monthly_series_id=$1 and monthly_date>='2099-02-01'",[recurring.monthly_series_id])).rows[0];assert.equal(distant.d,'2099-02-28');assert.equal(distant.starts_at.toISOString(),'2099-02-28T09:00:00.000Z');
+ });
+ await check('deleted and cancelled monthly occurrences stay removed after repeated materialization',async()=>{
+  await identity(barber);const rows=(await client.query("select id from public.booking_appointments where monthly_series_id=$1 order by monthly_date limit 3",[recurring.monthly_series_id])).rows;
+  await client.query('delete from public.booking_appointments where id=$1',[rows[1].id]);await client.query("update public.booking_appointments set status='cancelled' where id=$1",[rows[2].id]);
+  await identity(null);await client.query("select public.booking_materialize_monthly('2032-01-01','2032-05-01','qa-one')");
+  assert.equal((await client.query('select id from public.booking_appointments where id=$1',[rows[1].id])).rowCount,0);assert.equal((await client.query('select status from public.booking_appointments where id=$1',[rows[2].id])).rows[0].status,'cancelled');
+ });
+ await check('individual monthly edits free the original slot and are not overwritten',async()=>{
+  await identity(barber);await client.query("update public.booking_appointments set starts_at=starts_at+interval '1 hour',ends_at=ends_at+interval '1 hour',guest_name='Edited occurrence' where id=$1",[recurring.id]);
+  await identity(null);await client.query("select public.booking_materialize_monthly('2032-01-01','2032-02-01','qa-one')");assert.equal((await client.query('select guest_name from public.booking_appointments where id=$1',[recurring.id])).rows[0].guest_name,'Edited occurrence');await insert('qa-one','2032-01-31','10:00');
+ });
+ await check('unmaterialized monthly reservations block distant online bookings and absences',async()=>{
+  await identity(null);await assert.rejects(()=>insert('qa-one','2099-03-31','10:00',{manual:false}),e=>e.code==='23P01');await assert.rejects(()=>off('qa-one','2099-04-30','10:00','11:00'),e=>e.code==='P0001');
+ });
+ await check('a distant future conflict rolls back the entire series instead of silently skipping a month',async()=>{
+  await identity(null);await insert('qa-two','2099-01-31','11:00');await identity(owner);
+  await assert.rejects(()=>monthly('qa-two','2035-01-31','11:00'),e=>e.code==='23P01');assert.equal((await client.query("select id from public.booking_appointments where staff_id='qa-two' and starts_at='2035-01-31 11:00+01'")).rowCount,0);
+ });
+ await check('monthly rules reject month-end collisions with another rule',async()=>{
+  await identity(barber);await assert.rejects(()=>monthly('qa-one','2035-01-28','10:00'),e=>e.code==='23P01');
+ });
+ await check('same-guest virtual monthly reservations across barbers cannot overlap',async()=>{
+  await identity(owner);const linked=await monthly('qa-one','2035-01-28','16:00',{userId:guest});
+  await assert.rejects(()=>monthly('qa-two','2035-01-31','16:00',{userId:guest}),e=>e.code==='23P01');
+  await identity(null);await assert.rejects(()=>client.query("insert into public.booking_appointments(user_id,staff_id,service_id,starts_at,ends_at,price_huf,status,guest_name,guest_phone,is_manual) values($1,'qa-two','qa-cut','2099-02-28 16:00+01','2099-02-28 16:30+01',5000,'confirmed','Linked Guest','+36301234567',true)",[guest]),e=>e.code==='23P01');
+  await identity(owner);await client.query('select public.booking_stop_monthly($1)',[linked.id]);
+ });
+ await check('monthly creation detects future absence conflicts and keeps later closed days reserved',async()=>{
+  await identity(null);await off('qa-two','2099-02-28','15:00','15:30');await identity(owner);await assert.rejects(()=>monthly('qa-two','2035-01-31','15:00'),e=>e.code==='P0001');
+  const closed=await monthly('qa-two','2035-01-31','17:00');await identity(null);const weekday=(await client.query("select extract(dow from date '2099-03-31')::int w")).rows[0].w;await client.query('reset role');const schedule=(await client.query("delete from public.booking_hours where staff_id='qa-two' and weekday=$1 returning opens,closes",[weekday])).rows;await identity(null);await client.query("select public.booking_materialize_monthly('2099-03-01','2099-04-01','qa-two')");assert.equal((await client.query("select id from public.booking_appointments where monthly_series_id=$1 and monthly_date='2099-03-31'",[closed.monthly_series_id])).rowCount,1);await client.query('reset role');for(const h of schedule)await client.query("insert into public.booking_hours(staff_id,weekday,opens,closes) values('qa-two',$1,$2,$3)",[weekday,h.opens,h.closes]);await identity(owner);await client.query('select public.booking_stop_monthly($1)',[closed.id]);
+ });
+ await check('monthly generation is idempotent under concurrent range requests',async()=>{
+  await identity(null);const other=pg.getPgClient();await other.connect();try{await identity(null,other);await Promise.all([client.query("select public.booking_materialize_monthly('2040-01-01','2041-01-01','qa-one')"),other.query("select public.booking_materialize_monthly('2040-01-01','2041-01-01','qa-one')")]);assert.equal((await client.query("select count(*)::int n from public.booking_appointments where monthly_series_id=$1 and monthly_date>='2040-01-01' and monthly_date<'2041-01-01'",[recurring.monthly_series_id])).rows[0].n,12)}finally{await other.end()}
+ });
+ await check('guest and anonymous roles cannot generate or stop monthly bookings; barber cannot create another staff series',async()=>{
+  await identity(guest);await assert.rejects(()=>monthly('qa-one','2036-01-01','16:00'),e=>e.code==='42501');await assert.rejects(()=>client.query("select public.booking_materialize_monthly('2040-01-01','2041-01-01',null)"),e=>e.code==='42501');await assert.rejects(()=>client.query('select public.booking_stop_monthly($1)',[recurring.id]),e=>e.code==='42501');
+  await identity(barber);await assert.rejects(()=>monthly('qa-two','2036-01-01','16:00'),e=>e.code==='42501');
+ });
+ await check('stopping monthly recurrence deletes future confirmed occurrences and prevents regeneration',async()=>{
+  await identity(barber);await client.query('select public.booking_stop_monthly($1)',[recurring.id]);await identity(null);await client.query("select public.booking_materialize_monthly('2099-01-01','2100-01-01','qa-one')");assert.equal((await client.query("select id from public.booking_appointments where monthly_series_id=$1 and status='confirmed'",[recurring.monthly_series_id])).rowCount,0);assert.equal((await client.query("select id from public.booking_appointments where monthly_series_id=$1 and status='cancelled'",[recurring.monthly_series_id])).rowCount,1);
  });
  await check('forged JWT email metadata does not grant owner privileges or global guest profiles',async()=>{await identity(guest);await client.query("select set_config('request.jwt.claims',$1,false)",[JSON.stringify({sub:guest,role:'authenticated',email:'owner@test.invalid',user_metadata:{role:'owner',email:'owner@test.invalid'}})]);assert.equal((await client.query('select * from public.booking_appointments')).rowCount,0);await assert.rejects(()=>client.query('select * from public.guest_profiles'),e=>e.code==='42501')});
  await check('anonymous database role has no personal-data access',async()=>{await client.query('reset role');await client.query('set role anon');await assert.rejects(()=>client.query('select * from public.booking_appointments'),e=>e.code==='42501');await assert.rejects(()=>client.query("select public.booking_statistics('2026-11-01',null)"),e=>e.code==='42501');await identity(null)});

@@ -1,6 +1,6 @@
 import {jsonOnly} from '../../../lib/server/guestAuth';
 import {requireManager} from '../../../lib/server/bookingManagement';
-import {createAdminAppointment,editAdminAppointment,deleteAdminAppointment,adminMutationError} from '../../../lib/server/adminCalendar';
+import {createAdminAppointment,editAdminAppointment,deleteAdminAppointment,stopMonthlyAppointments,adminMutationError} from '../../../lib/server/adminCalendar';
 import {emailBookingReceipt,emailBookingUpdate,emailBookingRemoved} from '../../../lib/server/bookingEmail';
 export const config={api:{bodyParser:{sizeLimit:'8kb'}}};
 export default async function handler(req,res) {
@@ -9,11 +9,11 @@ export default async function handler(req,res) {
   try {
     const session=await requireManager(req,res);if(!session)return;
     const {id,...payload}=req.body||{};
-    const notify=payload.notify===true;
+    const notify=payload.notify===true&&payload.stopMonthly!==true;
     let booking;
     if(req.method==='POST')booking=await createAdminAppointment(payload,session.manager);
     else if(req.method==='PATCH')booking=await editAdminAppointment(id,payload,session.manager);
-    else booking=await deleteAdminAppointment(id,session.manager);
+    else booking=payload.stopMonthly===true?await stopMonthlyAppointments(id,session.manager):await deleteAdminAppointment(id,session.manager);
     let emailSent=null;
     if(notify){
       try {

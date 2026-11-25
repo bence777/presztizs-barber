@@ -22,6 +22,7 @@ globalThis.fetch=async(raw,opts)=>{
  if(table==='booking_hours')data=hours;
  if(table==='booking_time_off')data=method==='GET'?off:method==='DELETE'?[{id}]:[{id,...body}];
  if(table==='booking_statistics')data={total:12,haircuts:3,today:2,month:'2026-11'};
+ if(table==='booking_create_monthly')data=[{id,...body.p_booking,monthly_series_id:'77777777-7777-4777-8777-777777777777'}];
  if(table==='booking_appointments'){
   if(method==='GET')data=paging?(Number(url.searchParams.get('offset'))===0?Array.from({length:500},(_,i)=>({id:String(i)})):[{id:'501'}]):existing.filter(b=>(!url.searchParams.get('staff_id')||url.searchParams.get('staff_id')===`eq.${b.staff_id}`)&&(!url.searchParams.get('id')||url.searchParams.get('id')===`eq.${b.id}`));
   else data=[{id,...body}];
@@ -38,7 +39,8 @@ test('unknown roles, missing staff assignments and injected staff filters fail c
 test('calendar and absence queries are staff scoped and use the staff bearer for RLS',async()=>{
  await readCalendar({manager:barber,from:'2026-11-16',to:'2026-11-23'});
  await readTimeOff(barber,{start:'2026-11-15T23:00Z',end:'2026-11-22T23:00Z'});
- for(const call of calls){assert.equal(call.url.searchParams.get('staff_id'),'eq.barber-1');assert.equal(call.headers.Authorization,'Bearer verified-staff-jwt');assert.equal(call.headers.apikey,'sb_publishable_fake_test');assert.equal(call.headers['X-Demeters-Admin-Device'],barber.adminDevice)}
+ const generation=calls.find(c=>c.table==='booking_materialize_monthly');assert.deepEqual(generation.body,{p_from:'2026-11-16',p_to:'2026-11-23',p_staff:'barber-1'});assert.equal(generation.headers.apikey,'sb_secret_fake_test');
+ for(const call of calls.filter(c=>c.table!=='booking_materialize_monthly')){assert.equal(call.url.searchParams.get('staff_id'),'eq.barber-1');assert.equal(call.headers.Authorization,'Bearer verified-staff-jwt');assert.equal(call.headers.apikey,'sb_publishable_fake_test');assert.equal(call.headers['X-Demeters-Admin-Device'],barber.adminDevice)}
  calls=[];await readCalendar({manager:owner,from:'2026-11-16',to:'2026-11-23'});assert.equal(calls[0].url.searchParams.get('staff_id'),null);
 });
 test('manual booking needs phone, allows no email/account, and cannot be created during break or outside hours',async()=>{
@@ -54,6 +56,18 @@ test('manual booking checks fresh absence and overlap records before insert',asy
  off=[];existing=[{id,staff_id:'barber-1',starts_at:'2026-11-20T09:00Z',ends_at:'2026-11-20T09:30Z'}];
  await assert.rejects(()=>createAdminAppointment(input,barber),e=>e.code==='overlap');
 });
+test('monthly creation uses an atomic RPC with the manager identity and rejects invalid recurrence options',async()=>{
+ const item=await createAdminAppointment({...input,repeatMonthly:true},barber);
+ assert.ok(item.monthly_series_id);
+ const write=calls.find(c=>c.table==='booking_create_monthly');
+ assert.equal(write.headers.Authorization,'Bearer verified-staff-jwt');
+ assert.equal(write.headers['X-Demeters-Admin-Device'],barber.adminDevice);
+ assert.equal(write.body.p_booking.staff_id,barber.staff_id);
+ assert.equal(write.body.p_booking.starts_at,'2026-11-20T09:00:00.000Z');
+ assert.equal(calls.some(c=>c.table==='booking_appointments'&&c.method==='POST'),false);
+ await assert.rejects(()=>createAdminAppointment({...input,repeatMonthly:'true'},barber),e=>e.code==='invalid_repeat');
+ await assert.rejects(()=>createAdminAppointment({...input,repeatMonthly:true,status:'cancelled'},barber),e=>e.code==='invalid_repeat');
+});
 test('barber cannot edit or delete another staff booking even with its known ID',async()=>{
  existing=[{id,staff_id:'barber-2'}];
  await assert.rejects(()=>editAdminAppointment(id,input,barber),e=>e.status===404);
@@ -62,7 +76,7 @@ test('barber cannot edit or delete another staff booking even with its known ID'
 });
 test('monthly statistics are a database aggregate scoped independently of calendar rows',async()=>{
  assert.deepEqual(await readStatistics(barber,'2026-11'),{total:12,haircuts:3,today:2,month:'2026-11'});
- assert.deepEqual(calls[0].body,{p_month:'2026-11-01',p_staff:'barber-1'});
+ assert.deepEqual(calls.find(c=>c.table==='booking_statistics').body,{p_month:'2026-11-01',p_staff:'barber-1'});
  await assert.rejects(()=>readStatistics(barber,'2026-11','barber-2'),e=>e.status===403);
  await assert.rejects(()=>readStatistics(owner,'2026-13'),e=>e.status===400);
 });
