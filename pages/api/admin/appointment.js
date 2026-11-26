@@ -15,7 +15,7 @@ export default async function handler(req,res) {
     else if(req.method==='PATCH')booking=await editAdminAppointment(id,payload,session.manager);
     else booking=payload.stopMonthly===true?await stopMonthlyAppointments(id,session.manager):await deleteAdminAppointment(id,session.manager);
     let emailSent=null;
-    if(notify){
+    if(notify&&booking.guest_email){
       try {
         if(req.method==='POST')emailSent=await emailBookingReceipt({email:booking.guest_email,name:booking.guest_name,booking});
         if(req.method==='PATCH')emailSent=await emailBookingUpdate({booking});

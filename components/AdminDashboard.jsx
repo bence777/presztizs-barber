@@ -4,8 +4,9 @@ import styles from '../styles/AdminDashboard.module.css';
 import AdminTimeOff,{AbsenceList,absenceForm} from './AdminTimeOff';
 import useDialog from '../lib/client/useDialog';
 import AdminStaffAccounts from './AdminStaffAccounts';
+import AdminServices from './AdminServices';
 import AdminCalendarSlot from './AdminCalendarSlot';
-import {buildCalendarLayout,CALENDAR_CARD_HEIGHT} from '../lib/client/calendarLayout.mjs';
+import {buildCalendarLayout} from '../lib/client/calendarLayout.mjs';
 
 const HOUR_START=8,HOUR_END=21;
 const ZONE='Europe/Budapest';
@@ -49,7 +50,7 @@ const dateDay=s=>new Date(s+'T12:00:00Z').getUTCDate();
 const dayIdx=s=>(new Date(s+'T12:00:00Z').getUTCDay()+6)%7;
 const formattedPrice=n=>new Intl.NumberFormat('hu-HU').format(n??0)+' Ft';
 const minutes=iso=>{const [h,m]=timeKey(iso).split(':').map(Number);return h*60+m};
-const duration=b=>Math.max(15,Math.round((new Date(b.ends_at)-new Date(b.starts_at))/60000));
+const duration=b=>Math.max(1,Math.round((new Date(b.ends_at)-new Date(b.starts_at))/60000));
 const api=async(url,options={})=>{const r=await fetch(url,{cache:'no-store',credentials:'same-origin',...options});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Szerverhiba történt.');return d};
 const forRange=(date,mode,tab)=>{
   if(tab==='absence')return {from:startMonth(date),to:offsetDay(endMonth(date),1)};
@@ -58,8 +59,13 @@ const forRange=(date,mode,tab)=>{
   if(mode==='month'){const from=startWeek(startMonth(date));return {from,to:offsetDay(from,42)}};
   const from=startWeek(date);return {from,to:offsetDay(from,7)};
 };
-function parseBooking(b){return {originalStart:b.starts_at,monthlySeriesId:b.monthly_series_id||null,staffId:b.staff_id,serviceId:b.service_id,date:dateKey(b.starts_at),time:timeKey(b.starts_at),guestName:b.guest_name||'',guestEmail:b.guest_email||'',guestPhone:b.guest_phone||'',status:b.status,notify:!b.is_demo};}
-function emptyForm(date,time,staffId,services,staff){return {staffId:staffId||staff.find(x=>x.active)?.id||'',serviceId:services.find(x=>x.active)?.id||'',date:date||today(),time:time||'10:00',guestName:'',guestEmail:'',guestPhone:'',status:'confirmed',notify:true,repeatMonthly:false};}
+function parseBooking(b){return {durationMinutes:duration(b),originalStart:b.starts_at,monthlySeriesId:b.monthly_series_id||null,staffId:b.staff_id,serviceId:b.service_id,date:dateKey(b.starts_at),time:timeKey(b.starts_at),guestName:b.guest_name||'',guestEmail:b.guest_email||'',guestPhone:b.guest_phone||'',status:b.status,notify:!b.is_demo};}
+function emptyForm(date,time,staffId,services,staff){
+ const member=staff.find(x=>x.id===staffId)||staff.find(x=>x.active);
+ const own=services.filter(x=>x.active&&!x.archived_at&&x.staff_id===member?.id);
+ const service=own.find(x=>x.id===member?.default_manual_service_id)||own[0];
+ return {staffId:member?.id||'',serviceId:service?.id||'',durationMinutes:service?.duration_minutes||30,date:date||today(),time:time||'10:00',guestName:'',guestEmail:'',guestPhone:'',status:'confirmed',notify:false,repeatMonthly:false};
+}
 function StatusTag({value}) {return <span className={`${styles.status} ${styles['status_'+value]||''}`}><span className={styles.statusDot}/>{STATUS[value]||value}</span>}
 
 export default function AdminDashboard({onAdminLogout,adminManager}){
@@ -102,11 +108,11 @@ export default function AdminDashboard({onAdminLogout,adminManager}){
   const load=useCallback(async()=>{
     const serial=++fetchSerial.current;
     setLoading(true);setError('');
-    if(tab==='accounts'){setLoading(false);return;}
+    if(['accounts','services','settings'].includes(tab)){setLoading(false);return;}
     try {const data=await api(tab==='absence'?`/api/admin/time-off?from=${range.from}&to=${range.to}&staffId=${encodeURIComponent(filterStaff)}`:`/api/admin/calendar?from=${range.from}&to=${range.to}&staffId=${encodeURIComponent(filterStaff)}`);if(serial===fetchSerial.current){setBookings(data.bookings||[]);setTimeOff(data.timeOff||[]);setHours(data.hours||[]);}}
     catch(e){if(serial===fetchSerial.current)setError(e.message)}finally{if(serial===fetchSerial.current)setLoading(false)}
   },[range.from,range.to,filterStaff,tab]);
-  useEffect(()=>{let live=true;api('/api/admin/options').then(data=>{if(live){setOptions(data);if(data.manager?.role==='barber')setFilterStaff(data.manager.staff_id);}}).catch(e=>{if(live)setError(e.message)});return()=>{live=false}},[]);
+  useEffect(()=>{let live=true;api('/api/admin/options').then(data=>{if(live){setOptions(data);if(data.manager?.role==='barber')setFilterStaff(data.manager.staff_id);}}).catch(e=>{if(live)setError(e.message)});return()=>{live=false}},[refreshVersion]);
   useEffect(()=>{load()},[load,refreshVersion]);
   useEffect(()=>{if(drawerOpen||absenceEditor||slotActions)return;const refresh=()=>{if(document.visibilityState==='visible')load()};const timer=setInterval(refresh,30000);window.addEventListener('focus',refresh);return()=>{clearInterval(timer);window.removeEventListener('focus',refresh)}},[load,drawerOpen,absenceEditor,slotActions]);
   useEffect(()=>{
@@ -126,7 +132,8 @@ export default function AdminDashboard({onAdminLogout,adminManager}){
     return true;
   }),[bookings,filterStaff,filterStatus,search]);
   const byDay=useMemo(()=>{const map=new Map();for(const b of filtered){if(tab==='calendar'&&filterStatus==='all'&&b.status==='cancelled')continue;const d=dateKey(b.starts_at);map.set(d,[...(map.get(d)||[]),b]);}for(const arr of map.values())arr.sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at));return map},[filtered,tab,filterStatus]);
-  const serviceOptions=options.services,staffOptions=options.staff;
+  const staffOptions=options.staff;
+  const serviceOptions=options.services.filter(s=>!form||s.staff_id===form.staffId).filter(s=>s.active&&!s.archived_at||s.id===form?.serviceId);
   const visibleStaff=filterStaff==='all'?staffOptions:staffOptions.filter(s=>s.id===filterStaff);
   const staffHours=hours.filter(h=>visibleStaff.some(s=>s.id===h.staff_id));
   const calendarStart=Math.min(HOUR_START,...staffHours.map(h=>Number(h.opens.slice(0,2))),...bookings.map(b=>Math.floor(minutes(b.starts_at)/60)));
@@ -135,9 +142,13 @@ export default function AdminDashboard({onAdminLogout,adminManager}){
   const heading=tab==='absence'?new Intl.DateTimeFormat('hu-HU',{year:'numeric',month:'long',timeZone:'UTC'}).format(new Date(cursor+'T12:00:00Z')):view==='day'?fullDate(cursor):view==='month'?new Intl.DateTimeFormat('hu-HU',{year:'numeric',month:'long',timeZone:'UTC'}).format(new Date(cursor+'T12:00:00Z')):`${shortDate(startWeek(cursor))} – ${shortDate(offsetDay(startWeek(cursor),6))}, ${cursor.slice(0,4)}`;
   function move(direction){setCursor(old=>{if(tab==='list'||tab==='absence'){const [y,m]=old.split('-').map(Number);return new Date(Date.UTC(y,m-1+direction,1)).toISOString().slice(0,10)}if(view==='day')return offsetDay(old,direction);if(view==='week')return offsetDay(old,7*direction);const [y,m]=old.split('-').map(Number);return new Date(Date.UTC(y,m-1+direction,15)).toISOString().slice(0,10)})}
   function selectBooking(b){setSelectedId(b.id);setForm(parseBooking(b));setIsAdding(false);setDrawerOpen(true);window.history.replaceState({},'',`/admin/foglalasok?booking=${encodeURIComponent(b.id)}`)}
-  function newBooking(day=cursor,time='10:00',staffId=filterStaff==='all'?'':filterStaff){if(!serviceOptions.length||!staffOptions.length){setError('A szolgáltatások és a barberek még nem töltődtek be.');return;}setSelectedId(null);setIsAdding(true);setForm(emptyForm(day,time,staffId,serviceOptions,staffOptions));setDrawerOpen(true);window.history.replaceState({},'','/admin/foglalasok')}
+  function newBooking(day=cursor,time='10:00',staffId=filterStaff==='all'?'':filterStaff){if(!serviceOptions.length||!staffOptions.length){setError('A szolgáltatások és a barberek még nem töltődtek be.');return;}setSelectedId(null);setIsAdding(true);setForm(emptyForm(day,time,staffId,options.services,staffOptions));setDrawerOpen(true);window.history.replaceState({},'','/admin/foglalasok')}
   function closeDrawer(){setDrawerOpen(false);setSelectedId(null);setIsAdding(false);setForm(null);window.history.replaceState({},'','/admin/foglalasok')}
-  function setField(key,value){setForm(p=>({...p,[key]:value}))}
+  function setField(key,value){setForm(p=>{
+   if(key==='staffId'){const defaults=emptyForm(p.date,p.time,value,options.services,staffOptions);return {...p,staffId:value,serviceId:defaults.serviceId,durationMinutes:defaults.durationMinutes};}
+   if(key==='serviceId')return {...p,serviceId:value,durationMinutes:options.services.find(s=>s.id===value)?.duration_minutes||p.durationMinutes};
+   return {...p,[key]:value};
+  })}
   async function saveBooking(event){event.preventDefault();if(!form||saving)return;setSaving(true);setError('');
     try{const result=await api('/api/admin/appointment',{method:isAdding?'POST':'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({...form,...(isAdding?{}:{id:selectedId})})});
       setToast(isAdding?(form.repeatMonthly?'Havonta ismétlődő foglalás létrehozva.':'Foglalás sikeresen létrehozva.'):'Módosítások sikeresen mentve.');
@@ -169,10 +180,10 @@ export default function AdminDashboard({onAdminLogout,adminManager}){
     setSaving(true);setError('');
     try{await api('/api/admin/appointment',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:selectedId,stopMonthly:true})});setToast('A havi ismétlés leállítva.');closeDrawer();setRefreshVersion(x=>x+1)}catch(e){setError(e.message)}finally{setSaving(false)}
   }
-  const pageTitle=tab==='calendar'?'Naptár':tab==='absence'?'Szabadságok':tab==='accounts'?'Fodrászfiókok':'Foglalások';
-  const pageDescription={calendar:'Időpontok, vendégek és szabad helyek.',list:'A kiválasztott hónap foglalásainak kezelése.',absence:'Szabadságok és szünetek rögzítése, módosítása.',accounts:'Saját belépés minden fodrásznak, elkülönített hozzáféréssel.'}[tab];
+  const pageTitle=tab==='calendar'?'Naptár':tab==='absence'?'Szabadságok':tab==='accounts'?'Fodrászfiókok':tab==='services'?'Szolgáltatásaim':tab==='settings'?'Saját beállítások':'Foglalások';
+  const pageDescription={services:'Szolgáltatások, árak és időtartamok kezelése.',settings:'Profil, nyilvános elérhetőség és munkaidő.',calendar:'Időpontok, vendégek és szabad helyek.',list:'A kiválasztott hónap foglalásainak kezelése.',absence:'Szabadságok és szünetek rögzítése, módosítása.',accounts:'Saját belépés minden fodrásznak, elkülönített hozzáféréssel.'}[tab];
   const monthHeading=new Intl.DateTimeFormat('hu-HU',{year:'numeric',month:'long',timeZone:'UTC'}).format(new Date(cursor+'T12:00:00Z'));
-  const navigation=[['calendar','Naptár','calendar'],['list','Foglalások','list'],['absence','Szabadságok','clock'],...(isOwner?[['accounts','Fiókok','users']]:[])];
+  const navigation=[['calendar','Naptár','calendar'],['list','Foglalások','list'],['absence','Szabadságok','clock'],['services','Szolgáltatásaim','scissors'],['settings','Beállítások','settings'],...(isOwner?[['accounts','Fiókok','users']]:[])];
   function navigate(id){setTab(id);setSearch('');setFilterStatus('all');setError('');window.scrollTo({top:0,behavior:'instant'});}
   const ownName=staffOptions.find(s=>s.id===adminManager?.staff_id)?.name;
   const daysShown=view==='day'?[cursor]:Array.from({length:7},(_,i)=>offsetDay(startWeek(cursor),i));
@@ -198,15 +209,29 @@ export default function AdminDashboard({onAdminLogout,adminManager}){
       const end=o.daily_end?minuteOf(o.daily_end):Math.min(1440,(localMs(dateKey(o.ends_at),timeKey(o.ends_at))-dayStart)/60000);
       return {...o,start:Math.max(start,calendarStart*60),end:Math.min(end,calendarEnd*60)};
     }).filter(o=>o.end>o.start);
+    const slotMinutes=new Set(calendarLayout.rows.map(row=>row.minute));
+    for(const staff of visibleStaff){
+      const step=staff.booking_step_minutes||15;
+      for(const schedule of hours.filter(h=>h.staff_id===staff.id&&h.weekday===weekday)){
+        for(let start=minuteOf(schedule.opens);start<minuteOf(schedule.closes);start+=step)slotMinutes.add(start);
+      }
+    }
+    const slotRows=[...slotMinutes].sort((a,b)=>a-b).map((minute,index,all)=>({minute,top:calendarLayout.position(minute),height:calendarLayout.position(all[index+1]??calendarEnd*60)-calendarLayout.position(minute)}));
     return <div className={styles.dayColumn} key={day} style={{height:calendarLayout.height}}>
-      {calendarLayout.rows.map(row=>{
+      {slotRows.map(row=>{
         const open=visibleStaff.some(staff=>hours.some(h=>h.staff_id===staff.id&&h.weekday===weekday&&row.minute>=minuteOf(h.opens)&&row.minute<minuteOf(h.closes)));
-        const availableStaff=visibleStaff.filter(staff=>staff.active&&hours.some(h=>h.staff_id===staff.id&&h.weekday===weekday&&row.minute>=minuteOf(h.opens)&&row.minute+30<=minuteOf(h.closes))&&!absences.some(o=>o.staff_id===staff.id&&o.start<row.minute+30&&o.end>row.minute)&&!bookings.some(b=>b.staff_id===staff.id&&b.status!=='cancelled'&&dateKey(b.starts_at)===day&&minutes(b.starts_at)<row.minute+30&&minutes(b.ends_at)>row.minute));
+        const availableStaff=visibleStaff.filter(staff=>{
+          const own=options.services.filter(s=>s.staff_id===staff.id&&s.active&&!s.archived_at);
+          const service=own.find(s=>s.id===staff.default_manual_service_id)||own[0];
+          if(!service||!staff.active)return false;
+          const end=row.minute+service.duration_minutes;
+          return hours.some(h=>h.staff_id===staff.id&&h.weekday===weekday&&row.minute>=minuteOf(h.opens)&&end<=minuteOf(h.closes)&&(row.minute-minuteOf(h.opens))%(staff.booking_step_minutes||15)===0)&&!absences.some(o=>o.staff_id===staff.id&&o.start<end&&o.end>row.minute)&&!bookings.some(b=>b.staff_id===staff.id&&b.status!=='cancelled'&&dateKey(b.starts_at)===day&&minutes(b.starts_at)<end&&minutes(b.ends_at)>row.minute);
+        });
         const available=availableStaff.length>0,time=`${pad(Math.floor(row.minute/60))}:${pad(row.minute%60)}`,staffId=availableStaff[0]?.id;
         return <AdminCalendarSlot key={row.minute} type="button" aria-label={`${available?'Új foglalás':open?'Foglalt időszak':'Munkaidőn kívül'}: ${day} ${time}`} aria-haspopup="dialog" disabled={!available||loading} className={`${styles.slot} ${!open?styles.closedSlot:''}`} style={{top:row.top,height:row.height}} onBook={()=>newBooking(day,time,staffId)} onActions={point=>{setSlotError('');setSlotActions({day,time,staffId,x:Math.max(12,Math.min(point.x,window.innerWidth-292)),y:Math.max(12,Math.min(point.y,window.innerHeight-232))})}}/>;
       })}
       {absences.map(o=><button type="button" key={o.id} className={`${styles.absenceBlock} ${o.kind==='break'?styles.breakBlock:''}`} style={{top:calendarLayout.position(o.start),height:Math.max(34,calendarLayout.position(o.end)-calendarLayout.position(o.start)),left:3,width:'calc(100% - 6px)'}} onClick={()=>openAbsence(o)}><strong>{o.kind==='break'?'Szünet':'Szabadság'}</strong><span>{staffOptions.find(s=>s.id===o.staff_id)?.name}{o.reason?` · ${o.reason}`:''}</span></button>)}
-      {entries.map(b=>eventCard(b,{top:calendarLayout.positions.get(b.id),height:CALENDAR_CARD_HEIGHT,left:6,width:'calc(100% - 12px)'}))}
+      {entries.map(b=>eventCard(b,{top:calendarLayout.positions.get(b.id),...calendarLayout.events.get(b.id)}))}
       {day===dateKey(now)&&minutes(now)>=calendarStart*60&&minutes(now)<calendarEnd*60&&<div className={styles.nowLine} style={{top:calendarLayout.position(minutes(now))}} aria-label={`Jelenlegi idő: ${timeKey(now)}`}><span>{timeKey(now)}</span></div>}
     </div>}
 
@@ -224,7 +249,7 @@ export default function AdminDashboard({onAdminLogout,adminManager}){
       <header className={styles.topbar}><div className={styles.breadcrumb}><span>DEMETERS</span><span className={styles.slash}>/</span><strong>{pageTitle}</strong></div><div className={styles.topRight}><span className={styles.topTime}>MAGYARORSZÁG · GMT+1/+2</span><a href="/admin/eszkozok" title="Eszközök kezelése" style={{fontSize:12,color:"#555",textDecoration:"none"}}>Eszközök</a><a href="/" title="Weboldal megnyitása">Főoldal</a><span className={styles.avatar} title={ownName||'Kezelői fiók'}>D</span>{onAdminLogout&&<button type="button" onClick={onAdminLogout} title="Kilépés a kezelői fiókból" style={{background:'transparent',border:'1px solid #ddd',borderRadius:6,padding:'7px 11px',fontSize:11,color:'#666',cursor:'pointer'}}>Kijelentkezés</button>}</div></header>
       <nav className={styles.sectionNav} aria-label="Mobil kezelőfelület">{navigation.map(([id,label,icon])=><button key={id} type="button" aria-current={tab===id?'page':undefined} onClick={()=>navigate(id)}><Icon name={icon} size={20}/><span>{label}</span></button>)}</nav>
       <div className={styles.content}>
-        <div className={styles.headingRow}><div><div className={styles.overline}>{isOwner?'SZALON / FŐADMIN':'SAJÁT FIÓK'}</div><h1>{pageTitle}</h1><p>{pageDescription}</p>{!isOwner&&ownName&&<span className={styles.ownCalendar}>Saját fiók · {ownName}</span>}</div><div className={styles.headingActions}><button type="button" className={styles.ghostButton} onClick={()=>setRefreshVersion(x=>x+1)} disabled={loading}><Icon name="refresh" size={16}/><span>Frissítés</span></button>{tab!=='accounts'&&<button type="button" className={styles.primaryButton} onClick={()=>tab==='absence'?openAbsence():newBooking()}><Icon name="plus" size={17}/>{tab==='absence'?'Új távollét':'Új foglalás'}</button>}</div></div>
+        <div className={styles.headingRow}><div><div className={styles.overline}>{isOwner?'SZALON / FŐADMIN':'SAJÁT FIÓK'}</div><h1>{pageTitle}</h1><p>{pageDescription}</p>{!isOwner&&ownName&&<span className={styles.ownCalendar}>Saját fiók · {ownName}</span>}</div><div className={styles.headingActions}><button type="button" className={styles.ghostButton} onClick={()=>setRefreshVersion(x=>x+1)} disabled={loading}><Icon name="refresh" size={16}/><span>Frissítés</span></button>{!['accounts','services','settings'].includes(tab)&&<button type="button" className={styles.primaryButton} onClick={()=>tab==='absence'?openAbsence():newBooking()}><Icon name="plus" size={17}/>{tab==='absence'?'Új távollét':'Új foglalás'}</button>}</div></div>
         {tab==='calendar'&&<details className={styles.statisticsPanel} open={statsOpen} onToggle={e=>setStatsOpen(e.currentTarget.open)}><summary>Havi statisztikák</summary><div className={styles.statisticsToolbar}><label>Statisztikai hónap <input aria-label="Statisztikai hónap" type="month" required value={statsMonth} onChange={e=>{if(/^\d{4}-(0[1-9]|1[0-2])$/.test(e.target.value))setStatsMonth(e.target.value)}}/></label><span>Csak valós foglalások · hajvágás: teljesített szolgáltatások</span></div>
         {statsError&&<p role="alert" className={styles.error}>{statsError}</p>}
         <div className={styles.stats}>
@@ -232,7 +257,7 @@ export default function AdminDashboard({onAdminLogout,adminManager}){
         </div>
         </details>}
         {error&&<div role="alert" className={styles.error}><Icon name="info" size={17}/>{error}<button type="button" aria-label="Hiba bezárása" onClick={()=>setError('')}><Icon name="close" size={15}/></button></div>}
-        {tab==='accounts'?<AdminStaffAccounts refreshVersion={refreshVersion} onSaved={message=>{setToast(message);api('/api/admin/options').then(setOptions).catch(()=>{})}}/>:<div className={`${styles.workspace} ${tab==='absence'?styles.absenceWorkspace:''}`}>
+        {['services','settings'].includes(tab)?<AdminServices key={tab} mode={tab} staff={staffOptions} manager={options.manager||adminManager} onSaved={()=>setRefreshVersion(v=>v+1)}/>:tab==='accounts'?<AdminStaffAccounts refreshVersion={refreshVersion} onSaved={message=>{setToast(message);api('/api/admin/options').then(setOptions).catch(()=>{})}}/>:<div className={`${styles.workspace} ${tab==='absence'?styles.absenceWorkspace:''}`}>
           <div className={styles.toolbar}><div className={styles.dateNav}><button type="button" className={styles.iconButton} aria-label="Előző" onClick={()=>move(-1)}>Előző</button><button type="button" className={styles.iconButton} aria-label="Következő" onClick={()=>move(1)}>Következő</button><button type="button" className={styles.todayButton} onClick={()=>setCursor(today())}>{tab==='calendar'?'Ma':'Aktuális hónap'}</button><input className={styles.calendarDate} aria-label={tab==='calendar'?'Naptár dátuma':'Megjelenített hónap'} type={tab==='calendar'?'date':'month'} value={tab==='calendar'?cursor:cursor.slice(0,7)} onChange={e=>{if(tab==='calendar'&&/^\d{4}-\d{2}-\d{2}$/.test(e.target.value))setCursor(e.target.value);else if(/^\d{4}-\d{2}$/.test(e.target.value))setCursor(e.target.value+'-01')}}/><strong>{tab==='calendar'?heading:monthHeading}</strong></div>
             {tab==='calendar'&&<div className={styles.toolbarRight}><div className={styles.viewSwitch}>{[['day','Nap'],['week','Hét'],['month','Hónap']].map(([id,title])=><button type="button" key={id} className={view===id?styles.switchActive:''} onClick={()=>setView(id)}>{title}</button>)}</div></div>}
           </div>
@@ -257,11 +282,14 @@ export default function AdminDashboard({onAdminLogout,adminManager}){
       {slotError&&<p className={styles.drawerError} role="alert">{slotError}</p>}
     </section></div>}
     {drawerOpen&&form&&<div className={styles.drawerBackdrop} onMouseDown={e=>{if(e.target===e.currentTarget&&!saving)closeDrawer()}}><aside ref={bookingDialog} tabIndex={-1} className={styles.drawer} role="dialog" aria-modal="true" aria-labelledby="booking-drawer-title"><div className={styles.drawerHead}><div><span className={styles.overline}>FOGLALÁS / {isAdding?'ÚJ':'SZERKESZTÉS'}</span><h2 id="booking-drawer-title">{isAdding?'Új foglalás':'Foglalás szerkesztése'}</h2></div><button type="button" className={styles.iconButton} aria-label="Bezárás" onClick={closeDrawer} disabled={saving}><Icon name="close"/></button></div><form onSubmit={saveBooking} className={styles.drawerForm}>
-      <div className={styles.formSection}><span className={styles.sectionLabel}>01 / IDŐPONT</span><div className={styles.formGrid}><label>Szolgáltatás<select required value={form.serviceId} onChange={e=>setField('serviceId',e.target.value)}>{serviceOptions.map(s=><option key={s.id} value={s.id}>{s.name} · {s.duration_minutes}p · {formattedPrice(s.price_huf)}{!s.active?' (inaktív)':''}</option>)}</select></label><label>Barber<select required value={form.staffId} disabled={options.manager?.role==='barber'} onChange={e=>setField('staffId',e.target.value)}>{staffOptions.map(s=><option key={s.id} value={s.id}>{s.name}{!s.active?' (inaktív)':''}</option>)}</select></label><label>Dátum<input type="date" required value={form.date} onChange={e=>setField('date',e.target.value)}/></label><label>Kezdés<input type="time" step="900" required value={form.time} onChange={e=>setField('time',e.target.value)}/></label><label className={styles.fullWidth}>Állapot<select value={form.status} onChange={e=>setForm(p=>({...p,status:e.target.value,repeatMonthly:e.target.value==='confirmed'&&p.repeatMonthly}))}>{Object.entries(STATUS).map(([id,label])=><option disabled={['completed','no_show'].includes(id)&&form.date>todayKey} key={id} value={id}>{label}</option>)}</select></label></div></div>
+      {isAdding&&<div className={styles.formSection}><p>{staffOptions.find(s=>s.id===form.staffId)?.name} · {fullDate(form.date)} · {form.time}</p><label>Vendég neve<input autoFocus required minLength={1} maxLength={120} value={form.guestName} onChange={e=>setField('guestName',e.target.value)} placeholder="Teljes név"/></label><p className={styles.helpText}>{serviceOptions.find(s=>s.id===form.serviceId)?.name||'Válassz szolgáltatást'} · {form.durationMinutes} perc</p></div>}
+      <details open={!isAdding} className={styles.quickDetails}><summary>{isAdding?'Szolgáltatás, időtartam és további beállítások':'Foglalás részletei'}</summary>
+      <div className={styles.formSection}><span className={styles.sectionLabel}>01 / IDŐPONT</span><div className={styles.formGrid}><label>Szolgáltatás<select required value={form.serviceId} onChange={e=>setField('serviceId',e.target.value)}>{serviceOptions.map(s=><option key={s.id} value={s.id}>{s.name} · {s.duration_minutes}p · {formattedPrice(s.price_huf)}{!s.active?' (inaktív)':''}</option>)}</select></label><label>Barber<select required value={form.staffId} disabled={options.manager?.role==='barber'} onChange={e=>setField('staffId',e.target.value)}>{staffOptions.map(s=><option key={s.id} value={s.id}>{s.name}{!s.active?' (inaktív)':''}</option>)}</select></label><label>Dátum<input type="date" required value={form.date} onChange={e=>setField('date',e.target.value)}/></label><label>Kezdés<input type="time" step="900" required value={form.time} onChange={e=>setField('time',e.target.value)}/></label><label>Időtartam (perc)<input type="number" min={1} step={1} max={2147483647} required value={form.durationMinutes} onChange={e=>setField('durationMinutes',Number(e.target.value))}/></label><label className={styles.fullWidth}>Állapot<select value={form.status} onChange={e=>setForm(p=>({...p,status:e.target.value,repeatMonthly:e.target.value==='confirmed'&&p.repeatMonthly}))}>{Object.entries(STATUS).map(([id,label])=><option disabled={['completed','no_show'].includes(id)&&form.date>todayKey} key={id} value={id}>{label}</option>)}</select></label></div></div>
       {isAdding&&<div className={styles.formSection}><label className={styles.notifyRow}><input type="checkbox" checked={form.repeatMonthly} disabled={saving||form.status!=='confirmed'} onChange={e=>setField('repeatMonthly',e.target.checked)}/><span><strong>Havi ismétlés végdátum nélkül</strong><small>Minden hónap {Number(form.date.slice(-2))}. napján, {form.time}-kor. Rövidebb hónapban az utolsó napon. A későbbi alkalmak a szokásos munkaidőn kívülre is eshetnek.</small></span></label></div>}
       {!isAdding&&form.monthlySeriesId&&<div className={styles.formSection}><p className={styles.helpText}>Havonta ismétlődő foglalás. A módosítás, lemondás vagy törlés csak ezt az alkalmat érinti.</p><button type="button" className={styles.cancelButton} disabled={saving} onClick={stopMonthly}>Havi ismétlés leállítása</button></div>}
-      <div className={styles.formSection}><span className={styles.sectionLabel}>02 / VENDÉGADATOK</span><div className={styles.formGrid}><label className={styles.fullWidth}>Vendég neve<input required minLength={2} maxLength={120} value={form.guestName} onChange={e=>setField('guestName',e.target.value)} placeholder="Teljes név"/></label><label className={styles.fullWidth}>E-mail-cím (opcionális)<input type="email" maxLength={254} value={form.guestEmail} onChange={e=>setField('guestEmail',e.target.value)} placeholder="vendeg@email.hu"/></label><label className={styles.fullWidth}>Telefonszám<input type="tel" required={isAdding} minLength={7} maxLength={24} value={form.guestPhone} onChange={e=>setField('guestPhone',e.target.value)} placeholder="+36 30 123 4567"/></label></div></div>
+      {!isAdding&&<div className={styles.formSection}><span className={styles.sectionLabel}>02 / VENDÉGADATOK</span><div className={styles.formGrid}><label className={styles.fullWidth}>Vendég neve<input required minLength={2} maxLength={120} value={form.guestName} onChange={e=>setField('guestName',e.target.value)} placeholder="Teljes név"/></label><label className={styles.fullWidth}>E-mail-cím (opcionális)<input type="email" maxLength={254} value={form.guestEmail} onChange={e=>setField('guestEmail',e.target.value)} placeholder="vendeg@email.hu"/></label><label className={styles.fullWidth}>Telefonszám<input type="tel" minLength={7} maxLength={24} value={form.guestPhone} onChange={e=>setField('guestPhone',e.target.value)} placeholder="+36 30 123 4567"/></label></div></div>}
       <div className={styles.formSection}><span className={styles.sectionLabel}>03 / ÉRTESÍTÉS</span><label className={styles.notifyRow}><input type="checkbox" checked={form.notify} onChange={e=>setField('notify',e.target.checked)}/><span><strong>E-mailes értesítés küldése</strong><small>A levélben a vendég a saját foglalásához, a barber az adminnaptár adott foglalásához kap linket. Tesztadatoknál kapcsold ki.</small></span></label></div>
+      </details>
       {!isAdding&&form.status==='confirmed'&&<div className={styles.quickActions}><button type="button" className={styles.ghostButton} disabled={saving||Date.parse(form.originalStart)>Date.now()} onClick={()=>markBooking('completed')}>✓ Szolgáltatás elvégezve</button><button type="button" className={styles.cancelButton} disabled={saving} onClick={()=>{if(window.confirm('Lemondod a foglalást?'))markBooking('cancelled')}}>Foglalás lemondása</button></div>}
       {!isAdding&&<p className={styles.bookingMeta}>Foglalási azonosító: {selectedId}{currentBooking?.is_demo?' · TESZTADAT':''}</p>}
       {error&&<p className={styles.drawerError} role="alert">{error}</p>}

@@ -13,7 +13,7 @@ const defaultInput={staffId:'barber-1',serviceId:'hajvagas',date:'2026-11-12',ti
 const originalFetch=globalThis.fetch;
 globalThis.fetch=async(raw,opts={})=>{
  const u=new URL(raw),table=u.pathname.split('/').pop(),method=opts.method||'GET',body=opts.body?JSON.parse(opts.body):null;
- const service=[{id:'hajvagas',name:'Hajvágás',duration_minutes:30,price_huf:6000}];
+ const service=[{id:'hajvagas',staff_id:'barber-1',name:'Hajvágás',duration_minutes:30,price_huf:6000}];
  const staff=[{id:'barber-1',name:'Első Barber',email:null}];
  let value=[];
  if(table==='booking_services')value=service;

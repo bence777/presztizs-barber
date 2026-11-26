@@ -11,7 +11,7 @@ const output = '/private/tmp/demeters-qa/earliest-carousel'; await mkdir(output,
 const browser = await chromium.launch({ headless: true, ...(process.env.DEMETERS_BROWSER ? { executablePath: process.env.DEMETERS_BROWSER } : {}) });
 let passed = 0; const pass = text => { passed++; console.log('PASS ' + text); };
 const staff = TEAM.map((member, index) => ({ id: `actual-${index}`, name: member.name, role: 'Barber', image: null }));
-const services = [{ id: 'haircut', name: 'Hajvágás', duration: 30, price: 6000 }];
+const services = [{ id: 'haircut', staffId:staff[3].id, name: 'Hajvágás', duration: 30, price: 6000 }];
 const profile = { name: 'Test Guest', email: 'guest@example.com', phone: '+36301234567' };
 async function settled(page, name) {
   await page.waitForFunction(name => document.querySelector('[data-barber-carousel] article[class*="activeCard"] h3')?.textContent === name && document.querySelector('[data-barber-carousel] [aria-busy]')?.getAttribute('aria-busy') === 'false', name);
@@ -34,7 +34,7 @@ try {
     else if (url.pathname === '/api/booking/earliest') {
       earliestCalls++;
       await new Promise(resolve => setTimeout(resolve, mode === 'delayed' ? 800 : 120));
-      result = { appointment: mode === 'none' ? null : { barberId: earliestCalls === 1 ? staff[3].id : staff[4].id, barberName: earliestCalls === 1 ? staff[3].name : staff[4].name, date: '2026-12-01', time: earliestCalls === 1 ? '09:00' : '09:30' } };
+      result = { appointment: mode === 'none' ? null : { serviceId:'haircut',barberId: staff[3].id, barberName:staff[3].name, date: '2026-12-01', time: earliestCalls === 1 ? '09:00' : '09:30' } };
     } else if (url.pathname === '/api/booking/availability') {
       assert.notEqual(url.searchParams.get('barber'), 'any');
       result = { hasWorkingHours: true, days: { '2026-12-01': [{ value: '09:00', available: true }, { value: '09:30', available: true }] } };
@@ -43,14 +43,14 @@ try {
     else if (url.pathname === '/api/booking/create') {
       const data = request.postDataJSON(); creates.push(data);
       if (creates.length === 1) { status = 409; result = { error: 'Ezt az időpontot időközben lefoglalták. Válassz másikat.' }; }
-      else result = { booking: { id: 'fixture-confirmation', staff_name: staff[4].name, service_name: 'Hajvágás', local_date: data.date, local_time: data.time, price_huf: 6000 } };
+      else result = { booking: { id: 'fixture-confirmation', staff_name: staff[3].name, service_name: 'Hajvágás', local_date: data.date, local_time: data.time, price_huf: 6000 } };
     } else throw new Error('Unexpected API request: ' + url.pathname);
     await route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(result) });
   });
   await page.goto(base); await settled(page, staff[0].name);
   const homeMetrics = await cardMetrics(page);
   await page.goto(base + '/idopontfoglalas'); await settled(page, 'Leghamarabbi időpont');
-  assert.deepEqual(await cardMetrics(page), homeMetrics);
+  const bookingMetrics=await cardMetrics(page);assert.equal(bookingMetrics.font,homeMetrics.font);assert.equal(bookingMetrics.background,homeMetrics.background);assert.ok(parseFloat(bookingMetrics.height)<=parseFloat(homeMetrics.height));
   assert.deepEqual(await page.locator('[data-barber-carousel] article h3').allTextContents(), ['Leghamarabbi időpont', ...TEAM.map(person => person.name)]);
   assert.equal(await page.locator('[class*="barberGrid"]').count(), 0);
   assert.equal(await page.getByText('Bárki', { exact: true }).count(), 0);
@@ -68,7 +68,7 @@ try {
   await settled(page, staff[0].name);
   await page.locator('[data-barber-carousel] article[class*="activeCard"]').getByRole('button', { name: 'IDŐPONTFOGLALÁS', exact: true }).click();
   await page.getByRole('heading', { name: 'Miben segíthetünk?', exact: true }).waitFor(); assert.equal(earliestCalls, 0);
-  pass(`${width}px booking reuses the identical card dimensions, typography, actions and keyboard carousel; specific-barber booking stays manual`);
+  pass(`${width}px booking uses compact cards with the same, typography, actions and keyboard carousel; specific-barber booking stays manual`);
 
   await page.goto(base + '/idopontfoglalas'); await settled(page, 'Leghamarabbi időpont');
   await page.locator('[data-barber-carousel] article[class*="activeCard"]').getByRole('button', { name: 'IDŐPONTFOGLALÁS', exact: true }).click();
@@ -85,7 +85,7 @@ try {
   await page.getByRole('button', { name: 'IGEN, ÉN VAGYOK', exact: true }).click();
   await page.getByRole('button', { name: 'Foglalás áttekintése', exact: true }).click();
   await page.getByRole('button', { name: 'IDŐPONT VÉGLEGESÍTÉSE', exact: true }).click();
-  await page.getByRole('status').filter({ hasText: `${staff[4].name} ·` }).waitFor();
+  await page.getByRole('status').filter({ hasText: `${staff[3].name} ·` }).waitFor();
   await page.waitForFunction(() => [...document.querySelectorAll('button')].some(button => button.textContent === 'Tovább az adatokhoz' && !button.disabled));
   assert.equal(await page.getByRole('button', { name: '09:30', exact: true }).getAttribute('aria-pressed'), 'true');
   assert.equal(creates.length, 1);
@@ -94,9 +94,9 @@ try {
   await page.getByRole('heading', { name: 'A foglalásod sikeres.', exact: true }).waitFor();
   assert.deepEqual(creates, [
     { serviceId: 'haircut', barberId: staff[3].id, date: '2026-12-01', time: '09:00' },
-    { serviceId: 'haircut', barberId: staff[4].id, date: '2026-12-01', time: '09:30' },
+    { serviceId: 'haircut', barberId: staff[3].id, date: '2026-12-01', time: '09:30' },
   ]);
-  pass(`${width}px a booking conflict searches again across all barbers; confirmation uses the newly displayed real barber and time`);
+  pass(`${width}px a booking conflict searches again for the selected personal service; confirmation uses the newly displayed real barber and time`);
 
   mode = 'none'; await page.goto(base + '/idopontfoglalas?barber=any&service=haircut');
   await page.getByRole('alert').filter({ hasText: 'A következő 60 napban nincs szabad időpont.' }).waitFor();

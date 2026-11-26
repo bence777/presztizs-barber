@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {buildCalendarLayout,CALENDAR_CARD_HEIGHT} from '../lib/client/calendarLayout.mjs';
+import {buildCalendarLayout} from '../lib/client/calendarLayout.mjs';
 process.env.SUPABASE_URL='https://test.supabase.co';process.env.SUPABASE_SECRET_KEY='sb_secret_test';process.env.SUPABASE_PUBLISHABLE_KEY='sb_publishable_test';
 const {staffAccountEmail,staffLoginEmail,saveStaffAccount,readStaffAccounts,setEmailStaffAccess,staffPasswordLogin}=await import('../lib/server/staffAccounts.js');
 const owner={role:'owner'},barber={role:'barber',staff_id:'barber-1'};
@@ -99,8 +99,12 @@ test('new barber validates identity and working-hours template before any mutati
  await assert.rejects(()=>saveStaffAccount({...input,staffId:newStaffId,createStaff:true,copyHoursFrom:'missing-staff'},owner),e=>e.status===404);
  assert.ok(!calls.some(c=>c.method!=='GET'));
 });
-test('calendar keeps equally sized cards and aligned half-hour stack positions',()=>{
- const records=[{id:'a',starts_at:'09:00',duration:15},{id:'b',starts_at:'09:00',duration:60},{id:'c',starts_at:'09:30',duration:30}];
- const minuteOf=s=>Number(s.slice(0,2))*60+Number(s.slice(3));const layout=buildCalendarLayout(['2026-11-16','2026-11-17'],new Map([['2026-11-16',records]]),8,21,minuteOf);
- assert.equal(CALENDAR_CARD_HEIGHT,76);assert.ok(layout.positions.get('b')-layout.positions.get('a')>=CALENDAR_CARD_HEIGHT+8);assert.ok(layout.positions.get('c')>=layout.positions.get('b')+CALENDAR_CARD_HEIGHT);assert.equal(layout.rows[2].top,layout.position(9*60));
+test('calendar uses actual duration and separate lanes for simultaneous staff bookings',()=>{
+ const minuteOf=iso=>{const [h,m]=iso.slice(11,16).split(':').map(Number);return h*60+m};
+ const bookings=[{id:'a',starts_at:'2026-11-16T09:00Z',ends_at:'2026-11-16T09:45Z'},{id:'b',starts_at:'2026-11-16T09:00Z',ends_at:'2026-11-16T10:30Z'},{id:'c',starts_at:'2026-11-16T10:30Z',ends_at:'2026-11-16T11:00Z'}];
+ const layout=buildCalendarLayout(['day'],new Map([['day',bookings]]),8,18,minuteOf);
+ assert.equal(layout.events.get('b').height,layout.events.get('a').height*2);
+ assert.equal(layout.events.get('a').top,layout.events.get('b').top);
+ assert.notEqual(layout.events.get('a').left,layout.events.get('b').left);
+ assert.equal(layout.events.get('c').top,layout.position(630));
 });

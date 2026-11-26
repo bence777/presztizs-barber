@@ -20,7 +20,7 @@ try {
     page.on('pageerror', error => errors.push(error.message));
     await page.clock.install({ time: new Date('2026-11-25T09:00:00Z') });
     const barbers = TEAM.map((member, index) => ({ id: `barber-${index}`, name: member.name, role: 'Fodrász', image: null }));
-    const services = [{ id: 'hajvagas', name: 'Gépi hajvágás', description: 'Precíz vágás', price: 5500, duration: 30 }];
+    const services = [{ id: 'hajvagas', staffId:'barber-0', name: 'Gépi hajvágás', description: 'Precíz vágás', price: 5500, duration: 30 }];
     let authenticated = false, profileSaved = false, conflict = false, creates = [];
     const profile = { name: 'Test Guest', email: 'guest@example.com', phone: '+36301234567' };
     await page.route('**/api/**', async route => {
@@ -68,7 +68,7 @@ try {
     await page.getByRole('heading', { name: 'Our own space. A shared vision.' }).waitFor();
     assert.equal(await page.locator('html').getAttribute('lang'), 'en');
     await page.locator('header').getByRole('link', { name: 'BOOK', exact: true }).click();
-    await page.getByRole('heading', { name: 'Who would you like to see?' }).waitFor();
+    await page.getByRole('heading', { name: 'Choose a barber' }).waitFor();
     assert.equal(await page.locator('[class*="serviceRow"]').count(), 0);
     assert.ok(!/5[\s,]?500/.test(await page.locator('main').innerText()));
     const steps = page.getByRole('navigation', { name: width <= 800 ? 'Mobile booking steps' : 'Booking steps', exact: true });
@@ -130,12 +130,12 @@ try {
     await page.locator('[data-barber-carousel] [aria-roledescription="carousel"]').focus();
     await page.keyboard.press('ArrowRight');
     await page.locator('[data-barber-carousel] article[class*="activeCard"]').getByRole('button', { name: 'BOOK AN APPOINTMENT', exact: true }).click();
-    assert.ok((await page.locator('[class*="summaryBottom"]').innerText()).includes('— Ft'));
+    assert.equal(await page.locator('[class*="summaryBottom"]').count(),0);
     assert.equal(await page.getByRole('button', { name: 'Change service', exact: true }).count(), 0);
     assert.equal(await page.getByRole('button', { name: 'Change appointment', exact: true }).count(), 0);
     pass(`${width}px team links preselect the matching live barber; changing barber clears dependent choices`);
     await page.goto(base + '/idopontfoglalas?service=hajvagas&lang=en');
-    await page.getByRole('heading', { name: 'Who would you like to see?' }).waitFor();
+    await page.getByRole('heading', { name: 'Choose a barber' }).waitFor();
     assert.equal(await page.getByRole('button', { name: 'Change service', exact: true }).count(), 0);
     await page.goto(base + '/idopontfoglalas?barberName=Unknown&lang=en');
     await page.getByRole('status').filter({ hasText: 'This barber is not currently available' }).waitFor();

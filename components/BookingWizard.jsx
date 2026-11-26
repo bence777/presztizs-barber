@@ -108,7 +108,7 @@ export default function BookingWizard() {
   const [bookingBusy, setBookingBusy] = useState(false);
   const [bookingError, setBookingError] = useState("");
   const [confirmedBooking, setConfirmedBooking] = useState(null);
-  const SERVICES = catalog.services;
+  const SERVICES = catalog.services.filter(item => barberId === 'any' || item.staffId === barberId);
   const BARBERS = catalog.barbers;
   const barberChoices = useMemo(() => [
     { id: 'any', name: t('Leghamarabbi időpont'), role: t('Az összes fodrász közül'), symbol: '◷' },
@@ -180,9 +180,9 @@ export default function BookingWizard() {
     const key = JSON.stringify([router.query.service, router.query.barber, router.query.barberName]);
     if (preselectionRef.current === key) return;
     preselectionRef.current = key;
-    const service = SERVICES.find((item) => item.id === router.query.service);
     const barber = resolveBarberSelection(BARBERS, router.query);
-    if (service && barber) setServiceId(service.id);
+    const service = catalog.services.find((item) => item.id === router.query.service && (barber?.id === 'any' || item.staffId === barber?.id));
+    if (service && barber) setServiceId(service.id); else setServiceId(null);
     if (barber) {
       setBarberId(barber.id);
       setEarliestRequested(barber.id === 'any');
@@ -274,6 +274,7 @@ export default function BookingWizard() {
       }
       const appointment = data.appointment;
       setBarberId(appointment.barberId);
+      setServiceId(appointment.serviceId || nextServiceId);
       setVisibleMonth(monthIndex(appointment.date));
       setDate(appointment.date);setTime(appointment.time);
       setEarliestResult(appointment);
@@ -372,18 +373,13 @@ export default function BookingWizard() {
             {verified && <button type="button" onClick={() => { setStep(3); setShowPreview(false); }} aria-label={t("Adataid módosítása")}>{t("Módosítás")}</button>}
           </div>
         </div>
-        <div className={styles.summaryBottom} aria-live="polite">
+        {service && <div className={styles.summaryBottom} aria-live="polite">
           <span>{t("Várható összeg")}</span>
           <strong>{barberId && service ? formatPrice(service.price) : "— Ft"}</strong>
-        </div>
+        </div>}
       </aside>
 
       <section id="foglalasi-folyamat" ref={workspaceRef} className={styles.workspace} aria-label={t("Időpontfoglaló lépések")}>
-        <div className={styles.topline}>
-          <span>{t("FOGLALÁSI FOLYAMAT")}</span>
-          <span>0{step + 1} / 04</span>
-        </div>
-
         <nav className={styles.steps} aria-label={t("Foglalási lépések")}>
           {STEPS.map((label, index) => (
             <button
@@ -404,19 +400,19 @@ export default function BookingWizard() {
           {step === 0 && (
             <>
               <div className={styles.sectionHead}>
-                <span className={styles.eyebrow}>{t("ELSŐ LÉPÉS")}</span>
-                <h2>{t("Kihez szeretnél menni?")}</h2>
-                <p>{t("Lapozz a fodrászok között, vagy válaszd a leghamarabbi időpontot.")}</p>
+                <h1>{t("Válassz fodrászt")}</h1>
               </div>
               {!catalogLoading && !catalogError && router.query.barberName && !matchTeamMember(BARBERS, router.query.barberName) && <p className={styles.noTimes} role="status">{t("A kiválasztott fodrász jelenleg nem foglalható online. Válassz az elérhető csapattagok közül.")}</p>}
               {catalogLoading && <p className={styles.noTimes}>{t("Betöltjük a fodrászokat…")}</p>}
               {catalogError && <p className={styles.noTimes} role="alert">{t(catalogError)}</p>}
               {!catalogLoading && !catalogError && BARBERS.length === 0 && <p className={styles.noTimes}>{t("Jelenleg nincs aktív barber.")}</p>}
               {!catalogLoading && !catalogError && BARBERS.length > 0 && <BarberCarousel
+                compact
                 barbers={barberChoices}
                 initialBarberId={barberId || 'any'}
                 onChoose={member => selectBarber(member.id)}
               />}
+              <p className={styles.individualPrices}>{t("Minden fodrász egyéni árakon dolgozik.")}</p>
             </>
           )}
 
@@ -441,7 +437,7 @@ export default function BookingWizard() {
                     aria-pressed={serviceId === item.id}
                   >
                     <span className={styles.serviceNumber}>0{index + 1}</span>
-                    <span className={styles.serviceText}><strong>{t(item.name)}</strong><small>{t(item.description)}</small></span>
+                    <span className={styles.serviceText}><strong>{t(item.name)}</strong><small>{barberId === 'any' ? `${BARBERS.find(b=>b.id===item.staffId)?.name || ''}${item.description ? ' · ' : ''}` : ''}{t(item.description)}</small></span>
                     <span className={styles.serviceMeta}><strong>{formatPrice(item.price)}</strong><small>{item.duration}{" "}{t("perc")}</small></span>
                     <span className={styles.selectMark} aria-hidden="true" />
                   </button>

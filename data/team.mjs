@@ -17,7 +17,7 @@ export function getTeamBarbers(barbers, { includeMissing = false } = {}) {
     const profile = barbers.find(barber => barber.id === member.id) || matchTeamMember(barbers, member.name);
     if (profile?.active === false) return [];
     if (!profile && !includeMissing) return [];
-    return [{ ...member, ...profile, name: member.name }];
+    return [{ ...member, ...profile, name: profile?.name || member.name }];
   });
 }
 

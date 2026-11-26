@@ -7,8 +7,8 @@ const { localToUtcMs, localDay, getMonthAvailability, placeBooking } = await imp
 
 const stamp=(date,time)=>new Date(localToUtcMs(date,time)).toISOString();
 const rows={
-  booking_services: [{id:'hajvagas',name:'Hajvágás',description:'',duration_minutes:45,price_huf:5000,active:true}],
-  booking_staff: [{id:'mark',name:'Paliga Zoltán',role:'Barber',image_url:null,active:true}],
+  booking_services: [{id:'hajvagas',staff_id:'mark',name:'Hajvágás',description:'',duration_minutes:45,price_huf:5000,active:true}],
+  booking_staff: [{id:'mark',name:'Paliga Zoltán',role:'Barber',image_url:null,booking_step_minutes:30,active:true}],
   booking_hours: [{staff_id:'mark',weekday:3,opens:'09:00:00',closes:'18:00:00'}],
   booking_time_off: [{staff_id:'mark',starts_at:stamp('2026-11-11','15:00'),ends_at:stamp('2026-11-11','16:00')}],
   booking_appointments: [{staff_id:'mark',starts_at:stamp('2026-11-11','12:00'),ends_at:stamp('2026-11-11','12:45')}],
@@ -56,6 +56,29 @@ test('any-barber bookings exclude legacy staff hidden from the home page',async(
   assert.ok(Object.values(result.candidates).every(day=>Object.values(day).every(ids=>ids.every(id=>id==='mark'))));
   await assert.rejects(()=>getMonthAvailability({...args,barberId:'legacy'}),error=>error.code==='bad_selection');
   rows.booking_staff.pop();rows.booking_hours.pop();
+});
+
+test('personal catalog rejects another barber service and computes independent prices/durations',async()=>{
+  rows.booking_staff.push({id:'kovacs-tibi',name:'Kovács Tibi',role:'Barber',active:true,booking_step_minutes:15});
+  rows.booking_services.push({id:'second-cut',staff_id:'kovacs-tibi',name:'Hajvágás',duration_minutes:90,price_huf:15000,active:true});
+  rows.booking_hours.push({staff_id:'kovacs-tibi',weekday:3,opens:'09:00:00',closes:'18:00:00'});
+  const args={month:'2026-11',now:Date.parse('2026-11-11T06:00Z'),freshMetadata:true};
+  await assert.rejects(()=>getMonthAvailability({...args,serviceId:'second-cut',barberId:'mark'}),e=>e.code==='bad_selection');
+  const result=await getMonthAvailability({...args,serviceId:'second-cut',barberId:'any'});
+  assert.ok(Object.values(result.candidates['2026-11-11']).every(ids=>ids.length===1&&ids[0]==='kovacs-tibi'));
+  assert.equal(result.config.services.find(s=>s.id==='second-cut').price,15000);
+  assert.ok(result.days['2026-11-11'].some(slot=>slot.value==='16:30'));
+  assert.ok(!result.days['2026-11-11'].some(slot=>slot.value==='16:45'));
+  rows.booking_staff.pop();rows.booking_services.pop();rows.booking_hours.pop();
+});
+test('45 minute bookings allow the adjacent 12:45 start with a 15 minute start interval',async()=>{
+  const staff=rows.booking_staff[0],oldStep=staff.booking_step_minutes;staff.booking_step_minutes=15;
+  const result=await getMonthAvailability({serviceId:'hajvagas',barberId:'mark',month:'2026-11',now:Date.parse('2026-11-11T06:00Z'),freshMetadata:true});
+  assert.ok(result.days['2026-11-11'].some(slot=>slot.value==='12:45'));
+  staff.booking_step_minutes=7;
+  const custom=await getMonthAvailability({serviceId:'hajvagas',barberId:'mark',month:'2026-11',now:Date.parse('2026-11-11T06:00Z'),freshMetadata:true});
+  assert.ok(custom.days['2026-11-11'].some(slot=>slot.value==='09:07'));
+  staff.booking_step_minutes=oldStep;
 });
 
 test('Booking insert locks in price and staff and returns confirmation',async()=>{

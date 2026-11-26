@@ -29,13 +29,6 @@ export default function BookingPage() {
             <span /><span /><span />
           </button></div>
         </header>
-        <div className={styles.intro}>
-          <div className={styles.introMeta}>01 / DEMETERS</div>
-          <div className={styles.introMain}>
-            <h1>{t("A következő")}{" "}<em>{t("vágásod.")}</em></h1>
-            <p>{t("Válassz barbert, szolgáltatást és időpontot. A többit bízd ránk.")}</p>
-          </div>
-        </div>
         <BookingWizard />
         <footer className={styles.footer}>
           <span>© DEMETERS</span>

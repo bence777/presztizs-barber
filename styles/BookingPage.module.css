@@ -38,39 +38,6 @@
 .bookingPill:hover { background: #333; }
 .menuToggle { display: none; }
 .headerControls { display: flex; align-items: center; gap: 12px; }
-.intro {
-  min-height: 264px;
-  width: 100%;
-  padding: 50px clamp(23px, 4.8vw, 74px) 45px;
-  display: flex; flex-direction: column; justify-content: center;
-  position: relative; isolation: isolate;
-  background: var(--site-surface);
-  overflow: hidden;
-}
-.intro::before {
-  content: ''; position: absolute; z-index: -2;
-  width: 52%; height: 100%; top: 0; right: 0;
-  background: url('/images/salon-chair.webp') no-repeat 70% 35% / cover;
-  filter: grayscale(1) brightness(1.04) contrast(.95);
-}
-.intro::after {
-  content: ''; position: absolute; inset: 0; z-index: -1;
-  background: linear-gradient(90deg, #f5f5f5 0%, rgba(245,245,245,.97) 28%, rgba(245,245,245,.8) 56%, rgba(245,245,245,.64) 90%),
-              linear-gradient(0deg, rgba(245,245,245,.35), transparent 40%);
-}
-.introMeta {
-  font: 600 11px/1.4 Arial, Helvetica, sans-serif;
-  letter-spacing: .19em; color: var(--site-muted);
-}
-.introMain { padding-top: 31px; }
-.introMain h1 {
-  margin: 0;
-  font: 400 clamp(52px, 5.75vw, 88px)/1.04 Georgia, 'Times New Roman', serif;
-  letter-spacing: -.06em;
-  max-width: 1050px;
-}
-.introMain h1 em { font-weight: 400; }
-.introMain p { margin: 19px 0 0; color: var(--site-copy); font: 400 clamp(13px, 1.2vw, 17px)/1.6 Arial, sans-serif; max-width: 620px; }
 .footer {
   padding: 27px clamp(23px, 4.8vw, 74px);
   display: flex; gap: 20px; justify-content: space-between;
@@ -105,19 +72,9 @@
   .menuOpen { display: flex; }
   .back { font-size: 15px; padding: 15px 0; border-bottom: 1px solid var(--site-line); }
   .bookingPill { width: 100%; margin-top: 18px; font-size: 14px; }
-  .intro { min-height: 269px; padding: 40px 25px 33px; justify-content: center; }
-  .intro::before { width: 85%; background-position: 64% center; }
-  .intro::after { background: linear-gradient(90deg, rgba(245,245,245,.99), rgba(245,245,245,.92) 27%, rgba(245,245,245,.7) 100%), linear-gradient(0deg, rgba(245,245,245,.45), transparent); }
-  .introMeta { font-size: 10px; }
-  .introMain { padding-top: 26px; }
-  .introMain h1 { max-width: 420px; font-size: clamp(48px, 7.8vw, 70px); line-height: 1.04; }
-  .introMain p { max-width: 290px; font-size: 14px; margin-top: 16px; }
 }
 @media (max-width: 480px) {
   .brand { font-size: 25px; }
-  .intro { min-height: 277px; }
-  .introMain h1 { max-width: 280px; font-size: clamp(44px, 12.5vw, 57px); }
-  .introMain p { max-width: 248px; }
   .footer span:last-child { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {

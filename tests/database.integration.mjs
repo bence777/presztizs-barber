@@ -153,5 +153,100 @@ try {
  await check('a manager guest JWT without the separate admin device cannot access the database',async()=>{await identity(owner);await client.query("select set_config('request.headers','{}',false)");assert.equal((await client.query('select * from public.booking_appointments')).rowCount,0);await client.query("select set_config('request.headers',$1,false)",[JSON.stringify({'x-demeters-admin-device':'C'.repeat(43)})]);assert.equal((await client.query('select * from public.booking_appointments')).rowCount,0)});
  await check('revoking an admin device immediately denies RLS even with an unexpired JWT',async()=>{await client.query('reset role');await client.query("delete from public.trusted_devices where user_id=$1",[owner]);await identity(owner);assert.equal((await client.query('select * from public.booking_appointments')).rowCount,0)});
  await check('deactivating a manager immediately revokes RLS access without refreshing JWT',async()=>{await client.query('reset role');await client.query("update public.booking_managers set active=false where role='barber'");await identity(barber);assert.equal((await client.query('select * from public.booking_appointments')).rowCount,0)});
+
+ await client.query('reset role');
+ await client.query("select set_config('request.jwt.claims','{}',false)");
+ const beforeMigration=(await client.query('select id,price_huf,starts_at,ends_at from public.booking_appointments order by id')).rows;
+ await client.query(await read('supabase/migrations/20261126093849_staff_services.sql'));
+ await check('staff service migration preserves every booking, agreed price, duration and recurring series',async()=>{
+  assert.deepEqual((await client.query('select id,price_huf,starts_at,ends_at from public.booking_appointments order by id')).rows,beforeMigration);
+  assert.equal((await client.query('select count(*)::int n from public.booking_appointments where service_name_snapshot is null or duration_minutes_snapshot is null')).rows[0].n,0);
+  assert.equal((await client.query('select count(*)::int n from public.booking_appointments a join public.booking_services s on s.id=a.service_id where s.staff_id<>a.staff_id')).rows[0].n,0);
+ });
+ await client.query("update public.booking_managers set active=true");
+ await client.query(`insert into public.trusted_devices(user_id,scope,credential_hash,device_name,expires_at)
+ values($1,'admin',encode(sha256(convert_to(repeat('A',43),'UTF8')),'hex'),'Owner device',now()+interval '7 days')`,[owner]);
+ await identity(barber);
+ await check('barber creates a personal 90 minute service and arbitrary positive integer durations',async()=>{
+  await client.query(`insert into public.booking_services(id,staff_id,name,duration_minutes,price_huf,active)
+    values('qa-color-one','qa-one','Color',90,15000,true),('qa-custom-one','qa-one','Custom',37,4000,true)`);
+  await assert.rejects(()=>client.query("insert into public.booking_services(id,staff_id,name,duration_minutes,price_huf) values('qa-zero','qa-one','Zero',0,100)"),e=>e.code==='23514');
+  await assert.rejects(()=>client.query("insert into public.booking_services(id,staff_id,name,duration_minutes,price_huf) values('qa-forbidden','qa-two','Forbidden',90,100)"),e=>e.code==='42501');
+ });
+ await identity(owner);
+ await client.query("insert into public.booking_services(id,staff_id,name,duration_minutes,price_huf,active) values('qa-color-two','qa-two','Color',45,7000,true)");
+ await check('same service name can have independent price and duration; barber cannot edit another catalog',async()=>{
+  const rows=(await client.query("select price_huf,duration_minutes from public.booking_services where id in ('qa-color-one','qa-color-two') order by id")).rows;
+  assert.deepEqual(rows,[{price_huf:15000,duration_minutes:90},{price_huf:7000,duration_minutes:45}]);
+  await identity(barber);
+  assert.equal((await client.query("update public.booking_services set price_huf=1 where id='qa-color-two' returning id")).rowCount,0);
+  await assert.rejects(()=>client.query("update public.booking_services set staff_id='qa-two' where id='qa-color-one'"),e=>e.code==='42501');
+  assert.equal((await client.query("update public.booking_staff set name='Forbidden' where id='qa-two' returning id")).rowCount,0);
+  await assert.rejects(()=>client.query("update public.booking_staff set email='forbidden@test.invalid' where id='qa-one'"),e=>e.code==='42501');
+ });
+ const scopedInsert=async(staff,service,time,mins,{manual=true,conn=client,day='2045-06-05'}={})=>(await conn.query(`insert into public.booking_appointments(staff_id,service_id,starts_at,ends_at,price_huf,status,guest_name,is_manual)
+ values($1,$2,($3::date+$4::time) at time zone 'Europe/Budapest',(($3::date+$4::time) at time zone 'Europe/Budapest')+make_interval(mins=>$5),1,'confirmed','Name only',$6) returning *`,[staff,service,day,time,mins,manual])).rows[0];
+ let personal;
+ await check('name-only manual booking derives price/name and allows an explicit duration override',async()=>{
+  personal=await scopedInsert('qa-one','qa-color-one','09:00',45);
+  assert.equal(personal.price_huf,15000);assert.equal(personal.guest_email,null);assert.equal(personal.guest_phone,null);
+  assert.equal(personal.service_name_snapshot,'Color');assert.equal(personal.duration_minutes_snapshot,45);
+  await scopedInsert('qa-one','qa-color-one','09:45',90);
+  await assert.rejects(()=>scopedInsert('qa-one','qa-color-one','09:30',45),e=>e.code==='23P01');
+ });
+ await check('database rejects another staff service and incorrect public duration',async()=>{
+  await assert.rejects(()=>scopedInsert('qa-one','qa-color-two','14:00',45),e=>['P0001','23503'].includes(e.code));
+  await assert.rejects(()=>scopedInsert('qa-one','qa-color-one','14:00',45,{manual:false}),e=>e.code==='P0001');
+ });
+ await check('service edits and archived status preserve existing booking snapshots, even on reschedule',async()=>{
+  await client.query("update public.booking_services set name='New name',price_huf=19000,duration_minutes=120 where id='qa-color-one'");
+  await client.query("update public.booking_appointments set guest_name='Edited',price_huf=3,service_name_snapshot='Forged' where id=$1",[personal.id]);
+  const snapshot=(await client.query('select price_huf,service_name_snapshot,duration_minutes_snapshot from public.booking_appointments where id=$1',[personal.id])).rows[0];
+  assert.deepEqual(snapshot,{price_huf:15000,service_name_snapshot:'Color',duration_minutes_snapshot:45});
+  await client.query("update public.booking_services set active=false,archived_at=now() where id='qa-color-one'");
+  await assert.rejects(()=>scopedInsert('qa-one','qa-color-one','14:00',90),e=>e.code==='P0001');
+  await client.query("update public.booking_appointments set starts_at=starts_at+interval '1 day',ends_at=ends_at+interval '1 day' where id=$1",[personal.id]);
+  assert.equal((await client.query('select price_huf from public.booking_appointments where id=$1',[personal.id])).rows[0].price_huf,15000);
+ });
+ await check('default service belongs to own active catalog and weekly hours writes retain RLS',async()=>{
+  await assert.rejects(()=>client.query("update public.booking_staff set default_manual_service_id='qa-color-two' where id='qa-one'"),e=>e.code==='P0001');
+  await client.query("update public.booking_staff set default_manual_service_id='qa-custom-one',public_phone='+36301234567',booking_step_minutes=7 where id='qa-one'");
+  await assert.rejects(()=>client.query("select public.booking_save_hours('qa-two','[]')"),e=>e.code==='42501');
+  await client.query("select public.booking_save_hours('qa-one',$1)",[JSON.stringify(Array.from({length:7},(_,weekday)=>({weekday,opens:'09:00',closes:'18:00'})))]);
+ });
+ await check('concurrent personal bookings cannot bypass database exclusion and schedule checks',async()=>{
+  await identity(null);const other=pg.getPgClient();await other.connect();try{
+   await identity(null,other);await client.query('begin');await scopedInsert('qa-one','qa-custom-one','14:00',37,{day:'2045-06-10'});
+   const pending=scopedInsert('qa-one','qa-custom-one','14:15',37,{day:'2045-06-10',conn:other}).then(()=>null,e=>e);
+   await client.query('commit');assert.equal((await pending)?.code,'23P01');
+  }finally{await other.end()}
+ });
+ await check('monthly name-only bookings retain service snapshots for future materialization after price changes',async()=>{
+  await identity(barber);
+  const series=(await client.query(`select * from public.booking_create_monthly(jsonb_build_object('staff_id','qa-one','service_id','qa-custom-one','starts_at','2055-01-02 15:00+01','ends_at','2055-01-02 15:37+01','price_huf',1,'status','confirmed','guest_name','Name only','is_manual',true))`)).rows[0];
+  assert.equal(series.price_huf,4000);assert.equal(series.service_name_snapshot,'Custom');
+  await client.query("update public.booking_services set price_huf=9000,name='Custom new' where id='qa-custom-one'");
+  await identity(null);await client.query("select public.booking_materialize_monthly('2060-01-01','2060-02-01','qa-one')");
+  const occurrence=(await client.query("select * from public.booking_appointments where monthly_series_id=$1 and monthly_date='2060-01-02'",[series.monthly_series_id])).rows[0];
+  assert.equal(occurrence.price_huf,4000);assert.equal(occurrence.service_name_snapshot,'Custom');assert.equal(occurrence.duration_minutes_snapshot,37);
+ });
+
+ await check('disabling the default clears it and profile edits remain possible',async()=>{
+  await identity(barber);
+  await client.query("update public.booking_services set active=false where id='qa-custom-one'");
+  assert.equal((await client.query("select default_manual_service_id from public.booking_staff where id='qa-one'")).rows[0].default_manual_service_id,null);
+  await client.query("update public.booking_staff set name='Renamed barber' where id='qa-one'");
+ });
+ await check('catalog tables and privileged helpers cannot be used by guests or anonymous roles',async()=>{
+  await identity(guest);assert.equal((await client.query('select * from public.booking_services')).rowCount,0);
+  await assert.rejects(()=>client.query("select public.booking_save_hours('qa-one','[]')"),e=>e.code==='42501');
+  await assert.rejects(()=>client.query("delete from public.booking_services where id='qa-custom-one'"),e=>e.code==='42501');
+  await client.query('reset role');await client.query('set role anon');
+  await assert.rejects(()=>client.query('select * from public.booking_services'),e=>e.code==='42501');
+  await assert.rejects(()=>client.query('select * from public.booking_staff'),e=>e.code==='42501');
+  await client.query('reset role');
+  assert.equal((await client.query("select has_function_privilege('anon','private.clear_inactive_default()','execute') allowed")).rows[0].allowed,false);
+  assert.equal((await client.query("select prosecdef from pg_proc where oid='public.booking_save_hours(text,jsonb)'::regprocedure")).rows[0].prosecdef,false);
+ });
  console.log(`${passed} database checks passed`);
 } finally {if(client)await client.end();await pg.stop().catch(()=>{});await rm(tmp,{recursive:true,force:true});}

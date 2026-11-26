@@ -250,3 +250,7 @@
 @media (prefers-reduced-motion: reduce) {
   .serviceRow, .mainButton { transition: none; }
 }
+
+/* The first actionable choice stays near the navigation, including on phones. */
+.wrapper{padding-top:24px}.sectionHead h1{font:400 clamp(30px,4vw,46px)/1.15 Georgia,serif;letter-spacing:-.04em;margin:0}.individualPrices{text-align:center;font-size:14px;line-height:1.5;color:var(--site-copy);margin:16px 0 0}.steps{padding-top:12px;padding-bottom:12px}.barberContent .sectionHead{margin-bottom:12px}.barberContent{padding-top:24px;padding-bottom:24px}
+@media(max-width:800px){.wrapper{padding-top:12px}.summary{padding-bottom:0}.mobileSteps{padding-top:8px;padding-bottom:8px}.mobileStepCircle{width:25px;height:25px;font-size:11px}.mobileStepLabel{font-size:12px}.content.barberContent{padding-top:20px}.sectionHead h1{font-size:32px}.individualPrices{margin-top:10px}.summaryRows{display:none}}

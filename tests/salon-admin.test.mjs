@@ -12,7 +12,7 @@ const owner={role:'owner',staff_id:null,bearer:'verified-owner-jwt'};
 const id='55555555-5555-4555-8555-555555555555';
 const originalFetch=globalThis.fetch;
 let calls=[],off=[],existing=[],hours=[{opens:'09:00:00',closes:'12:00:00'},{opens:'13:00:00',closes:'18:00:00'}],paging=false;
-const service={id:'hajvagas',name:'Hajvágás',duration_minutes:30,price_huf:6000,active:true};
+const service={id:'hajvagas',staff_id:'barber-1',name:'Hajvágás',duration_minutes:30,price_huf:6000,active:true};
 const input={staffId:'barber-1',serviceId:'hajvagas',date:'2026-11-20',time:'10:00',guestName:'Telefonos Vendég',guestPhone:'+36301234567',guestEmail:''};
 globalThis.fetch=async(raw,opts)=>{
  const url=new URL(raw),table=url.pathname.split('/').pop(),method=opts.method,body=opts.body&&JSON.parse(opts.body);calls.push({table,url,method,body,headers:opts.headers});
@@ -43,8 +43,8 @@ test('calendar and absence queries are staff scoped and use the staff bearer for
  for(const call of calls.filter(c=>c.table!=='booking_materialize_monthly')){assert.equal(call.url.searchParams.get('staff_id'),'eq.barber-1');assert.equal(call.headers.Authorization,'Bearer verified-staff-jwt');assert.equal(call.headers.apikey,'sb_publishable_fake_test');assert.equal(call.headers['X-Demeters-Admin-Device'],barber.adminDevice)}
  calls=[];await readCalendar({manager:owner,from:'2026-11-16',to:'2026-11-23'});assert.equal(calls[0].url.searchParams.get('staff_id'),null);
 });
-test('manual booking needs phone, allows no email/account, and cannot be created during break or outside hours',async()=>{
- await assert.rejects(()=>createAdminAppointment({...input,guestPhone:''},barber),e=>e.status===400);
+test('manual booking allows name only without phone/email/account, and cannot be created during break or outside hours',async()=>{
+ const quick=await createAdminAppointment({...input,guestPhone:'',guestEmail:''},barber);assert.equal(calls.find(c=>c.table==='booking_appointments'&&c.method==='POST').body.guest_phone,null);assert.equal(quick.guest_email,null);
  await assert.rejects(()=>createAdminAppointment({...input,time:'12:00'},barber),e=>e.code==='hours');
  await assert.rejects(()=>createAdminAppointment({...input,time:'08:30'},barber),e=>e.code==='hours');
  const result=await createAdminAppointment(input,barber);assert.equal(result.user_id,null);assert.equal(result.guest_email,null);assert.equal(result.is_manual,true);

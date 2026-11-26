@@ -59,6 +59,7 @@ function Card({ barber, index, count, position, layout, activeIndex, animating, 
       <div className={styles.cardContent}>
         <span className={styles.role}>{t(barber.role || "Fodrász")}</span>
         <h3>{barber.name}</h3>
+        {barber.publicPhone&&<a data-carousel-control className={styles.publicPhone} href={`tel:${barber.publicPhone.replace(/[^+\d]/g,'')}`} tabIndex={active?0:-1} onClick={event=>event.stopPropagation()}>{barber.publicPhone}</a>}
         {onChoose ? <button
           type="button" className={styles.cardAction}
           tabIndex={active && !animating ? 0 : -1} disabled={animating}
@@ -76,7 +77,7 @@ function Card({ barber, index, count, position, layout, activeIndex, animating, 
   );
 }
 
-export default function BarberCarousel({ barbers: BARBERS, initialBarberId, onChoose, heading, headingId }) {
+export default function BarberCarousel({ barbers: BARBERS, initialBarberId, onChoose, heading, headingId, compact = false }) {
   const { t, language } = useLanguage();
   const initialIndex = Math.max(0, BARBERS.findIndex(barber => barber.id === initialBarberId));
   const sceneRef = useRef(null);
@@ -227,7 +228,7 @@ export default function BarberCarousel({ barbers: BARBERS, initialBarberId, onCh
   }
 
   return (
-    <div className={styles.sticky} onKeyDown={keyboardNavigate} data-barber-carousel>
+    <div className={`${styles.sticky} ${compact ? styles.compact : ''}`} onKeyDown={keyboardNavigate} data-barber-carousel>
         {heading && <div className={styles.top}>
           <h2 id={headingId}>{heading}</h2>
           <span>{t("VÁLASSZ FODRÁSZT")}</span>
@@ -259,7 +260,7 @@ export default function BarberCarousel({ barbers: BARBERS, initialBarberId, onCh
         </div>
         <div className={styles.bottom}>
           <span className={styles.caption}>{language === 'en' ? 'Swipe or use the arrows to choose.' : 'Húzással vagy a nyilakkal választhatsz.'}</span>
-          <span className={styles.counter} aria-live="polite" aria-atomic="true">{String(activeIndex + 1).padStart(2, '0')} <span>/ {String(BARBERS.length).padStart(2, '0')}</span></span>
+          <div className={styles.dots} role="group" aria-label={t("Fodrász kiválasztása")}>{BARBERS.map((barber,index)=><button data-carousel-control key={barber.id} type="button" aria-label={barber.name} aria-pressed={index===activeIndex} disabled={animating} onClick={()=>selectBarber(index)}><span/></button>)}</div>
         </div>
     </div>
   );

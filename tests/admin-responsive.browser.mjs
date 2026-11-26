@@ -15,8 +15,8 @@ try {
   const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));await page.clock.install({time:new Date('2026-11-16T09:15Z')});
   let authenticated=true,role='owner';
   const staff=[{id:'barber-1',name:'Demeter Tamás',active:true},{id:'barber-2',name:'Fodrász 2',active:true},{id:'barber-3',name:'Fodrász 3',active:true}];
-  const bookings=[15,30,60].map((duration,i)=>({id:'booking-'+i,staff_id:'barber-'+(i+1),service_id:'hajvagas',starts_at:'2026-11-16T09:00Z',ends_at:new Date(Date.parse('2026-11-16T09:00Z')+duration*60000).toISOString(),guest_name:['Telefonos Vendég','Hosszabb Nevű Vendég','Harmadik Vendég'][i],service_name:'Hajvágás és szakálligazítás',staff_name:staff[i].name,status:'confirmed',price_huf:6000}));
-  const services=[{id:'hajvagas',name:'Hajvágás',duration_minutes:30,price_huf:6000,active:true}];
+  const bookings=[15,30,60].map((duration,i)=>({id:'booking-'+i,staff_id:'barber-'+(i+1),service_id:'cut-barber-'+(i+1),starts_at:'2026-11-16T09:00Z',ends_at:new Date(Date.parse('2026-11-16T09:00Z')+duration*60000).toISOString(),guest_name:['Telefonos Vendég','Hosszabb Nevű Vendég','Harmadik Vendég'][i],service_name:'Hajvágás és szakálligazítás',staff_name:staff[i].name,status:'confirmed',price_huf:6000}));
+  const services=staff.map(member=>({id:'cut-'+member.id,staff_id:member.id,name:'Hajvágás',duration_minutes:30,price_huf:6000,active:true}));
   const manager=()=>({role,staff_id:role==='owner'?null:'barber-1'});
   await page.route('**/api/admin/**',async route=>{
    const u=new URL(route.request().url());let result={};
@@ -33,7 +33,7 @@ try {
   const nav=()=>page.getByRole('navigation',{name:width<711?'Mobil kezelőfelület':'Kezelőfelület',exact:true});
   await page.goto(base+'/admin/foglalasok');await page.getByRole('heading',{name:'Naptár',exact:true}).waitFor();await page.getByTitle(/Telefonos Vendég/).waitFor();await noOverflow('calendar');
   const sizes=await page.locator('[class*=calendarEvent]').evaluateAll(nodes=>nodes.map(n=>({height:n.getBoundingClientRect().height,width:n.getBoundingClientRect().width,top:n.getBoundingClientRect().top})));
-  assert.equal(sizes.length,3);assert.ok(sizes.every(s=>s.height===76&&Math.abs(s.width-sizes[0].width)<1&&s.width>=190));assert.ok(sizes[1].top>=sizes[0].top+76);pass(`${width}px fixed cards: 15/30/60 minutes and simultaneous staff bookings`);
+  assert.equal(sizes.length,3);assert.ok(Math.abs(sizes[1].height/sizes[0].height-2)<.01);assert.ok(Math.abs(sizes[2].height/sizes[0].height-4)<.01);assert.equal(sizes[1].top,sizes[0].top);pass(`${width}px proportional 15/30/60 minute events and parallel staff lanes`);
   await page.getByRole('button',{name:'Hét',exact:true}).click();await noOverflow('week');assert.ok(await page.locator('[class*=timeCalendar]').evaluate(el=>el.scrollWidth>el.clientWidth));
   if([320,390,768,1440].includes(width))await page.screenshot({path:`${output}/${width}-calendar.png`,fullPage:true});
   await nav().getByRole('button',{name:'Szabadságok',exact:true}).click();await page.getByRole('heading',{name:'Szabadságok',exact:true}).waitFor();await noOverflow('absence');
