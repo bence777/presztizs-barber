@@ -2,6 +2,37 @@
 
 A foglaló valós Supabase-adatbázist és külön vendég-/kezelői azonosítást használ. Az alábbi új kiadási útmutató az irányadó; a dokumentum végén lévő prototípusleírás történeti előzmény.
 
+## Saját fodrászfiókok és gördülő eszközmegjegyzés
+
+Minden fodrász külön `barber` jogosultságot kap a saját `staff_id` profiljához. Fodrászbejelentkezéssel a naptár, vendégadatok, foglalások, szolgáltatások, árak, munkaidő, szünetek, szabadságok, profilbeállítások és statisztikák a saját adatokra korlátozódnak. Az API a szerveroldali azonosítás alapján választ profilt, a Supabase RLS pedig ugyanazt kikényszeríti az admin JWT-vel és külön eszközazonosítóval. Az érintett katalógus-, szolgáltatás- és munkaidő-lekérdezések is a kezelő saját JWT-jét továbbítják. Inaktív fodrászprofil akkor sem ad hozzáférést, ha a régi kezelői jogosultság még aktív. A főadmin `owner` szerepe továbbra is kezeli az összes fodrászt és a fiókokat; fodrász nem kap ilyen jogot. Az ellenőrzött szerep/profil változásakor a felület újra létrejön az új jogosultságokkal, a korábbi nézet betöltött adatai törlődnek a komponens állapotából.
+
+2026. november 26-án mind a hat alábbi helyőrző fiók ténylegesen létrejött **Supabase Authban is**. Mindegyik kizárólag a saját profiljához kapcsolódik, `barber` szereppel, letiltott belépéssel, nem hitelesített címmel, jelszó és levélküldés nélkül.
+
+| Fodrász | Ideiglenes cím |
+| --- | --- |
+| Paliga Zoltán | `paliga-zoltan@pending.demeters.invalid` |
+| Kovács Tibi | `kovacs-tibi@pending.demeters.invalid` |
+| Nehéz Zsíros Bence | `nehez-zsiros-bence@pending.demeters.invalid` |
+| Tóth Dominik | `toth-dominik@pending.demeters.invalid` |
+| Hunyadi Róbert | `hunyadi-robert@pending.demeters.invalid` |
+| Pelles Zsombor | `pelles-zsombor@pending.demeters.invalid` |
+
+A címek nem kézbesíthetők. A főadmin Fiókok menüjében a **Valódi e-mail megadása** gombbal cserélhetők. Ha a valódi címhez még nincs Auth-felhasználó, az eredeti helyőrző Auth-fiók azonosítója marad meg az átnevezéskor. Ha már létezik vendég/Auth-fiók, azt kapcsoljuk a fodrászprofilhoz, a meglévő jelszó és igazolt vendégadatok módosítása nélkül. Más kezelő címét nem lehet átvenni. Az új cím tulajdonosa az első belépéskor kap OTP-kódot; a mentés nem igazolja automatikusan az e-mailt és nem küld levelet. A letiltott helyőrző cím közvetlenül nem aktiválható. A két meglévő főadminfiók változatlan maradt.
+
+A `scripts/provision-staff-placeholders.mjs` alapból csak előnézetet ad; `--apply` kapcsolóval készíti el a hiányzó helyőrzőket. Ismételhető, és nem írja felül a már létező valódi fodrászfiókokat. Futtatás: `node --experimental-default-type=module --env-file=.env.local scripts/provision-staff-placeholders.mjs [--apply]`. A szerveroldali kulcsot soha ne másold kliensbe vagy parancssori argumentumba.
+
+Megjegyzett eszköznél minden sikeresen ellenőrzött használat újraindítja a lejáratot:
+
+- **Admin/fodrász: 7 nap** az utolsó használattól.
+- **Vendég: 60 nap** az utolsó használattól.
+- Az adatbázisbeli eszközlejárat, az aláírt munkamenet és a böngészős cookie-k együtt frissülnek.
+- A „ne jegyezzen meg” beállítás továbbra is legfeljebb 12 órás ideiglenes munkamenet; nem válik tartóssá.
+- Lejárt vagy visszavont eszközt a használat nem hozhat létre újra. A hosszabbítás csak a Supabase-azonosítás és az aláírt munkamenet egyezése után történik. A végső adatbázis-módosítás atomi, és eszköztörlési versenyhelyzetben sem állítja vissza a hozzáférést.
+
+A `20261126103730_isolated_staff_sliding_devices.sql` migráció **lefutott a kapcsolt Supabase-projekten**; a helyi fájl verziója egyezik a távoli migrációtörténetével. Az új `booking_touch_trusted_device` RPC csak a szerveroldali `service_role` szerepnek hívható, böngészős JWT-nek és anonim kérésnek nem. Az RPC nem használ `SECURITY DEFINER` jogemelést. A felületi és Node.js-munkamenetváltozások a frissített alkalmazáskód kiadásakor lépnek életbe; automatikus production deployment nem történt.
+
+Új ellenőrzések: `npm test`, `npm run test:db`, `npm run test:isolation`; a böngészős parancsok a lent dokumentált QA-függőségeket és helyi előnézetet használják. Futó fejlesztőszerver mellett elkülönített build készíthető: `DEMETERS_BUILD_DIR=.next-qa npm run build`, majd `DEMETERS_BUILD_DIR=.next-qa npm run start -- -p 3108`. Ez megelőzi, hogy a fejlesztőszerver és a production build felülírja egymás Next.js-gyorsítótárát. A normál buildkönyvtár továbbra is `.next`. Az új tesztek külön ellenőrzik két fodrász elkülönítését, inaktív profil tiltását, helyőrző létrehozását/cseréjét, 7/60 napos gördülést, ideiglenes munkamenetet, hibás azonosítást, lejárt eszközt és párhuzamos visszavonást. A végső eredmény: **91/91 JavaScript-teszt, 49/49 elkülönített PostgreSQL-ellenőrzés, 80/80 böngészős ellenőrzés és sikeres build**. A böngészős összesítés: 6 fiókelkülönítés/helyőrzőcsere, 25 adminnaptár, 35 reszponzív admin és 14 magyar/angol nyilvános foglalás. Az éles Auth-fiókok létrejöttét, letiltott állapotát és az új RPC böngészős hívásának tiltását külön olvasási lekérdezés is megerősítette.
+
 ## A frissítés tartalma
 
 - Fodrászhoz kötött, szabadon létrehozható szolgáltatások: név, leírás, ár, pozitív egész percben megadott időtartam, sorrend, kikapcsolás és archiválás. A „Szolgáltatásaim” menü közvetlenül az adatbázist kezeli.
@@ -10,6 +41,14 @@ A foglaló valós Supabase-adatbázist és külön vendég-/kezelői azonosítá
 - A nyilvános oldalon nincs dekoratív hero. Kompakt fodrászválasztó, kattintható körindikátorok, nyilvános `tel:` kapcsolat és fodrászonkénti aktív szolgáltatáslista jelenik meg. A várható összeg csak szolgáltatásválasztás után látszik. A magyar és angol szövegek támogatottak.
 - A „Legkorábbi időpont” listájában minden szolgáltatás a konkrét fodrászához, árához és időtartamához tartozik; a rendszer nem helyettesíti egy másik fodrász azonos nevű szolgáltatásával. Ütközéskor ugyanahhoz a kiválasztott szolgáltatáshoz keres új időpontot.
 - A naptáresemények magassága arányos a tényleges időtartammal, az egyidejű fodrászok külön oszlopokat kapnak. A kezdési lépésköz a foglalás hosszától független, a munkaidő kezdetétől számítódik.
+
+## Mintaprofilok eltávolítása az aktív rendszerből
+
+A `20261126101520_retire_placeholder_staff.sql` kizárólag a név és azonosító alapján ellenőrzött „Első Barber”, „Második Barber” és „Harmadik Barber” profilokat inaktiválja, szolgáltatásaikat archiválja és az esetleges kezelői belépéseiket tiltja. A foglalásokat nem törli vagy módosítja. A művelet ismételhető; átnevezett valódi fodrászt nem érint, jövőbeli valós foglalás vagy aktív havi ismétlés esetén visszagörget. A foglalási mentésekkel azonos tranzakciós zárolást használja.
+
+A célzott adatjavítás 2026. november 26-án lefutott a kapcsolt Supabase-projekten. Mindhárom profil inaktív, a 15 saját szolgáltatás archivált, mind a 36 korábbi foglalás megmaradt; a hat valódi fodrász aktív maradt. Az alapértelmezett adminnaptár, foglaláslista és távollétlista az aktív fodrászokra szűr. A történeti foglalások azonosító szerinti elérése és a történeti statisztikák megmaradnak. A fiókkezelő a félbehagyott új fiókok beállításának folytatását továbbra is engedi. A felület már nem helyettesíti a neveket a három régi azonosítóhoz rendelt kitalált nevekkel. A felületi/API-változások kiadása külön lépés; automatikus deployment nem történt.
+
+A célzott javítás ellenőrzése: **81/81 JavaScript-teszt, 43/43 helyi PostgreSQL-ellenőrzés és sikeres build**; az éles inaktiválás eredményét külön olvasási lekérdezés ellenőrizte.
 
 ## Supabase-migráció és kézi kiadási lépések
 

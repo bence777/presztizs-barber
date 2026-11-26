@@ -10,7 +10,8 @@
     "test:db": "node tests/database.integration.mjs",
     "test:ui": "node tests/calendar.browser.mjs",
     "test:responsive": "node tests/admin-responsive.browser.mjs",
-    "test:services": "node tests/staff-services.browser.mjs"
+    "test:services": "node tests/staff-services.browser.mjs",
+    "test:isolation": "node tests/staff-isolation.browser.mjs"
   },
   "dependencies": {
     "framer-motion": "^14.12.0",

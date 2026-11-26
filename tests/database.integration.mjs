@@ -248,5 +248,84 @@ try {
   assert.equal((await client.query("select has_function_privilege('anon','private.clear_inactive_default()','execute') allowed")).rows[0].allowed,false);
   assert.equal((await client.query("select prosecdef from pg_proc where oid='public.booking_save_hours(text,jsonb)'::regprocedure")).rows[0].prosecdef,false);
  });
+
+ await client.query('reset role');await client.query("select set_config('request.jwt.claims','{}',false)");
+ await client.query(`insert into public.booking_staff(id,name,active) values('barber-1','Első Barber',true),('barber-2','Második Barber',true),('barber-3','Valódi Fodrász',true);
+ insert into public.booking_services(id,staff_id,name,duration_minutes,price_huf,active) values('cleanup-one','barber-1','Cut',30,5000,true),('cleanup-two','barber-2','Cut',30,5000,true),('cleanup-real','barber-3','Cut',30,5000,true);
+ insert into public.booking_hours(staff_id,weekday,opens,closes) select 'barber-1',d,'09:00','18:00' from generate_series(0,6) d;
+ insert into public.booking_appointments(staff_id,service_id,starts_at,ends_at,price_huf,status,guest_name,is_manual)
+ values('barber-1','cleanup-one','2090-01-02 10:00+01','2090-01-02 10:30+01',5000,'confirmed','Future guest',true),
+ ('barber-1','cleanup-one','2000-01-02 10:00+01','2000-01-02 10:30+01',5000,'confirmed','Historical guest',true);`);
+ const retireSql=await read('supabase/migrations/20261126101520_retire_placeholder_staff.sql');
+ await check('placeholder retirement refuses to hide a future real booking',async()=>{
+  await assert.rejects(()=>client.query(retireSql),e=>e.code==='P0001');await client.query('rollback');
+  assert.equal((await client.query("select active from public.booking_staff where id='barber-1'")).rows[0].active,true);
+  await client.query("update public.booking_appointments set status='cancelled' where staff_id='barber-1' and starts_at>now()");
+ });
+ await check('placeholder retirement is repeatable, preserves history and never targets renamed real staff',async()=>{
+  const before=(await client.query("select id,staff_id,service_id,price_huf,starts_at,ends_at,status from public.booking_appointments where staff_id='barber-1' order by id")).rows;
+  await client.query(retireSql);await client.query(retireSql);
+  const after=(await client.query("select id,staff_id,service_id,price_huf,starts_at,ends_at,status from public.booking_appointments where staff_id='barber-1' order by id")).rows;
+  assert.deepEqual(after,before);
+  assert.deepEqual((await client.query("select active from public.booking_staff where id in ('barber-1','barber-2') order by id")).rows,[{active:false},{active:false}]);
+  assert.equal((await client.query("select active from public.booking_staff where id='barber-3'")).rows[0].active,true);
+  assert.equal((await client.query("select active from public.booking_services where id='cleanup-one'")).rows[0].active,false);
+  assert.equal((await client.query("select active from public.booking_services where id='cleanup-real'")).rows[0].active,true);
+ });
+
+ await client.query('reset role');await client.query("select set_config('request.jwt.claims','{}',false)");
+ await client.query(await read('supabase/migrations/20261126103730_isolated_staff_sliding_devices.sql'));
+ const secondBarber='44444444-4444-4444-8444-444444444444';
+ await client.query("insert into auth.users values($1,'second@test.invalid',now())",[secondBarber]);
+ await client.query("insert into public.booking_managers(email,role,staff_id) values('second@test.invalid','barber','qa-two')");
+ await client.query(`insert into public.trusted_devices(user_id,scope,credential_hash,device_name,expires_at)
+ values($1,'admin',encode(sha256(convert_to(repeat('D',43),'UTF8')),'hex'),'Second barber',now()+interval '7 days')`,[secondBarber]);
+ async function secondIdentity(){await identity(secondBarber);await client.query("select set_config('request.headers',$1,false)",[JSON.stringify({'x-demeters-admin-device':'D'.repeat(43)})]);}
+ await check('two separate barber identities see only their own profile, services, hours, bookings and absences',async()=>{
+  for(const [id,staff] of [[barber,'qa-one'],[secondBarber,'qa-two']]){
+   if(id===barber)await identity(barber);else await secondIdentity();
+   assert.deepEqual((await client.query('select id from public.booking_staff')).rows,[{id:staff}]);
+   for(const table of ['booking_services','booking_hours','booking_appointments','booking_time_off']){
+    const rows=(await client.query(`select staff_id from public.${table}`)).rows;
+    assert.ok(rows.every(row=>row.staff_id===staff),table+' leaked another staff');
+   }
+   const other=staff==='qa-one'?'qa-two':'qa-one';
+   assert.equal((await client.query("update public.booking_staff set public_phone='+36309999999' where id=$1 returning id",[other])).rowCount,0);
+   assert.equal((await client.query("select public.booking_statistics('2026-11-01',$1) s",[other])).rows[0].s.total,0);
+   await assert.rejects(()=>client.query("select public.booking_save_hours($1,'[]')",[other]),e=>e.code==='42501');
+  }
+ });
+ await check('inactive staff cannot use an otherwise active manager role or old admin JWT',async()=>{
+  await client.query('reset role');await client.query("update public.booking_staff set active=false where id='qa-one'");
+  await identity(barber);assert.equal((await client.query('select * from public.booking_appointments')).rowCount,0);assert.equal((await client.query('select * from public.booking_services')).rowCount,0);
+  await client.query('reset role');await client.query("update public.booking_staff set active=true where id='qa-one'");
+ });
+ await check('only the server role can touch a remembered device',async()=>{
+  await identity(barber);await assert.rejects(()=>client.query("select * from public.booking_touch_trusted_device($1,'admin',repeat('a',64),true)",[barber]),e=>e.code==='42501');
+  await client.query('reset role');await client.query('set role anon');await assert.rejects(()=>client.query("select * from public.booking_touch_trusted_device($1,'admin',repeat('a',64),true)",[barber]),e=>e.code==='42501');
+ });
+ const touch=async(user,scope,raw,extend=true,conn=client)=>(await conn.query("select * from public.booking_touch_trusted_device($1,$2,encode(sha256(convert_to($3,'UTF8')),'hex'),$4)",[user,scope,raw,extend])).rows;
+ await check('admin sliding expiry is seven days; guest sliding expiry is sixty days; temporary usage preserves expiry',async()=>{
+  await identity(null);
+  const adminTouch=(await touch(barber,'admin','B'.repeat(43)))[0];assert.ok(+adminTouch.expires_at>Date.now()+6.99*86400000);
+  const guestTouch=(await touch(guest,'guest','C'.repeat(43)))[0];assert.ok(+guestTouch.expires_at>Date.now()+59.99*86400000);
+  const temporary=(await touch(barber,'admin','B'.repeat(43),false))[0];assert.equal(+temporary.expires_at,+adminTouch.expires_at);
+  assert.equal((await touch(guest,'admin','C'.repeat(43))).length,0);assert.equal((await touch(barber,'admin','X'.repeat(43))).length,0);
+ });
+ await check('expired devices are never resurrected and a newer deadline is never shortened',async()=>{
+  await client.query(`insert into public.trusted_devices(user_id,scope,credential_hash,device_name,created_at,expires_at)
+   values($1,'guest',encode(sha256(convert_to(repeat('F',43),'UTF8')),'hex'),'Expired',now()-interval '2 days',now()-interval '1 day')`,[guest]);
+  assert.equal((await touch(guest,'guest','F'.repeat(43))).length,0);
+  const before=(await client.query("update public.trusted_devices set expires_at=now()+interval '90 days' where user_id=$1 and scope='guest' and device_name<>'Expired' returning expires_at",[guest])).rows[0].expires_at;
+  assert.equal(+(await touch(guest,'guest','C'.repeat(43)))[0].expires_at,+before);
+ });
+ await check('device revocation wins against an in-flight sliding renewal',async()=>{
+  await client.query(`insert into public.trusted_devices(user_id,scope,credential_hash,device_name,expires_at)
+   values($1,'guest',encode(sha256(convert_to(repeat('G',43),'UTF8')),'hex'),'Revocation race',now()+interval '7 days')`,[guest]);
+  const other=pg.getPgClient();await other.connect();try{
+   await identity(null,other);await client.query('begin');await client.query("delete from public.trusted_devices where device_name='Revocation race'");
+   const pending=touch(guest,'guest','G'.repeat(43),true,other);await client.query('commit');assert.equal((await pending).length,0);
+  }finally{await other.end()}
+ });
  console.log(`${passed} database checks passed`);
 } finally {if(client)await client.end();await pg.stop().catch(()=>{});await rm(tmp,{recursive:true,force:true});}

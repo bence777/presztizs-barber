@@ -38,6 +38,7 @@ const originalFetch=globalThis.fetch;
 let requests=[];
 globalThis.fetch=async(url,options={})=>{
   requests.push({url:String(url),options});
+  if(String(url).includes('/rest/v1/rpc/booking_touch_trusted_device'))return {ok:true,status:200,text:async()=>JSON.stringify([{id:USER_ID,user_id:USER_ID,scope:'admin',last_seen_at:new Date().toISOString(),expires_at:new Date(Date.now()+7*86400000).toISOString()}])};
   if(String(url).includes('/rest/v1/trusted_devices')) return {ok:true,status:200,text:async()=>JSON.stringify([{id:USER_ID,user_id:USER_ID,scope:'admin',last_seen_at:new Date().toISOString(),expires_at:new Date(Date.now()+86400000).toISOString()}])};
   if(String(url).endsWith('/auth/v1/user')) return {ok:true,status:200,text:async()=>JSON.stringify({id:USER_ID,email:EMAIL})};
   if(String(url).includes('/rest/v1/booking_managers')) return {ok:true,status:200,text:async()=>JSON.stringify([{email:EMAIL,role:'owner',staff_id:null}])};

@@ -34,7 +34,7 @@ test('configured with server-only keys', () => {
   assert.equal(isConfigured(),true);
 });
 
-test('cookie session persists, is HttpOnly and expires at fixed 60 days', async () => {
+test('remembered guest cookies are HttpOnly and unused sessions expire after 60 days', async () => {
   const res = response();
   setGuestCookies(res, { access_token:'short-jwt', refresh_token:'server-refresh-token' }, userId, { remember:true });
   setDeviceCookie(res,'guest','B'.repeat(43),Date.now()+60*24*60*60*1000,true);
@@ -45,6 +45,7 @@ test('cookie session persists, is HttpOnly and expires at fixed 60 days', async 
   const cookies = cookieJar(setCookies);
   const beforeFetch = globalThis.fetch;
   globalThis.fetch = async (url) => {
+    if (url.toString().includes('/rest/v1/rpc/booking_touch_trusted_device')) return mockOk([{id:userId,user_id:userId,scope:'guest',last_seen_at:new Date().toISOString(),expires_at:new Date(Date.now()+60*86400000).toISOString()}]);
     if (url.toString().includes('/rest/v1/trusted_devices')) return mockOk([{id:userId,user_id:userId,scope:'guest',last_seen_at:new Date().toISOString(),expires_at:new Date(Date.now()+86400000).toISOString()}]);
     if (url.toString().endsWith('/auth/v1/user')) return mockOk({ id:userId,email:'guest@example.com' });
     throw new Error('Unexpected API call');
@@ -63,7 +64,7 @@ test('cookie session persists, is HttpOnly and expires at fixed 60 days', async 
   } finally { globalThis.fetch = beforeFetch; }
 });
 
-test('refreshes an expired access token but preserves absolute deadline',async()=>{
+test('refreshes an expired access token and renews the verified device deadline',async()=>{
   const res=response();
   setGuestCookies(res,{access_token:'old',refresh_token:'old-r'},userId,{remember:true});
   setDeviceCookie(res,'guest','B'.repeat(43),Date.now()+60*24*60*60*1000,true);
@@ -73,6 +74,7 @@ test('refreshes an expired access token but preserves absolute deadline',async()
   const paths=[];
   globalThis.fetch=async (url,opts)=>{
     paths.push(url.toString());
+    if(url.toString().includes('/rest/v1/rpc/booking_touch_trusted_device')) return mockOk([{id:userId,user_id:userId,scope:'guest',last_seen_at:new Date().toISOString(),expires_at:new Date(Date.now()+60*86400000).toISOString()}]);
     if(url.toString().includes('/rest/v1/trusted_devices')) return mockOk([{id:userId,user_id:userId,scope:'guest',last_seen_at:new Date().toISOString(),expires_at:new Date(Date.now()+86400000).toISOString()}]);
     if(url.toString().endsWith('/auth/v1/user') && opts.headers.Authorization==='Bearer old')return mockOk({message:'expired'},401);
     if(url.toString().endsWith('/auth/v1/token?grant_type=refresh_token')) return mockOk({access_token:'fresh',refresh_token:'fresh-r'});
@@ -83,8 +85,8 @@ test('refreshes an expired access token but preserves absolute deadline',async()
     const newRes=response();
     const guest=await getGuest({cookies},newRes);
     assert.equal(guest.token,'fresh');
-    assert.equal(cookieJar(newRes.getHeader('Set-Cookie')).pb_device_until,oldDeadline);
-    assert.equal(paths.length,4);
+    assert.ok(Number(cookieJar(newRes.getHeader('Set-Cookie')).pb_device_until.split('.')[1])>=Number(oldDeadline.split('.')[1]));
+    assert.equal(paths.length,5);
   } finally {globalThis.fetch=beforeFetch;}
 });
 

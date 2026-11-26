@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Keep browser QA builds separate from a running local development server.
+  distDir: process.env.DEMETERS_BUILD_DIR || '.next',
   async headers() {
     const common = [
       {key:'X-Content-Type-Options',value:'nosniff'},

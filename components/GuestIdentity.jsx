@@ -218,7 +218,7 @@ export default function GuestIdentity({ onVerified, initialProfile = null }) {
           </label>
           <label className={styles.remember}>
             <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
-            <span>{t("Emlékezzen rám ezen az eszközön 60 napig")}</span>
+            <span>{t("Emlékezzen rám: használatonként újabb 60 nap")}</span>
           </label>
           <button className={styles.primary} disabled={busy || (code.length < 6 || code.length > 10)} type="submit">{busy ? t("ELLENŐRZÉS…") : t("E-MAIL MEGERŐSÍTÉSE")}</button>
           <div className={styles.subActions}>

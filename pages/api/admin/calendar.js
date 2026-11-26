@@ -14,7 +14,7 @@ export default async function handler(req,res) {
     const [bookings,timeOff,hours]=await Promise.all([
       readCalendar({manager:session.manager,from,to,staffId:staff}),
       readTimeOff(session.manager,parseCalendarRange(from,to),staff),
-      bookingDb('booking_hours',{query:{select:'staff_id,weekday,opens,closes',...(staff?{staff_id:`eq.${staff}`}:{})}}),
+      bookingDb('booking_hours',{bearer:session.manager.bearer,adminDevice:session.manager.adminDevice,query:{select:'staff_id,weekday,opens,closes',...(staff?{staff_id:`eq.${staff}`}:{})}}),
     ]);
     res.status(200).json({bookings,timeOff,hours,manager:{role:session.manager.role,staff_id:session.manager.staff_id}});
   } catch(e){return adminMutationError(res,e)}

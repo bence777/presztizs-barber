@@ -53,6 +53,7 @@ export default function AdminIdentityGate({children}) {
         const state=await adminApi('session');
         if(active&&!state.authenticated){setManager(null);setPhase('email');}
         else if(active&&!state.manager){setManager(null);setPhase('denied');}
+        else if(active){setManager(current=>current?.role===state.manager.role&&current?.staff_id===state.manager.staff_id&&current?.email===state.manager.email?current:state.manager);}
       }catch(e){
         if(active&&(e.status===401||e.status===403)){setManager(null);setPhase(e.status===403?'denied':'email');}
       }
@@ -110,7 +111,7 @@ export default function AdminIdentityGate({children}) {
     });
   }
 
-  if(phase==='ready' && manager) return cloneElement(children,{onAdminLogout:async()=>{try{await logout();}catch(e){setError(e.message);setPhase('unavailable');}},adminManager:manager});
+  if(phase==='ready' && manager) return cloneElement(children,{key:`${manager.role}:${manager.staff_id||'owner'}`,onAdminLogout:async()=>{try{await logout();}catch(e){setError(e.message);setPhase('unavailable');}},adminManager:manager});
   return <main className={styles.screen}>
     <div className={styles.top}><a href="/" className={styles.brand}>D<span>.</span> <strong>DEMETERS</strong></a><span className={styles.topLabel}>STUDIO / MANAGEMENT</span></div>
     <section className={styles.panel} aria-live="polite">
@@ -121,10 +122,10 @@ export default function AdminIdentityGate({children}) {
         <form className={styles.form} onSubmit={passwordLogin}>
           <label htmlFor="staff-login">{legacyLogin?'Korábbi felhasználónév':'E-mail-cím'}</label><input id="staff-login" type={legacyLogin?'text':'email'} inputMode={legacyLogin?'text':'email'} required autoComplete="username" autoCapitalize="none" spellCheck={false} value={loginName} onChange={e=>setLoginName(e.target.value)} placeholder={legacyLogin?'Korábbi azonosító':'sajat@email.hu'}/>
           <label htmlFor="staff-password">Jelszó</label><input id="staff-password" type="password" autoComplete="current-password" required maxLength={128} value={password} onChange={e=>setPassword(e.target.value)}/>
-          <label className={styles.remember}><input type="checkbox" checked={remember} onChange={e=>setRemember(e.target.checked)}/> Megjegyzés ezen az eszközön 7 napig</label>
+          <label className={styles.remember}><input type="checkbox" checked={remember} onChange={e=>setRemember(e.target.checked)}/> Megjegyzés: használatonként újabb 7 nap</label>
           <button className={styles.primary} disabled={busy} type="submit">{busy?'Belépés…':'Bejelentkezés'}</button>
         </form><p className={styles.note}>Jelszó helyett belépési kódot is kérhetsz az e-mail-címedre.</p><div className={styles.subActions}><button type="button" onClick={()=>{setLegacyLogin(!legacyLogin);setLoginName('');setError('')}}>{legacyLogin?'Belépés e-mail-címmel':'Korábbi felhasználóneves fiókom van'}</button></div>
-      </>:<><p className={styles.sub}>Lépj be a szalon kezelői e-mail-címével. Ez a vendégprofiltól független belépés.</p>
+      </>:<><p className={styles.sub}>Lépj be a saját kezelői e-mail-címeddel. Ez a vendégprofiltól független belépés.</p>
         <form onSubmit={sendCode} className={styles.form}>
           <label htmlFor="admin-auth-email">Kezelői e-mail-cím</label>
           <input id="admin-auth-email" type="email" autoComplete="email" value={email} placeholder="barber@email.hu" maxLength={254} onChange={e=>setEmail(e.target.value)} required autoFocus/>
@@ -135,7 +136,7 @@ export default function AdminIdentityGate({children}) {
         <form onSubmit={verifyCode} className={styles.form}>
           <label htmlFor="admin-auth-otp">Ellenőrző kód</label>
           <input id="admin-auth-otp" type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={10} pattern="[0-9]{6,10}" value={code} onChange={e=>setCode(e.target.value.replace(/\D/g,'').slice(0,10))} placeholder="E-mailben kapott kód" required autoFocus/>
-          <label style={{display:"flex",alignItems:"center",gap:9,fontSize:12,color:"#666",margin:"14px 0"}}><input type="checkbox" checked={remember} onChange={e=>setRemember(e.target.checked)}/> Megbízható eszköz 7 napra (opcionális)</label>
+          <label style={{display:"flex",alignItems:"center",gap:9,fontSize:12,color:"#666",margin:"14px 0"}}><input type="checkbox" checked={remember} onChange={e=>setRemember(e.target.checked)}/> Megbízható eszköz: használatonként újabb 7 nap (opcionális)</label>
           <button className={styles.primary} type="submit" disabled={busy||code.length<6}>{busy?'Ellenőrzés…':'Bejelentkezés'} </button>
         </form><div className={styles.subActions}>
           <button type="button" disabled={busy||cooldown>0} onClick={()=>sendCode()}>{cooldown>0?`Új kód ${cooldown} mp múlva`:'Kód újraküldése'}</button>

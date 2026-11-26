@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {buildCalendarLayout} from '../lib/client/calendarLayout.mjs';
 process.env.SUPABASE_URL='https://test.supabase.co';process.env.SUPABASE_SECRET_KEY='sb_secret_test';process.env.SUPABASE_PUBLISHABLE_KEY='sb_publishable_test';
-const {staffAccountEmail,staffLoginEmail,saveStaffAccount,readStaffAccounts,setEmailStaffAccess,staffPasswordLogin}=await import('../lib/server/staffAccounts.js');
+const {staffAccountEmail,staffLoginEmail,saveStaffAccount,readStaffAccounts,setEmailStaffAccess,staffPasswordLogin,provisionStaffPlaceholders}=await import('../lib/server/staffAccounts.js');
 const owner={role:'owner'},barber={role:'barber',staff_id:'barber-1'};
 const email='tamas@example.com',uid='11111111-1111-4111-8111-111111111111';
 const input={email,staffId:'barber-1',name:'Demeter Tamás',active:true};
@@ -18,7 +18,8 @@ globalThis.fetch=async(raw,options={})=>{
   if(authFails){ok=false;status=503;data={};}
   else if(method==='GET')data=table==='users'?{users}:missingReadback?null:users.find(u=>u.id===table)||null;
   else if(method==='POST'){data={id:uid,...body};users.push(data);}
-  else {throw new Error('Existing Auth identities must not be changed by staff creation');}
+  else if(method==='PUT'){const user=users.find(u=>u.id===table);if(!user)throw new Error('missing auth user');Object.assign(user,body);data=user;}
+  else {throw new Error('Unexpected Auth mutation');}
  }else if(table==='booking_staff'){
   if(method==='POST'){staff.push({...body});data=[];}
   else if(method==='PATCH')data=staff.filter(match).map(s=>Object.assign(s,body));
@@ -43,6 +44,15 @@ test('new accounts require a personal email and never generate synthetic address
  for(const value of ['demeter.tamas','a@staff.demeters.invalid','bad@','owner,role.eq.owner'])assert.throws(()=>staffAccountEmail(value));
  assert.equal(staffLoginEmail('Tamas@Example.com'),email);
  assert.equal(staffLoginEmail('demeter.tamas'),'demeter.tamas@staff.demeters.invalid');
+});
+test('retired legacy staff disappear from account management while unfinished new profiles remain',async()=>{
+ staff.push({id:'barber-2',name:'Második Barber',active:false},{id:newStaffId,name:'Új Fodrász',active:false});
+ accounts.push({email:'retired@example.com',staff_id:'barber-2',role:'barber',active:false});
+ const result=await readStaffAccounts(owner);
+ assert.deepEqual(result.staff.map(s=>s.id),['barber-1',newStaffId]);
+ assert.equal(result.staff[1].pendingSetup,true);
+ assert.equal(result.accounts.length,0);
+ assert.ok(!calls.some(c=>c.url.pathname.includes('/auth/v1/admin/')));
 });
 test('save creates and reads back the email user in Supabase Auth before activating staff permissions',async()=>{
  const result=await saveStaffAccount({...input,role:'owner'},owner);
@@ -107,4 +117,43 @@ test('calendar uses actual duration and separate lanes for simultaneous staff bo
  assert.equal(layout.events.get('a').top,layout.events.get('b').top);
  assert.notEqual(layout.events.get('a').left,layout.events.get('b').left);
  assert.equal(layout.events.get('c').top,layout.position(630));
+});
+
+
+test('placeholder provisioning is explicit, idempotent and never sends mail or creates passwords',async()=>{
+ const preview=await provisionStaffPlaceholders(owner);assert.equal(preview[0].email,'barber-1@pending.demeters.invalid');assert.equal(users.length,0);assert.equal(accounts.length,0);
+ const created=await provisionStaffPlaceholders(owner,{apply:true});assert.equal(created[0].isPlaceholder,true);assert.equal(created[0].active,false);assert.equal(created[0].authUserId,uid);
+ assert.equal(accounts[0].role,'barber');assert.equal(accounts[0].staff_id,'barber-1');assert.equal(accounts[0].active,false);
+ const user=users[0];assert.equal(user.email_confirm,false);assert.equal(user.password,undefined);assert.equal(user.app_metadata.demeters_staff_id,'barber-1');
+ await provisionStaffPlaceholders(owner,{apply:true});assert.equal(users.length,1);assert.equal(accounts.length,1);
+ assert.ok(!calls.some(c=>/otp|invite|generate_link/.test(c.url.pathname)));
+ await assert.rejects(()=>setEmailStaffAccess({email:user.email,active:true},owner),e=>e.status===409);
+});
+
+test('an existing personal staff account is never replaced by a placeholder',async()=>{
+ accounts=[{email,role:'barber',staff_id:'barber-1',active:true}];users=[{id:uid,email}];
+ const planned=await provisionStaffPlaceholders(owner,{apply:true});assert.equal(planned.length,0);assert.equal(accounts[0].email,email);assert.equal(accounts[0].active,true);
+});
+
+test('owner replaces a placeholder in Auth while retaining the same user and own staff scope',async()=>{
+ const staged=(await provisionStaffPlaceholders(owner,{apply:true}))[0];calls=[];
+ const result=await saveStaffAccount({...input,previousEmail:staged.email},owner);
+ assert.equal(result.email,email);assert.equal(result.authUserId,uid);assert.equal(result.staffId,'barber-1');assert.equal(result.active,true);assert.equal(result.isPlaceholder,undefined);
+ assert.equal(users.length,1);assert.equal(users[0].id,uid);assert.equal(users[0].email,email);assert.equal(users[0].email_confirm,false);assert.equal(accounts[0].email,email);
+ assert.ok(!calls.some(c=>/otp|invite/.test(c.url.pathname)));assert.ok(!calls.some(c=>c.body?.email_confirm===true));
+});
+
+test('replacing a placeholder can link an existing guest without changing guest credentials',async()=>{
+ const staged=(await provisionStaffPlaceholders(owner,{apply:true}))[0];const guestId='33333333-3333-4333-8333-333333333333';
+ users.push({id:guestId,email,email_confirmed_at:'2026-11-01T00:00Z'});calls=[];
+ const result=await saveStaffAccount({...input,previousEmail:staged.email},owner);
+ assert.equal(result.authUserId,guestId);assert.equal(accounts[0].email,email);assert.ok(!calls.some(c=>c.url.pathname.includes('/auth/v1/admin/')&&c.method!=='GET'));
+});
+
+test('placeholder replacement and provisioning remain owner-only and cannot steal another staff email',async()=>{
+ await assert.rejects(()=>provisionStaffPlaceholders(barber,{apply:true}),e=>e.status===403);
+ const staged=(await provisionStaffPlaceholders(owner,{apply:true}))[0];accounts.push({email,role:'barber',staff_id:'other-staff',active:true});calls=[];
+ await assert.rejects(()=>saveStaffAccount({...input,previousEmail:staged.email},owner),e=>e.status===409);
+ assert.ok(!calls.some(c=>c.method!=='GET'));
+ await assert.rejects(()=>saveStaffAccount({...input,previousEmail:staged.email},barber),e=>e.status===403);
 });

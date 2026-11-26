@@ -21,8 +21,16 @@ let operations=[];
 const hash=token=>createHash('sha256').update(token).digest('hex');
 const newId=()=>`12345678-1234-4234-8234-${String(devices.length+1).padStart(12,'0')}`;
 function mockDb(){globalThis.fetch=async(url,opts={})=>{
-  const path=String(url);operations.push({path,method:opts.method||'GET',headers:opts.headers});
+  const path=String(url);operations.push({path,method:opts.method||'GET',headers:opts.headers,body:opts.body&&JSON.parse(opts.body)});
   if(path.endsWith('/auth/v1/user'))return ok({id:USER,email:'user@example.com'});
+  if(path.includes('/rest/v1/rpc/booking_touch_trusted_device')){
+    const body=JSON.parse(opts.body),now=Date.now();
+    const row=devices.find(d=>d.user_id===body.p_user&&d.scope===body.p_scope&&d.credential_hash===body.p_hash&&Date.parse(d.expires_at)>now);
+    if(!row)return ok([]);
+    row.last_seen_at=new Date(now).toISOString();
+    if(body.p_extend)row.expires_at=new Date(Math.max(Date.parse(row.expires_at),now+(body.p_scope==='admin'?7:60)*86400000)).toISOString();
+    return ok([row]);
+  }
   if(!path.includes('/rest/v1/trusted_devices'))throw new Error('unmocked '+path);
   assert.equal(opts.headers.apikey,process.env.SUPABASE_SECRET_KEY);
   const query=new URL(path).searchParams;
@@ -102,4 +110,61 @@ test('Admin and guest cookies expire independently and are HttpOnly',async()=>{
   assert.ok(cookies.every(c=>!c.includes('Max-Age=') ));
   assert.ok((await getAdmin({cookies:jar(res)},response()))?.user?.id===USER);
   const removed=response();clearDeviceCookie(removed,'admin');assert.equal(jar(removed).pb_admin_trusted_device,'');
+});
+
+
+for(const [scope,days,getAuth,setAuth] of [
+ ['admin',7,getAdmin,(res,tokens,id)=>setAdminCookies(res,tokens,id)],
+ ['guest',60,getGuest,(res,tokens,id)=>setGuestCookies(res,tokens,id,{remember:true})],
+]){
+ test(`${scope}: every verified use renews signed cookies and the DB deadline by ${days} days`,async()=>{
+  const realNow=Date.now,started=realNow();let now=started;Date.now=()=>now;
+  try{
+   const credential=await registerTrustedDevice({headers:{}},{userId:USER,scope,expiresAt:started+days*86400000});
+   const initial=response();setAuth(initial,{access_token:'jwt',refresh_token:'refresh'},USER);setDeviceCookie(initial,scope,credential,started+days*86400000,true);
+   const req={cookies:jar(initial)};now+=86400000;
+   const used=response();assert.equal((await getAuth(req,used)).user.id,USER);
+   const renewed=jar(used),key=scope==='admin'?'pb_admin_until':'pb_device_until';
+   assert.equal(Number(renewed[key].split('.')[1]),now+days*86400000);
+   assert.equal(Date.parse(devices[0].expires_at),now+days*86400000);
+   assert.equal(used.getHeader('Set-Cookie').length,4);
+   assert.ok(used.getHeader('Set-Cookie').every(c=>c.includes(`Max-Age=${days*86400}`)&&c.includes('HttpOnly')&&c.includes('SameSite=Lax')));
+   req.cookies={...req.cookies,...renewed};now=started+days*86400000+3600000;
+   const again=response();assert.equal((await getAuth(req,again)).user.id,USER);
+   assert.equal(Date.parse(devices[0].expires_at),now+days*86400000);
+   const touches=operations.filter(op=>op.path.includes('/rpc/booking_touch_trusted_device'));
+   assert.equal(touches.length,2);assert.equal(touches[0].body.p_extend,true);assert.equal(touches[0].body.p_hash,hash(credential));
+  }finally{Date.now=realNow;}
+ });
+}
+
+test('a temporary login remains limited to its original deadline and never becomes remembered',async()=>{
+ const realNow=Date.now,start=realNow();let now=start;Date.now=()=>now;
+ try{
+  const credential=await registerTrustedDevice({headers:{}},{userId:USER,scope:'admin',expiresAt:start+12*3600000});
+  const initial=response();setAdminCookies(initial,{access_token:'jwt',refresh_token:'refresh'},USER,undefined,false);setDeviceCookie(initial,'admin',credential,start+12*3600000,false);
+  now+=6*3600000;const req={cookies:jar(initial)},used=response();assert.equal((await getAdmin(req,used)).user.id,USER);
+  assert.equal(Date.parse(devices[0].expires_at),start+12*3600000);assert.equal(used.getHeader('Set-Cookie'),undefined);
+  assert.equal(operations.find(op=>op.path.includes('/rpc/')).body.p_extend,false);
+  now=start+12*3600000+1;assert.equal(await getAdmin(req,response()),null);
+ }finally{Date.now=realNow}
+});
+
+test('a device revoked between the initial read and the authenticated touch is not recreated',async()=>{
+ const expiry=Date.now()+7*86400000;
+ const credential=await registerTrustedDevice({headers:{}},{userId:USER,scope:'admin',expiresAt:expiry});
+ const initial=response();setAdminCookies(initial,{access_token:'jwt',refresh_token:'refresh'},USER);setDeviceCookie(initial,'admin',credential,expiry,true);
+ const dbFetch=globalThis.fetch;
+ globalThis.fetch=async(url,options)=>{if(String(url).includes('/rpc/booking_touch_trusted_device'))devices=[];return dbFetch(url,options)};
+ const denied=response();assert.equal(await getAdmin({cookies:jar(initial)},denied),null);assert.equal(devices.length,0);assert.equal(jar(denied).pb_admin_until,'');
+});
+
+test('an unrelated Supabase identity cannot prolong a signed admin session',async()=>{
+ const expiry=Date.now()+7*86400000;
+ const credential=await registerTrustedDevice({headers:{}},{userId:USER,scope:'admin',expiresAt:expiry});
+ const initial=response();setAdminCookies(initial,{access_token:'jwt',refresh_token:'refresh'},USER);setDeviceCookie(initial,'admin',credential,expiry,true);
+ const dbFetch=globalThis.fetch;
+ globalThis.fetch=async(url,options)=>String(url).endsWith('/auth/v1/user')?ok({id:OTHER,email:'other@example.com'}):dbFetch(url,options);
+ assert.equal(await getAdmin({cookies:jar(initial)},response()),null);
+ assert.equal(Date.parse(devices[0].expires_at),expiry);assert.equal(operations.filter(op=>op.path.includes('/rpc/')).length,0);
 });
