@@ -96,13 +96,21 @@ export default function BarberCarousel({ barbers: BARBERS, initialBarberId, onCh
   const animatingRef = useRef(false);
   const pendingRef = useRef(null);
   const selectRef = useRef(null);
+  const layoutRef = useRef(null);
+  const wheelTimerRef = useRef(null);
   const [animating, setAnimating] = useState(false);
   const [activeIndex, setActiveIndex] = useState(initialIndex);
   const [dragging, setDragging] = useState(false);
   const [layout, setLayout] = useState({ cardWidth: 220, cardHeight: 335, firstOffset: 165, sides: 1, angle: 10, depth: 130 });
+  layoutRef.current = layout;
   const reducedMotion = useReducedMotion();
   const position = useMotionValue(initialIndex);
-  useEffect(() => () => animationRef.current?.stop(), []);
+  useEffect(() => () => { animationRef.current?.stop(); clearTimeout(wheelTimerRef.current); }, []);
+  useEffect(() => position.on('change', value => {
+    if (!BARBERS.length) return;
+    const index = wrap(Math.round(value), BARBERS.length);
+    if (index !== activeRef.current) { activeRef.current = index; setActiveIndex(index); }
+  }), [position, BARBERS.length]);
 
   useEffect(() => {
     const scene = sceneRef.current;
@@ -158,28 +166,24 @@ export default function BarberCarousel({ barbers: BARBERS, initialBarberId, onCh
 
   useEffect(() => {
     const scene = sceneRef.current;
-    let total = 0, lastInput = 0, consumed = false;
     function horizontalWheel(event) {
-      if (event.ctrlKey) return;
+      if (event.ctrlKey || dragRef.current?.dragging || BARBERS.length < 2) return;
       const dx = event.deltaX || (event.shiftKey ? event.deltaY : 0);
       const dy = event.shiftKey ? 0 : event.deltaY;
       if (Math.abs(dx) <= Math.abs(dy) * 1.2 || Math.abs(dx) < 1) return;
       event.preventDefault();
-      const now = performance.now();
-      if (now - lastInput > 240) { total = 0; consumed = false; }
-      lastInput = now;
-      if (animatingRef.current || dragRef.current?.dragging || consumed) return;
+      animationRef.current?.stop();
+      animatingRef.current = false;
+      pendingRef.current = null;
+      setAnimating(false);
       const pixels = dx * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? scene.clientWidth : 1);
-      if (Math.sign(total) !== Math.sign(pixels)) total = 0;
-      total += pixels;
-      if (Math.abs(total) >= 55) {
-        consumed = true;
-        selectRef.current(activeRef.current + Math.sign(total));
-      }
+      position.set(position.get() + pixels / layoutRef.current.firstOffset);
+      clearTimeout(wheelTimerRef.current);
+      wheelTimerRef.current = setTimeout(() => selectRef.current(Math.round(position.get()), true), 160);
     }
     scene.addEventListener('wheel', horizontalWheel, { passive: false });
-    return () => scene.removeEventListener('wheel', horizontalWheel);
-  }, []);
+    return () => { scene.removeEventListener('wheel', horizontalWheel); clearTimeout(wheelTimerRef.current); };
+  }, [position, BARBERS.length]);
 
   useEffect(() => {
     if (!reducedMotion) return;
@@ -190,7 +194,12 @@ export default function BarberCarousel({ barbers: BARBERS, initialBarberId, onCh
 
   function pointerDown(event) {
     suppressClickRef.current = false;
-    if (!event.isPrimary || event.button !== 0 || animatingRef.current || event.target.closest('[data-carousel-control]')) return;
+    if (!event.isPrimary || event.button !== 0 || event.target.closest('[data-carousel-control]')) return;
+    clearTimeout(wheelTimerRef.current);
+    animationRef.current?.stop();
+    animatingRef.current = false;
+    pendingRef.current = null;
+    setAnimating(false);
     dragRef.current = { id: event.pointerId, x: event.clientX, y: event.clientY, origin: position.get(), index: activeRef.current, dragging: false, vertical: false };
   }
 
@@ -209,8 +218,8 @@ export default function BarberCarousel({ barbers: BARBERS, initialBarberId, onCh
     }
     if (drag.dragging) {
       event.preventDefault();
-      // A small, bounded preview follows the hand directly, without spring lag.
-      if (!reducedMotion) position.set(drag.origin - Math.max(-.48, Math.min(.48, dx / layout.firstOffset * .65)));
+      // Follow the full gesture, including several cards and wrap-around.
+      position.set(drag.origin - dx / layout.firstOffset);
     }
   }
 
@@ -224,7 +233,8 @@ export default function BarberCarousel({ barbers: BARBERS, initialBarberId, onCh
     const dx = event.clientX - drag.x, dy = event.clientY - drag.y;
     const threshold = Math.max(36, Math.min(64, layout.cardWidth * .18));
     const deliberate = !cancelled && Math.abs(dx) >= threshold && Math.abs(dx) > Math.abs(dy) * 1.2;
-    selectBarber(drag.index + (deliberate ? -Math.sign(dx) : 0), !deliberate);
+    const steps = deliberate ? -Math.sign(dx) * Math.max(1, Math.round(Math.abs(dx) / layout.firstOffset)) : 0;
+    selectBarber(Math.round(drag.origin) + steps, true);
   }
 
   function keyboardNavigate(event) {
@@ -267,7 +277,7 @@ export default function BarberCarousel({ barbers: BARBERS, initialBarberId, onCh
           </button>
         </div>
         <div className={styles.bottom}>
-          <span className={styles.caption}>{language === 'en' ? 'Swipe or use the arrows to choose.' : 'Húzással vagy a nyilakkal választhatsz.'}</span>
+          <span className={styles.caption}>{language === 'en' ? 'Drag or scroll sideways to choose.' : 'Húzd vagy görgesd oldalra a választáshoz.'}</span>
           <div className={styles.dots} role="group" aria-label={t("Fodrász kiválasztása")}>{BARBERS.map((barber,index)=><button data-carousel-control key={barber.id} type="button" aria-label={barber.name} aria-pressed={index===activeIndex} disabled={animating} onClick={()=>selectBarber(index)}><span/></button>)}</div>
         </div>
     </div>

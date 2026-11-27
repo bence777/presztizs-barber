@@ -1086,3 +1086,11 @@
   }
 
 }
+
+@media (max-width: 700px) {
+  .header { flex-wrap: wrap; gap: 8px 18px; padding-top: 15px; padding-bottom: 8px; }
+  .header > nav { order: 3; flex-basis: 100%; justify-content: space-between; gap: 12px; border-top: 1px solid #e1e1dd; padding-top: 7px; }
+  .header nav a:nth-child(2), .header nav a:nth-child(3) { display: inline-flex; }
+  .header nav a { min-height: 38px; align-items: center; }
+  .header nav .navBooking { max-width: none; padding: 0; }
+}

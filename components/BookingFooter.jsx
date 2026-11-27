@@ -3,7 +3,7 @@ import DeferredBooking from './DeferredBooking';
 import { PublicFooter } from './PublicLayout';
 import styles from "../styles/BookingFooter.module.css";
 
-export default function BookingFooter({ bookingRequest, catalog }) {
+export default function BookingFooter({ bookingRequest, catalog, showFooter = true }) {
   const { t, language } = useLanguage();
   return (
     <>
@@ -38,7 +38,7 @@ export default function BookingFooter({ bookingRequest, catalog }) {
         </div>
         <DeferredBooking bookingRequest={bookingRequest} />
       </section>
-      <PublicFooter language={language} catalog={catalog} />
+      {showFooter && <PublicFooter language={language} catalog={catalog} />}
     </>
   );
 }

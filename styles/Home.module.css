@@ -77,10 +77,10 @@
 /* HERO */
 
 .hero {
-  --site-surface: #050505;
-  --site-ink: #fff;
-  --site-copy: #d0cfcc;
-  --site-muted: #aaa;
+  --site-surface: #e8e8e5;
+  --site-ink: #111;
+  --site-copy: #222;
+  --site-muted: #555;
 
   position: relative;
   isolation: isolate;
@@ -113,7 +113,7 @@
   height: 100%;
   object-fit: cover;
   object-position: center center;
-  filter: grayscale(1) brightness(0.85) contrast(1.04);
+  filter: grayscale(1) brightness(1.2) contrast(0.85);
 }
 
 .hero :global(.heroVideoWrap)::after {
@@ -123,19 +123,7 @@
   z-index: 1;
   pointer-events: none;
 
-  background:
-    linear-gradient(90deg,
-      rgba(0, 0, 0, 0.12) 0%,
-      rgba(0, 0, 0, 0.06) 45%,
-      rgba(0, 0, 0, 0.12) 100%),
-    linear-gradient(0deg,
-      rgba(0, 0, 0, 0.45) 0%,
-      transparent 30%,
-      transparent 70%,
-      rgba(0, 0, 0, 0.16) 100%),
-    radial-gradient(ellipse at center,
-      transparent 20%,
-      rgba(0, 0, 0, 0.18) 100%);
+  background: rgba(255, 255, 255, 0.64);
 }
 
 /* COMPATIBILITY */
@@ -212,7 +200,7 @@
   max-width: 100%;
   height: auto;
   flex-shrink: 0;
-  color: #fff;
+  color: #111;
   overflow: visible;
 }
 
@@ -229,7 +217,7 @@
   margin: 0;
   padding: 0;
   max-width: 100%;
-  color: rgba(255, 255, 255, 0.92);
+  color: #111;
 }
 
 /* TABLET */
@@ -286,7 +274,7 @@
 
   .hero :global(.heroVideo) {
     object-position: 58% center;
-    filter: grayscale(1) brightness(0.85) contrast(1.04);
+    filter: grayscale(1) brightness(1.2) contrast(0.85);
   }
 
   .topline,
@@ -332,4 +320,34 @@
   .bottomline a {
     transition: none;
   }
+}
+.center .heroBooking {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  margin-top: 20px;
+  min-height: 60px;
+  padding: 20px 36px;
+  background: #fff;
+  color: #151515;
+  border: 1px solid #151515;
+  text-decoration: none;
+  font: 600 13px/1.4 Arial, Helvetica, sans-serif;
+  letter-spacing: .12em;
+  transition: background .2s ease, color .2s ease;
+}
+.center .heroBooking:hover { background: #e5e5e5; }
+.center .heroBooking:focus-visible { outline: 2px solid #151515; outline-offset: 6px; }
+@media (max-width: 760px) {
+  .center .heroBooking {
+    margin-top: 24px;
+    min-height: 58px;
+    width: min(100%, 320px);
+    padding: 18px 22px;
+    font-size: 12px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .center .heroBooking { transition: none; }
 }

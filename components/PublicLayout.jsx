@@ -17,9 +17,10 @@ export function PublicFooter({ language = 'hu', catalog }) {
     <small>© {new Date().getFullYear()} DEMETERS</small>
   </footer>;
 }
-export function ClosingCta({ language = 'hu', barber }) {
+export function ClosingCta({ language = 'hu', barber, pageKey }) {
   const c = COPY[language];
-  return <section className={styles.closing}><span className={styles.eyebrow}>DEMETERS / DEBRECEN</span><h2>{c.closing}</h2><div><p>{c.closingText}</p><Link className={styles.button} href={bookingHref(language, barber)}>{c.book} ↗</Link></div></section>;
+  const titles = { prices: language === 'en' ? 'Found your next cut?' : 'Megvan a következő vágásod?', team: language === 'en' ? 'Who’s your barber?' : 'Te kit választasz?', contact: language === 'en' ? 'Let’s make it a date.' : 'Legyen egy időpontunk.', profile: language === 'en' ? 'See you in the chair.' : 'Találkozunk a székben.' };
+  return <section className={styles.closing}><span className={styles.eyebrow}>DEMETERS / DEBRECEN</span><h2>{titles[pageKey] || c.closing}</h2><div><p>{c.closingText}</p><Link className={styles.button} href={bookingHref(language, barber)}>{c.book}</Link></div></section>;
 }
 export default function PublicLayout({ children, language = 'hu', catalog }) {
   const c = COPY[language];

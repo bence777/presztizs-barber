@@ -55,12 +55,12 @@ try {
     await page.getByRole('heading', { name: 'Egy saját hely. Közös szemlélet.' }).waitFor();
     assert.ok((await page.locator('#szalon').innerText()).includes('Demeter Tamás'));
     assert.deepEqual(await page.locator('#csapat article h3').allTextContents(), TEAM.map(member => member.name));
-    assert.equal(await page.locator('#szolgaltatasok').count(), 1);
+    assert.equal(await page.locator('#szolgaltatasok').count(), 0);
     assert.ok(!/Minden vágásnak karaktere van/i.test(await page.locator('main').innerText()));
-    assert.ok((await page.locator('video').evaluate(element => getComputedStyle(element).filter)).includes('brightness(0.85)'));
+    assert.ok((await page.locator('video').evaluate(element => getComputedStyle(element).filter)).includes('brightness(1.2)'));
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
     await page.screenshot({ path: `${output}/home-${width}.png` });
-    pass(`${width}px home: founder, six names, brighter hero, SSR services and prices, no overflow`);
+    pass(`${width}px home: founder, six names, light hero, updated section order, no overflow`);
 
     await page.getByRole('link', { name: 'English', exact: true }).click();
     await page.getByRole('heading', { name: 'Our own space. A shared vision.' }).waitFor();

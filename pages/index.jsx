@@ -1,7 +1,6 @@
 import DemetersLogo from '../components/DemetersLogo';
 import Link from 'next/link';
 import Seo from '../components/Seo';
-import Services from '../components/Services';
 import PortfolioGallery from '../components/PortfolioGallery';
 import Faq from '../components/Faq';
 import LocationSection from '../components/LocationSection';
@@ -19,6 +18,7 @@ import { useLanguage } from '../components/LanguageProvider';
 import SalonStory from '../components/SalonStory';
 import TrustSection from '../components/TrustSection';
 import BookingFooter from '../components/BookingFooter';
+import { PublicFooter } from '../components/PublicLayout';
 
 
 export default function Home({ catalog, language = 'hu' }) {
@@ -29,7 +29,7 @@ export default function Home({ catalog, language = 'hu' }) {
 
   return (
     <>
-      <Seo {...meta} path={route('home', language)} language={language} alternates={{ 'hu-HU': '/', en: '/en', 'x-default': '/' }} schema={buildSchema({ ...meta, path: route('home', language), language, catalog, services: catalog.services })} />
+      <Seo {...meta} path={route('home', language)} language={language} alternates={{ 'hu-HU': '/', en: '/en', 'x-default': '/' }} schema={buildSchema({ ...meta, path: route('home', language), language, catalog })} />
 
       <main id="teteje" className={styles.site}>
         <header className={styles.header}>
@@ -83,18 +83,14 @@ export default function Home({ catalog, language = 'hu' }) {
             >
               {meta.h1}
             </h1>
+            <a className={styles.heroBooking} href="#foglalas">{t("IDŐPONTFOGLALÁS")}</a>
           </div>
 
           <div className={styles.bottomline}>
             <span>{t("GÖRGESS LEJJEBB")}</span>
 
-            <a href="#foglalas">
-              {t("IDŐPONTFOGLALÁS")}
-            </a>
           </div>
         </section>
-
-        <SalonStory />
 
         <BarberStack
           initialBarbers={catalog.barbers}
@@ -107,10 +103,10 @@ export default function Home({ catalog, language = 'hu' }) {
         />
 
         <nav className={editorial.homeLinks} aria-label={c.team}>
-          <Link href={route('team', language)}>{c.team} ↗</Link>
-          {catalog.barbers.filter(barber => profileAvailable(barber, catalog, language)).map(barber => <Link key={barber.id} href={profilePath(barber.slug, language)}>{barber.name} ↗</Link>)}
+          <Link href={route('team', language)}>{c.team}</Link>
+          {catalog.barbers.filter(barber => profileAvailable(barber, catalog, language)).map(barber => <Link key={barber.id} href={profilePath(barber.slug, language)}>{barber.name}</Link>)}
         </nav>
-        <Services catalog={catalog} />
+        <BookingFooter bookingRequest={bookingRequest} catalog={catalog} showFooter={false} />
         <TrustSection />
         <div className={editorial.homeBlock}>
           <PortfolioGallery catalog={catalog} language={language} />
@@ -118,7 +114,8 @@ export default function Home({ catalog, language = 'hu' }) {
           <Faq items={homeFaq(catalog, language)} title={c.faq} />
         </div>
 
-        <BookingFooter bookingRequest={bookingRequest} catalog={catalog} />
+        <SalonStory />
+        <PublicFooter language={language} catalog={catalog} />
       </main>
     </>
   );
