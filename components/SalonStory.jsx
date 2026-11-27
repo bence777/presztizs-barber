@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { useLanguage } from './LanguageProvider';
 import styles from "../styles/SalonStory.module.css";
 
@@ -25,6 +26,8 @@ export default function SalonStory() {
               src={SALON_IMAGE}
               alt={t("Hangulatkép egy sötét tónusú barbershop belső teréről")}
               loading="lazy"
+              width="1400"
+              height="1700"
               onError={(event) => {
                 event.currentTarget.onerror = null;
                 event.currentTarget.src = "/images/salon-chair.webp";
@@ -45,12 +48,7 @@ export default function SalonStory() {
 
             <div className={styles.detailRow}>
               <div className={styles.detailPhoto}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/images/demetertamas.webp"
-                  alt="Demeter Tamás"
-                  loading="lazy"
-                />
+                <Image src="/images/demetertamas.webp" alt="Demeter Tamás" width={400} height={500} sizes="(max-width: 700px) 28vw, 180px" />
               </div>
               <div className={styles.detailCopy}>
                 <span>DEMETER TAMÁS</span>

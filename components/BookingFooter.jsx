@@ -1,11 +1,13 @@
 import { useLanguage } from './LanguageProvider';
+import DeferredBooking from './DeferredBooking';
+import { PublicFooter } from './PublicLayout';
 import styles from "../styles/BookingFooter.module.css";
 
-export default function BookingFooter() {
-  const { t } = useLanguage();
+export default function BookingFooter({ bookingRequest, catalog }) {
+  const { t, language } = useLanguage();
   return (
     <>
-      <section id="foglalas" className={styles.cta} aria-labelledby="booking-heading">
+      <section className={styles.cta} aria-labelledby="booking-heading">
         <div className={styles.backdrop} aria-hidden="true" />
         <div className={styles.wrap}>
           <div className={styles.topline}>
@@ -17,7 +19,7 @@ export default function BookingFooter() {
             <h2 id="booking-heading">{t("A szék")}<br /><em>{t("rád vár.")}</em></h2>
             <div className={styles.actionRow}>
               <p className={styles.intro}>{t("Válassz barbert, szolgáltatást és időpontot.")}<br />{t("Ennyi az egész.")}</p>
-              <a className={styles.button} href="/idopontfoglalas">{t("IDŐPONTOT FOGLALOK")}</a>
+              <a className={styles.button} href="#foglalas">{t("IDŐPONTOT FOGLALOK")}</a>
             </div>
           </div>
           <div className={styles.bottomline}>
@@ -26,26 +28,17 @@ export default function BookingFooter() {
           </div>
         </div>
       </section>
-      <footer className={styles.footer} id="kapcsolat">
-        <div className={styles.footerInner}>
-          <div className={styles.footerTop}>
-            <a className={styles.brand} href="#teteje" aria-label={t("DEMETERS – az oldal tetejére")}>
-              DEMETERS
-            </a>
-            <nav aria-label={t("Lábléc navigáció")} className={styles.links}>
-              <a href="/idopontfoglalas">{t("Szolgáltatások és árak")}</a>
-              <a href="#csapat">{t("A csapat")}</a>
-              <a href="#szalon">{t("A szalon")}</a>
-              <a href="/idopontfoglalas">{t("Foglalás")}</a>
-            </nav>
-          </div>
-          <div className={styles.footerBottom}>
-            <span>© {new Date().getFullYear()} DEMETERS</span>
-            <span>DEMETERS / DEBRECEN</span>
-            <a href="#teteje">{t("VISSZA AZ ELEJÉRE")}</a>
-          </div>
+      <section id="foglalas" className={styles.booking} aria-label={t("Időpontfoglalás")}>
+        <div className={styles.bookingHeader}>
+          <span>{t("IDŐPONTFOGLALÁS")}</span>
+          <nav aria-label={t("Foglalási navigáció")}>
+            <a href={language === 'en' ? '/foglalasaim?lang=en' : '/foglalasaim'}>{t("Foglalásaim")}</a>
+            <a href={language === 'en' ? '/eszkozeim?lang=en' : '/eszkozeim'}>{t("Eszközeim")}</a>
+          </nav>
         </div>
-      </footer>
+        <DeferredBooking bookingRequest={bookingRequest} />
+      </section>
+      <PublicFooter language={language} catalog={catalog} />
     </>
   );
 }

@@ -63,10 +63,10 @@ export default function BookingManageList({admin=false}) {
         <div className={styles.actions}>
           {b.status==='confirmed'&&(!admin?new Date(b.starts_at).getTime()>now:true)&&<button disabled={!!busy} type="button" onClick={()=>change(b,'cancelled')}>{busy===b.id?t("MENTÉS…"):t("IDŐPONT LEMONDÁSA")}</button>}
           {admin&&b.status==='confirmed'&&new Date(b.starts_at).getTime()<=now&&<><button disabled={!!busy} type="button" onClick={()=>change(b,'completed')}>{t("TELJESÍTVE")}</button><button disabled={!!busy} type="button" onClick={()=>change(b,'no_show')}>{t("NEM JELENT MEG")}</button></>}
-          {!admin&&<a href={`/idopontfoglalas?service=${encodeURIComponent(b.service_id)}&barber=${encodeURIComponent(b.staff_id)}`}>{t("ÚJ IDŐPONT")}</a>}
+          {!admin&&<a href={`/?service=${encodeURIComponent(b.service_id)}&barber=${encodeURIComponent(b.staff_id)}#foglalas`}>{t("ÚJ IDŐPONT")}</a>}
         </div>
       </article>)}
-      {!loading&&!shown.length&&<div className={styles.empty}><h3>{t("Nincs itt foglalás.")}</h3><p>{filter==='upcoming'?t("A következő időpontjaid itt jelennek majd meg."):t("Ebben a nézetben egyelőre nincs találat.")}</p>{!admin&&<a href="/idopontfoglalas">{t("ÚJ FOGLALÁS")}</a>}</div>}
+      {!loading&&!shown.length&&<div className={styles.empty}><h3>{t("Nincs itt foglalás.")}</h3><p>{filter==='upcoming'?t("A következő időpontjaid itt jelennek majd meg."):t("Ebben a nézetben egyelőre nincs találat.")}</p>{!admin&&<a href="/#foglalas">{t("ÚJ FOGLALÁS")}</a>}</div>}
     </div>
     {loading&&<p className={styles.hint}>{t("Foglalások betöltése…")}</p>}
     {more&&<button className={styles.more} disabled={loading} onClick={()=>load(page+1)}>{t("TOVÁBBI FOGLALÁSOK BETÖLTÉSE")}</button>}

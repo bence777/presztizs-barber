@@ -25,7 +25,7 @@ export default function AdminServices({mode,staff,manager,onSaved}){
   {manager?.role==='owner'&&<label className={styles.staffPicker}>{t('Fodrász')}<select disabled={busy} value={staffId} onChange={e=>setStaffId(e.target.value)}>{staff.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></label>}
   {error&&<p role="alert" className={styles.error}>{t(error)}</p>}{message&&<p role="status">{message}</p>}
   {loading?<p role="status">{t('Betöltés…')}</p>:mode==='services'?<>
-   <div className={styles.heading}><p>{t('Saját szolgáltatások, saját árak és időtartamok.')}</p><button disabled={busy||!staffId} type="button" onClick={()=>setDraft(empty(Math.max(-1,...services.map(s=>s.sort_order))+1))}>{t('Új szolgáltatás')}</button></div>
+   <div className={styles.heading}><p>{t('Saját szolgáltatások, saját árak és időtartamok.')}</p><button disabled={busy||!staffId} type="button" onClick={()=>setDraft({...empty(Math.max(-1,...services.map(s=>s.sort_order))+1),...(profile?.public_slug!==undefined?{name_en:'',description_en:''}:{})})}>{t('Új szolgáltatás')}</button></div>
    <div className={styles.list}>{services.map(s=><article key={s.id} className={styles.service}>
     <div><h2>{s.name}</h2>{s.description&&<p>{s.description}</p>}<span>{s.active?t('Aktív'):t('Kikapcsolva')}{profile?.default_manual_service_id===s.id?` · ${t('Alapértelmezett')}`:''}</span></div>
     <strong>{new Intl.NumberFormat('hu-HU').format(s.price_huf)} Ft <small>{s.duration_minutes} {t('perc')}</small></strong>
@@ -36,6 +36,7 @@ export default function AdminServices({mode,staff,manager,onSaved}){
     <h2>{draft.id?t('Szolgáltatás szerkesztése'):t('Új szolgáltatás')}</h2>
     <label>{t('Szolgáltatás neve')}<input required minLength={2} maxLength={100} value={draft.name} onChange={e=>change('name',e.target.value)}/></label>
     <label>{t('Leírás (opcionális)')}<textarea maxLength={2000} value={draft.description} onChange={e=>change('description',e.target.value)}/></label>
+    {draft.name_en !== undefined && <><label>Service name (English)<input maxLength={100} value={draft.name_en||''} onChange={e=>change('name_en',e.target.value)}/></label><label>Description (English)<textarea maxLength={2000} value={draft.description_en||''} onChange={e=>change('description_en',e.target.value)}/></label></>}
     <div className={styles.grid}><label>{t('Ár (Ft)')}<input required type="number" min={0} max={2147483647} step={1} value={draft.price_huf} onChange={e=>change('price_huf',Number(e.target.value))}/></label>
     <label>{t('Időtartam (perc)')}<input required type="number" min={1} max={2147483647} step={1} value={draft.duration_minutes} onChange={e=>change('duration_minutes',Number(e.target.value))}/></label></div>
     <div className={styles.presets}>{[15,30,45,60,90,120].map(n=><button type="button" key={n} aria-pressed={draft.duration_minutes===n} onClick={()=>change('duration_minutes',n)}>{n} {t('perc')}</button>)}</div>
@@ -50,6 +51,20 @@ export default function AdminServices({mode,staff,manager,onSaved}){
     <label>{t('Megjelenített név')}<input required minLength={2} maxLength={100} value={profile.name} onChange={e=>setProfile(p=>({...p,name:e.target.value}))}/></label>
     <label>{t('Profilkép hivatkozása')}<input maxLength={2000} placeholder="https://…" value={profile.image_url||''} onChange={e=>setProfile(p=>({...p,image_url:e.target.value}))}/></label>
     {profile.image_url&&<img className={styles.preview} src={profile.image_url} alt={profile.name}/>}
+    {profile.public_slug !== undefined && <fieldset className={styles.publicFields}>
+      <legend>Publikus fodrászprofil / SEO</legend>
+      <p>A profil legalább 40 karakteres saját bemutatkozással és aktív szolgáltatással jelenik meg. Az angol oldalhoz külön angol bemutatkozás szükséges.</p>
+      <label>Stabil URL / slug<input required pattern="[a-z0-9][a-z0-9-]{1,60}" maxLength={61} value={profile.public_slug} onChange={e=>setProfile(p=>({...p,public_slug:e.target.value}))}/><small>Névváltoztatáskor nem változik. Slugváltáskor a korábbi cím átirányítást kap.</small></label>
+      {['bio','bio_en'].map((field,i)=><label key={field}>{i?'Introduction (English)':'Saját bemutatkozás (magyar)'}<textarea maxLength={3000} value={profile[field]||''} onChange={e=>setProfile(p=>({...p,[field]:e.target.value}))}/></label>)}
+      {['specializations','specializations_en'].map((field,i)=><label key={field}>{i?'Specialisations (one per line)':'Specializációk (soronként egy)'}<textarea value={(profile[field]||[]).join('\n')} onChange={e=>setProfile(p=>({...p,[field]:e.target.value.split('\n')}))}/></label>)}
+      {['instagram','facebook','tiktok'].map(network=><label key={network}>{network}<input type="url" placeholder="https://…" maxLength={500} value={profile.social_links?.[network]||''} onChange={e=>setProfile(p=>({...p,social_links:{...p.social_links,[network]:e.target.value}}))}/></label>)}
+      <h3>Portfólió</h3><p>Kizárólag saját, publikálásra jóváhagyott munkák. Legfeljebb 24 kép.</p>
+      {(profile.portfolio||[]).map((photo,index)=><div key={index} className={styles.portfolioRow}>
+        {[['src','Kép HTTPS-hivatkozása'],['alt','Magyar képleírás'],['altEn','English image description']].map(([field,label])=><label key={field}>{label}<input required={field==='src'} maxLength={field==='src'?2000:200} value={photo[field]||''} onChange={e=>setProfile(p=>({...p,portfolio:p.portfolio.map((item,i)=>i===index?{...item,[field]:e.target.value}:item)}))}/></label>)}
+        <button type="button" onClick={()=>setProfile(p=>({...p,portfolio:p.portfolio.filter((_,i)=>i!==index)}))}>Kép eltávolítása</button>
+      </div>)}
+      <button type="button" disabled={(profile.portfolio||[]).length>=24} onClick={()=>setProfile(p=>({...p,portfolio:[...(p.portfolio||[]),{src:'',alt:'',altEn:''}]}))}>Portfóliókép hozzáadása</button>
+    </fieldset>}
     <label>{t('Nyilvános telefonszám')}<input type="tel" maxLength={24} value={profile.public_phone||''} onChange={e=>setProfile(p=>({...p,public_phone:e.target.value}))}/><small>{t('Ez jelenik meg a vendégoldalon. A belépési adataid külön maradnak.')}</small></label>
     <label>{t('Foglalási kezdési lépésköz (perc)')}<input required type="number" min={1} max={1440} step={1} value={profile.booking_step_minutes} onChange={e=>setProfile(p=>({...p,booking_step_minutes:Number(e.target.value)}))}/><small>{t('A felkínált kezdések közötti idő. A foglalás hosszát a szolgáltatás határozza meg.')}</small></label>
     <label>{t('Alapértelmezett manuális szolgáltatás')}<select value={profile.default_manual_service_id||''} onChange={e=>setProfile(p=>({...p,default_manual_service_id:e.target.value||null}))}><option value="">{t('Nincs kiválasztva')}</option>{services.filter(s=>s.active).map(s=><option key={s.id} value={s.id}>{s.name} · {s.duration_minutes} {t('perc')}</option>)}</select></label>

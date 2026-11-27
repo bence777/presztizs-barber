@@ -84,6 +84,25 @@
   transition: background .23s ease, color .23s ease;
 }
 .button:hover, .button:focus-visible { background: transparent; color: var(--site-ink); }
+.booking {
+  scroll-margin-top: 16px;
+  background: var(--site-background);
+  color: var(--site-ink);
+  border-top: 1px solid var(--site-line);
+}
+.bookingHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px 28px;
+  padding: 28px clamp(23px, 4.8vw, 74px) 8px;
+  font: 500 14px/1.5 Arial, Helvetica, sans-serif;
+}
+.bookingHeader > span { letter-spacing: .12em; }
+.bookingHeader nav { display: flex; flex-wrap: wrap; gap: 24px; }
+.bookingHeader a { color: var(--site-copy); text-underline-offset: 4px; }
+.bookingHeader a:hover { color: var(--site-ink); }
 .footer {
   --site-background: #080808;
   --site-ink: #fff;

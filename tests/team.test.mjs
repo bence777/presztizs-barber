@@ -20,7 +20,8 @@ test('missing or inactive profiles never become eligible for anonymous bookings'
 test('card booking URL preserves both the actual staff ID and the full Hungarian name', () => {
   const barber = { id: 'existing-bence', name: 'Nehéz Zsíros Bence' };
   const url = new URL(barberBookingHref(barber), 'https://test.invalid');
-  assert.equal(url.pathname, '/idopontfoglalas');
+  assert.equal(url.pathname, '/');
+  assert.equal(url.hash, '#foglalas');
   assert.equal(url.searchParams.get('barber'), barber.id);
   assert.equal(url.searchParams.get('barberName'), barber.name);
   assert.equal(matchTeamMember([barber], ' nehez   zsiros bence ').id, barber.id);

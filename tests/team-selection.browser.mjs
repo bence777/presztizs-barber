@@ -12,7 +12,7 @@ await mkdir(output, { recursive: true });
 const browser = await chromium.launch({ headless: true, ...(process.env.DEMETERS_BROWSER ? { executablePath: process.env.DEMETERS_BROWSER } : {}) });
 let passed = 0;
 const pass = name => { passed++; console.log('PASS ' + name); };
-const staff = TEAM.map((member, index) => ({ id: `actual-db-${index}`, name: member.name, role: 'Barber', image: null }));
+const staff = TEAM.map((member, index) => ({ id: member.id, name: member.name, role: 'Barber', image: null }));
 const services = [{ id: 'hajvagas', name: 'Hajvágás', price: 6000, duration: 30 }];
 async function mockCatalog(page) {
   await page.route('**/api/booking/config', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ services, barbers: [{ id: 'legacy', name: 'Első Barber', role: 'Barber' }, ...staff.slice().reverse()] }) }));
@@ -22,7 +22,7 @@ async function settled(page, index) {
 }
 async function showTeam(page) {
   await page.goto(base);
-  await page.waitForFunction(() => document.querySelector('#csapat article a')?.getAttribute('href')?.includes('actual-db-0'));
+  await page.waitForFunction(() => document.querySelector('#csapat article a')?.getAttribute('href')?.includes('paliga-zoltan'));
   await page.evaluate(() => scrollTo({ top: document.getElementById('csapat').getBoundingClientRect().top + scrollY, behavior: 'instant' }));
 }
 try {
@@ -30,8 +30,8 @@ try {
     const context = await browser.newContext({ viewport: { width, height: 900 }, reducedMotion: 'reduce' });
     const page = await context.newPage(); await mockCatalog(page);
     await page.goto(base + '/idopontfoglalas');
-    await page.locator('[data-barber-carousel]').waitFor();
-    const displayed = await page.locator('[data-barber-carousel] article h3').allTextContents();
+    await page.locator('#foglalas [data-barber-carousel]').waitFor();
+    const displayed = await page.locator('#foglalas [data-barber-carousel] article h3').allTextContents();
     assert.deepEqual(displayed, ['Leghamarabbi időpont', ...TEAM.map(member => member.name)]);
     pass(`${width}px booking shows exactly the six home-page barbers, never the legacy profiles`);
     for (let index = 0; index < TEAM.length; index++) {

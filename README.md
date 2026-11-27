@@ -133,3 +133,11 @@ npm run dev
 ## Fájlstruktúra
 
 A projekt `components`, `styles`, `pages`, `public` mappái megmaradtak. Nincs `src/` könyvtár, a CSS fájlok továbbra is a `styles/` mappában vannak.
+
+## 2026. november 27. – Kétnyelvű SEO és publikus oldalak
+
+Elkészült az adatbázis-alapú publikus árlista, a magyar–angol szolgáltatási oldalak, a feltölthető fodrászprofilok, a központi metadata/JSON-LD, sitemap, robots, FAQ, lokációs adatkonfiguráció és 1200 × 630 pixeles OG-képvégpont. A foglaló külön, késleltetett chunkban töltődik be. A production domain a tulajdonos által megadott `https://demeters.hu`.
+
+A teljes fájllista, URL-ek, migráció, hiányzó üzleti adatok, hozzájárulásos analitikai események, tesztparancsok és Search Console teendők: [SEO-átadás](docs/seo-handoff.md). Az új migráció **még nincs éles adatbázison alkalmazva**, és production deploy nem történt. Üres bemutatkozású fodrászból nem készül indexelhető profil. Az oldal a migráció előtt is használható, a valós szolgáltatási árakkal.
+
+Új parancsok: `npm run lint`, `npm run test:seo`. A korábbi, lint hiányára és tesztszámokra vonatkozó bekezdések történeti állapotot írnak le; az aktuális átadás eredményeit az új dokumentum tartalmazza.

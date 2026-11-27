@@ -17,7 +17,7 @@ try{
   const manager={role:'barber',staff_id:TEAM[0].id};
   const staff=TEAM.slice(0,2).map(m=>({...m,active:true}));
   let services=staff.map((m,i)=>({id:'service-'+i,staff_id:m.id,name:'Hajvágás',description:i?'Másik fodrász':'Saját szolgáltatás',duration_minutes:i?45:30,price_huf:i?7000:5500,sort_order:0,active:true,counts_as_haircut:true,archived_at:null}));
-  let profile={id:staff[0].id,name:staff[0].name,image_url:null,public_phone:'+36301234567',booking_step_minutes:15,default_manual_service_id:'service-0'};
+  let profile={id:staff[0].id,name:staff[0].name,image_url:null,public_phone:'+36301234567',booking_step_minutes:15,default_manual_service_id:'service-0',public_slug:staff[0].id,bio:'',bio_en:'',specializations:[],specializations_en:[],portfolio:[],social_links:{}};
   let hours=[{weekday:1,opens:'09:00',closes:'17:00'}];const writes=[];
   await page.route('**/api/**',async route=>{
    const req=route.request(),url=new URL(req.url()),body=req.postDataJSON(),method=req.method();let result={};
@@ -53,8 +53,17 @@ try{
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));pass(`${width}px personal services support adding a 90-minute service without code`);
   await nav().getByRole('button',{name:'Beállítások',exact:true}).click();
   await page.getByLabel(/^Alapértelmezett manuális szolgáltatás/).selectOption('service-color');
+  await page.getByLabel('Saját bemutatkozás (magyar)',{exact:true}).fill('Saját, magyar nyelvű bemutatkozás a nyilvános fodrászprofilhoz.');
+  await page.getByLabel('Introduction (English)',{exact:true}).fill('My own English introduction for the public barber profile.');
+  await page.getByRole('button',{name:'Portfóliókép hozzáadása',exact:true}).click();
+  await page.getByLabel('Kép HTTPS-hivatkozása',{exact:true}).fill('/images/barber-detail.webp');
+  await page.getByLabel('Magyar képleírás',{exact:true}).fill('Saját munka');
+  await page.getByLabel('English image description',{exact:true}).fill('My work');
   await page.getByLabel(/^Foglalási kezdési lépésköz/).fill('7');await Promise.all([page.waitForResponse(r=>r.url().includes('/api/admin/settings')&&r.request().method()==='PATCH'),page.getByRole('button',{name:'Beállítások mentése',exact:true}).click()]);
   await page.getByRole('status').filter({hasText:'Módosítások mentve.'}).waitFor();assert.equal(profile.default_manual_service_id,'service-color');assert.equal(profile.booking_step_minutes,7);
+  assert.ok(profile.bio.includes('magyar'));assert.ok(profile.bio_en.includes('English'));assert.equal(profile.portfolio[0].alt,'Saját munka');
+  assert.ok(writes.filter(write=>write.bio).every(write=>write.staffId===manager.staff_id));
+  pass(`${width}px own bilingual biography and portfolio save with the authenticated staff ID`);
   await page.getByRole('button',{name:'Idősáv hozzáadása',exact:true}).click();
   const hourRows=page.locator('[class*=hourRow]');await hourRows.last().getByLabel(/^Nap/).selectOption('2');
   await page.getByRole('button',{name:'Munkaidő mentése',exact:true}).click();await page.waitForFunction(()=>document.querySelector('[role=status]')?.textContent==='Módosítások mentve.');
@@ -63,7 +72,7 @@ try{
   const color=page.locator('article').filter({has:page.getByRole('heading',{name:'Hajfestés',exact:true})});page.once('dialog',d=>d.accept());await color.getByRole('button',{name:'Archiválás',exact:true}).click();await color.waitFor({state:'hidden'});
   await page.goto(base+'/idopontfoglalas');await page.getByRole('heading',{name:'Válassz fodrászt',exact:true}).waitFor();
   assert.equal(await page.getByText('Várható összeg',{exact:true}).count(),0);assert.equal(await page.getByText('A következő',{exact:true}).count(),0);
-  const carousel=page.locator('[data-barber-carousel]');await carousel.getByRole('button',{name:staff[0].name,exact:true}).click();
+  const carousel=page.locator('#foglalas [data-barber-carousel]');await carousel.getByRole('button',{name:staff[0].name,exact:true}).click();
   const active=carousel.locator('article[class*=activeCard]');await active.getByRole('link',{name:'+36301234567',exact:true}).waitFor();
   const tel=active.getByRole('link',{name:'+36301234567',exact:true});assert.equal(await tel.getAttribute('href'),'tel:+36301234567');
   await tel.evaluate(el=>{el.addEventListener('click',e=>e.preventDefault(),{once:true});el.click()});assert.ok(await page.getByRole('heading',{name:'Válassz fodrászt',exact:true}).isVisible());
@@ -71,7 +80,7 @@ try{
   await active.getByRole('button',{name:'IDŐPONTFOGLALÁS',exact:true}).click();
   assert.equal(await page.getByRole('heading',{name:'Hajfestés',exact:true}).count(),0);assert.equal(await page.getByText('Másik fodrász',{exact:true}).count(),0);
   assert.ok((await page.locator('[class*=serviceRow]').innerText()).replace(/\D/g,'').includes('5500'));assert.ok((await page.locator('[class*=serviceRow]').innerText()).includes('30'));
-  await page.getByRole('button',{name:'English',exact:true}).click();await page.getByRole('button',{name:'Back to barbers',exact:true}).click();await page.getByRole('heading',{name:'Choose a barber',exact:true}).waitFor();
+  await page.getByRole('link',{name:'English',exact:true}).click();await page.getByRole('button',{name:'Back to barbers',exact:true}).click();await page.getByRole('heading',{name:'Choose a barber',exact:true}).waitFor();
   assert.ok(await page.getByText('Each barber sets their own prices.',{exact:true}).isVisible());assert.deepEqual(errors,[]);
   pass(`${width}px compact public carousel has linked phone, clickable dots, personal active services, archiving and English labels`);
   await context.close();

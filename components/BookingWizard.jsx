@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { trackEvent } from "../lib/client/analytics.mjs";
 import { useRouter } from "next/router";
 import { formatPrice } from "../data/bookingConfig";
 import { getCachedAvailability, invalidateCachedAvailability, loadPublicAvailability, loadPublicCatalog, loadEarliestAppointment } from "../lib/client/bookingCache.mjs";
@@ -70,7 +71,7 @@ function createCalendar(index) {
   ];
 }
 
-export default function BookingWizard() {
+export default function BookingWizard({ bookingRequest }) {
   const router = useRouter();
   const { t, locale, language } = useLanguage();
   const dayLabel = iso => iso ? formatDay(iso, locale) : t("Még nincs kiválasztva");
@@ -174,7 +175,7 @@ export default function BookingWizard() {
   },[serviceId,barberId,step,earliestLoading]);
 
   // A szolgáltatás vagy barber előre kiválasztható a főoldalról:
-  // /idopontfoglalas?service=skin-fade&barber=mark
+  // /?service=skin-fade&barber=mark#foglalas
   useEffect(() => {
     if (!router.isReady || catalogLoading) return;
     const key = JSON.stringify([router.query.service, router.query.barber, router.query.barberName]);
@@ -182,7 +183,8 @@ export default function BookingWizard() {
     preselectionRef.current = key;
     const barber = resolveBarberSelection(BARBERS, router.query);
     const service = catalog.services.find((item) => item.id === router.query.service && (barber?.id === 'any' || item.staffId === barber?.id));
-    if (service && barber) setServiceId(service.id); else setServiceId(null);
+    if (barber) { trackEvent('booking_started', { placement: 'deep_link', language }); trackEvent('barber_selected', { barber_id: barber.id, language }); }
+    if (service && barber) { trackEvent('service_selected', { service_id: service.id, language }); setServiceId(service.id); } else setServiceId(null);
     if (barber) {
       setBarberId(barber.id);
       setEarliestRequested(barber.id === 'any');
@@ -193,6 +195,13 @@ export default function BookingWizard() {
     else if (barber) setStep(1);
   }, [router.isReady, router.query.service, router.query.barber, router.query.barberName, catalog, catalogLoading]);
 
+  // A csapatkártya ugyanazzal a hivatkozással is új foglalást indíthat.
+  useEffect(() => {
+    if (!bookingRequest || catalogLoading) return;
+    const member = resolveBarberSelection(BARBERS, { barber: bookingRequest.id, barberName: bookingRequest.name });
+    if (member) selectBarber(member.id);
+  }, [bookingRequest, catalogLoading, BARBERS]);
+
   // A felület állapotát Debrecen szerinti dátumhoz igazítjuk.
   useEffect(() => {
     const fresh = getTodayInDebrecen();
@@ -200,15 +209,13 @@ export default function BookingWizard() {
     setVisibleMonth((month) => Math.max(month, monthIndex(fresh.date)));
   }, []);
 
-  // Mobilon lépésváltáskor a következő panel elejére görgetünk,
-  // de az oldal első betöltésekor nem ugrunk le a címsorról.
+  // Lépésváltáskor a főoldalba ágyazott következő panelhez görgetünk.
+  // Az első betöltéskor a főoldal tetején maradunk.
   useEffect(() => {
     if (previousStepRef.current === step) return;
     previousStepRef.current = step;
-    if (window.innerWidth <= 800) {
-      const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      workspaceRef.current?.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
-    }
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    workspaceRef.current?.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
   }, [step]);
 
   const service = SERVICES.find((item) => item.id === serviceId) || null;
@@ -222,6 +229,7 @@ export default function BookingWizard() {
     (index === 3 && Boolean(serviceId && barberId && date && time));
 
   function selectService(id) {
+    trackEvent('service_selected', { service_id: id, language });
     setServiceId(id);
     setDate(null);
     setTime(null);
@@ -233,6 +241,8 @@ export default function BookingWizard() {
   }
 
   function selectBarber(id) {
+    trackEvent('booking_started', { placement: 'wizard', language });
+    trackEvent('barber_selected', { barber_id: id, language });
     earliestRequestRef.current?.abort();
     earliestRequestRef.current = null;
     setEarliestLoading(false);
@@ -316,7 +326,9 @@ export default function BookingWizard() {
         throw new Error(data.error || t("Nem sikerült véglegesíteni a foglalást."));
       }
       invalidateCachedAvailability(serviceId, barberId, date.slice(0, 7));
+      if (!data.booking?.id) throw new Error(t("Nem sikerült véglegesíteni a foglalást."));
       setConfirmedBooking(data.booking);
+      trackEvent('booking_completed', { barber_id: barberId, service_id: serviceId, language });
     } catch (error) { setBookingError(error.message); }
     finally { setBookingBusy(false); }
   }
@@ -400,7 +412,7 @@ export default function BookingWizard() {
           {step === 0 && (
             <>
               <div className={styles.sectionHead}>
-                <h1>{t("Válassz fodrászt")}</h1>
+                <h2 className={styles.barberHeading}>{t("Válassz fodrászt")}</h2>
               </div>
               {!catalogLoading && !catalogError && router.query.barberName && !matchTeamMember(BARBERS, router.query.barberName) && <p className={styles.noTimes} role="status">{t("A kiválasztott fodrász jelenleg nem foglalható online. Válassz az elérhető csapattagok közül.")}</p>}
               {catalogLoading && <p className={styles.noTimes}>{t("Betöltjük a fodrászokat…")}</p>}
@@ -548,7 +560,7 @@ export default function BookingWizard() {
                     <div><dt>{t("Időpont")}</dt><dd>{dayLabel(confirmedBooking.local_date)} · {confirmedBooking.local_time}</dd></div>
                     <div><dt>{t("Ár")}</dt><dd>{formatPrice(confirmedBooking.price_huf)}</dd></div>
                   </dl>
-                  <p className={styles.formNote}>{t("A foglalásod elmentettük. A visszaigazoló e-mailben is megtalálod a foglaláskezelő hivatkozását.")}</p><a href="/foglalasaim" className={styles.mainButton} style={{ marginTop: 18 }}>{t("Foglalásaim kezelése")}</a>
+                  <p className={styles.formNote}>{t("A foglalásod elmentettük. A visszaigazoló e-mailben is megtalálod a foglaláskezelő hivatkozását.")}</p><a href={language === "en" ? "/foglalasaim?lang=en" : "/foglalasaim"} className={styles.mainButton} style={{ marginTop: 18 }}>{t("Foglalásaim kezelése")}</a>
                 </div>
               ) : !showPreview ? (
                 <div className={styles.detailsAuth}>

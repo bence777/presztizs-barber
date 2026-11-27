@@ -13,11 +13,11 @@ let passed = 0; const pass = text => { passed++; console.log('PASS ' + text); };
 const staff = TEAM.map((member, index) => ({ id: `actual-${index}`, name: member.name, role: 'Barber', image: null }));
 const services = [{ id: 'haircut', staffId:staff[3].id, name: 'Hajvágás', duration: 30, price: 6000 }];
 const profile = { name: 'Test Guest', email: 'guest@example.com', phone: '+36301234567' };
-async function settled(page, name) {
-  await page.waitForFunction(name => document.querySelector('[data-barber-carousel] article[class*="activeCard"] h3')?.textContent === name && document.querySelector('[data-barber-carousel] [aria-busy]')?.getAttribute('aria-busy') === 'false', name);
+async function settled(page, name, scope = '#foglalas') {
+  await page.waitForFunction(({ name, scope }) => document.querySelector(scope + ' [data-barber-carousel] article[class*="activeCard"] h3')?.textContent === name && document.querySelector(scope + ' [data-barber-carousel] [aria-busy]')?.getAttribute('aria-busy') === 'false', { name, scope });
 }
-async function cardMetrics(page) {
-  return page.locator('[data-barber-carousel] article[class*="activeCard"]').evaluate(card => {
+async function cardMetrics(page, scope = '#foglalas') {
+  return page.locator(scope + ' [data-barber-carousel] article[class*="activeCard"]').evaluate(card => {
     const cs = getComputedStyle(card), h3 = getComputedStyle(card.querySelector('h3')), button = getComputedStyle(card.querySelector('[class*="cardAction"]'));
     return { width: cs.width, height: cs.height, background: cs.backgroundColor, sectionBackground: getComputedStyle(card.closest('[data-barber-carousel]')).backgroundColor, font: h3.fontFamily, size: h3.fontSize, filter: cs.filter, actionColor: button.color, actionSize: button.fontSize };
   });
@@ -47,31 +47,31 @@ try {
     } else throw new Error('Unexpected API request: ' + url.pathname);
     await route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(result) });
   });
-  await page.goto(base); await settled(page, staff[0].name);
-  const homeMetrics = await cardMetrics(page);
+  await page.goto(base); await settled(page, staff[0].name, '#csapat');
+  const homeMetrics = await cardMetrics(page, '#csapat');
   await page.goto(base + '/idopontfoglalas'); await settled(page, 'Leghamarabbi időpont');
   const bookingMetrics=await cardMetrics(page);assert.equal(bookingMetrics.font,homeMetrics.font);assert.equal(bookingMetrics.background,homeMetrics.background);assert.ok(parseFloat(bookingMetrics.height)<=parseFloat(homeMetrics.height));
-  assert.deepEqual(await page.locator('[data-barber-carousel] article h3').allTextContents(), ['Leghamarabbi időpont', ...TEAM.map(person => person.name)]);
+  assert.deepEqual(await page.locator('#foglalas [data-barber-carousel] article h3').allTextContents(), ['Leghamarabbi időpont', ...TEAM.map(person => person.name)]);
   assert.equal(await page.locator('[class*="barberGrid"]').count(), 0);
   assert.equal(await page.getByText('Bárki', { exact: true }).count(), 0);
-  const scene = page.locator('[data-barber-carousel] [aria-roledescription="carousel"]');
+  const scene = page.locator('#foglalas [data-barber-carousel] [aria-roledescription="carousel"]');
   await scene.scrollIntoViewIfNeeded();
   await page.screenshot({ path: `${output}/carousel-${width}.png` });
   if (width === 390) {
     const cdp = await context.newCDPSession(page);
-    const button = await page.locator('[data-barber-carousel] article[class*="activeCard"]').getByRole('button', { name: 'IDŐPONTFOGLALÁS', exact: true }).boundingBox();
+    const button = await page.locator('#foglalas [data-barber-carousel] article[class*="activeCard"]').getByRole('button', { name: 'IDŐPONTFOGLALÁS', exact: true }).boundingBox();
     const x = button.x + button.width * .65, y = button.y + button.height / 2;
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
     for (let step = 1; step <= 6; step++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x - step * 11, y }] });
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   } else { await scene.focus(); await page.keyboard.press('ArrowRight'); }
   await settled(page, staff[0].name);
-  await page.locator('[data-barber-carousel] article[class*="activeCard"]').getByRole('button', { name: 'IDŐPONTFOGLALÁS', exact: true }).click();
+  await page.locator('#foglalas [data-barber-carousel] article[class*="activeCard"]').getByRole('button', { name: 'IDŐPONTFOGLALÁS', exact: true }).click();
   await page.getByRole('heading', { name: 'Miben segíthetünk?', exact: true }).waitFor(); assert.equal(earliestCalls, 0);
   pass(`${width}px booking uses compact cards with the same, typography, actions and keyboard carousel; specific-barber booking stays manual`);
 
   await page.goto(base + '/idopontfoglalas'); await settled(page, 'Leghamarabbi időpont');
-  await page.locator('[data-barber-carousel] article[class*="activeCard"]').getByRole('button', { name: 'IDŐPONTFOGLALÁS', exact: true }).click();
+  await page.locator('#foglalas [data-barber-carousel] article[class*="activeCard"]').getByRole('button', { name: 'IDŐPONTFOGLALÁS', exact: true }).click();
   await page.getByRole('button', { name: /Hajvágás/ }).click();
   await page.getByRole('status').filter({ hasText: 'A legkorábbi szabad időpont' }).waitFor();
   assert.equal(await page.getByRole('button', { name: '09:00', exact: true }).getAttribute('aria-pressed'), 'true');

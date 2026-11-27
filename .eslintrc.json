@@ -1,0 +1,23 @@
+{
+  "extends": "next/core-web-vitals",
+  "ignorePatterns": [
+    ".next*/",
+    "tests/fixtures/"
+  ],
+  "overrides": [
+    {
+      "files": [
+        "pages/admin/eszkozok.jsx",
+        "pages/eszkozeim.jsx",
+        "components/AdminDashboard.jsx",
+        "components/AdminIdentityGate.jsx",
+        "components/BookingManageList.jsx",
+        "components/BookingManagePage.jsx",
+        "components/GuestIdentity.jsx"
+      ],
+      "rules": {
+        "@next/next/no-html-link-for-pages": "off"
+      }
+    }
+  ]
+}

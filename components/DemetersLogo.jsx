@@ -1,0 +1,30 @@
+export default function DemetersLogo({ className, ...props }) {
+  return (
+    <svg
+      {...props}
+      className={className}
+      viewBox="0 0 502 64"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      role="img"
+      aria-label="DEMETERS"
+    >
+      <g
+        stroke="currentColor"
+        strokeWidth="5.5"
+        strokeLinecap="square"
+        strokeLinejoin="miter"
+      >
+        <path d="M 5 20 V 6 H 28 C 64 6 64 58 28 58 H 5 V 44" />
+        <path d="M 70 6 H 117 M 70 32 H 117 M 70 58 H 117" />
+        <path d="M 135 58 V 6 L 162 36 L 189 6 V 58" />
+        <path d="M 207 6 H 254 M 207 32 H 254 M 207 58 H 254" />
+        <path d="M 267 6 H 319 M 293 6 V 58" />
+        <path d="M 332 6 H 379 M 332 32 H 379 M 332 58 H 379" />
+        <path d="M 394 6 H 419 C 442 6 442 34 419 34 H 394 M 394 34 V 58 M 415 34 L 439 58" />
+        <path d="M 495 14 C 485 2 455 2 454 18 C 453 29 467 30 478 33 C 489 36 499 40 497 48 C 493 63 466 62 452 51" />
+      </g>
+    </svg>
+  );
+}
+

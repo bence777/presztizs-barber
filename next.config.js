@@ -2,6 +2,13 @@
 const nextConfig = {
   // Keep browser QA builds separate from a running local development server.
   distDir: process.env.DEMETERS_BUILD_DIR || '.next',
+  images: { formats: ['image/avif', 'image/webp'] },
+  async redirects() {
+    return [
+      { source: '/ferfi-fodraszat-debrecen', destination: '/ferfi-hajvagas-debrecen', permanent: true },
+      { source: '/en/mens-hairdresser-debrecen', destination: '/en/mens-haircut-debrecen', permanent: true },
+    ];
+  },
   async headers() {
     const common = [
       {key:'X-Content-Type-Options',value:'nosniff'},

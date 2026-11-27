@@ -1,9 +1,10 @@
+import { SITE } from '../data/site.mjs';
 import { useLanguage } from './LanguageProvider';
 import styles from "../styles/TrustSection.module.css";
 
 // Csak valódi, a szalontól ellenőrzött értékelések kerüljenek ide.
 // Példa: { quote: "...", author: "Keresztnév", source: "Google" }
-const REVIEWS = [];
+const REVIEWS = SITE.reviews;
 
 const VALUES = [
   {
@@ -24,7 +25,7 @@ const VALUES = [
 ];
 
 export default function TrustSection() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const hasReviews = REVIEWS.length > 0;
 
   return (
@@ -58,9 +59,9 @@ export default function TrustSection() {
                   <figure className={styles.entry} key={`${review.author}-${index}`}>
                     <span className={styles.number}>0{index + 1}</span>
                     <div className={styles.entryBody}>
-                      <blockquote className={styles.reviewText}>“{review.quote}”</blockquote>
+                      <blockquote className={styles.reviewText}>“{language === 'en' && review.quoteEn ? review.quoteEn : review.quote}”</blockquote>
                       <figcaption className={styles.description}>
-                        {review.author}{review.source ? ` · ${review.source}` : ""}
+                        {review.author}{review.url ? <> · <a href={review.url} target="_blank" rel="noopener noreferrer">{review.source}</a></> : review.source ? ` · ${review.source}` : ""}
                       </figcaption>
                     </div>
                   </figure>

@@ -38,3 +38,8 @@ test('invalid weekly hours fail before a destructive replacement',async()=>{
  await assert.rejects(()=>saveSettings(manager,{staffId:'staff-one',hours:[{weekday:1,opens:'09:00',closes:'12:00'},{weekday:1,opens:'11:00',closes:'13:00'}]}),e=>e.status===400);
  assert.equal(calls.length,0);
 });
+
+test('a duplicate profile slug reports a profile conflict instead of a booking conflict',async()=>{
+ globalThis.fetch=async()=>({ok:false,status:409,text:async()=>JSON.stringify({code:'23505',message:'private internal constraint name'})});
+ await assert.rejects(()=>saveSettings(manager,{staffId:'staff-one',name:'Own Barber',image_url:'',public_phone:'',booking_step_minutes:15,default_manual_service_id:null,public_slug:'taken-slug'}),e=>e.status===409&&e.code==='slug_taken'&&e.message.includes('profilcím'));
+});

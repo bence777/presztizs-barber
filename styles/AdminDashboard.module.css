@@ -90,3 +90,6 @@
 
 .monthBreak{background:#fee2e2;border-color:#fecaca;color:#991b1b}
 .shell .event_confirmed .eventTime,.shell .event_completed .eventTime,.shell .event_confirmed>span:last-of-type,.shell .event_completed>span:last-of-type{color:#166534}
+.shortBooking{background:#dcfce7;border-color:#bbf7d0;border-left-color:#16a34a;color:#14532d}
+.longBooking{background:#15803d;border-color:#166534;border-left-color:#14532d;color:#fff}
+.shell .longBooking .eventTime,.shell .longBooking>span:last-of-type{color:#ecfdf5}

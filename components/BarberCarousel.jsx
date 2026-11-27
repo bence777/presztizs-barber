@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import Link from 'next/link';
 import {
   motion,
   animate,
@@ -6,6 +7,7 @@ import {
   useTransform,
   useReducedMotion,
 } from "framer-motion";
+import { trackEvent } from '../lib/client/analytics.mjs';
 import { barberBookingHref } from '../data/team.mjs';
 import { useLanguage } from './LanguageProvider';
 import styles from "../styles/BarberStack.module.css";
@@ -14,7 +16,7 @@ import styles from "../styles/BarberStack.module.css";
 const wrap = (value, count) => ((value % count) + count) % count;
 const relativeTo = (index, position, count) => wrap(index - position + count / 2, count) - count / 2;
 
-function Card({ barber, index, count, position, layout, activeIndex, animating, onSelect, onChoose }) {
+function Card({ barber, index, count, position, layout, activeIndex, animating, onSelect, onChoose, onBook }) {
   const { t, language } = useLanguage();
   const [imageFailed, setImageFailed] = useState(false);
   useEffect(() => { setImageFailed(false); }, [barber.image]);
@@ -63,26 +65,27 @@ function Card({ barber, index, count, position, layout, activeIndex, animating, 
             : <span className={styles.initials}>{barber.symbol || barber.name.split(" ").map(part => part[0]).join("")}</span>}
         </div>
         <div className={styles.cardFooter}>
-          {barber.publicPhone&&<a data-carousel-control className={styles.publicPhone} href={`tel:${barber.publicPhone.replace(/[^+\d]/g,'')}`} tabIndex={active?0:-1} onClick={event=>event.stopPropagation()}>{barber.publicPhone}</a>}
+          {barber.publicPhone&&<a data-carousel-control className={styles.publicPhone} href={`tel:${barber.publicPhone.replace(/[^+\d]/g,'')}`} tabIndex={active?0:-1} onClick={event=>{event.stopPropagation();trackEvent('phone_clicked',{placement:'barber_carousel',barber_id:barber.id});}}>{barber.publicPhone}</a>}
           {onChoose ? <button
             type="button" className={styles.cardAction}
             tabIndex={active && !animating ? 0 : -1} disabled={animating}
             onClick={() => { if (!active) onSelect(index); else onChoose(barber); }}
-          >{language === 'hu' ? <>IDŐPONT<wbr />FOGLALÁS</> : t("IDŐPONTFOGLALÁS")}</button> : <a
+          >{language === 'hu' ? <>IDŐPONT<wbr />FOGLALÁS</> : t("IDŐPONTFOGLALÁS")}</button> : <Link
             className={styles.cardAction}
-            href={barberBookingHref(barber)}
+            href={barberBookingHref(barber, language)}
+            shallow
             tabIndex={active && !animating ? 0 : -1}
             aria-disabled={animating || undefined}
             draggable="false"
-            onClick={event => { if (animating) event.preventDefault(); else if (!active) { event.preventDefault(); onSelect(index); } }}
-          >{language === 'hu' ? <>IDŐPONT<wbr />FOGLALÁS</> : t("IDŐPONTFOGLALÁS")}</a>}
+            onClick={event => { if (animating) event.preventDefault(); else if (!active) { event.preventDefault(); onSelect(index); } else if (!event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) onBook?.(barber); }}
+          >{language === 'hu' ? <>IDŐPONT<wbr />FOGLALÁS</> : t("IDŐPONTFOGLALÁS")}</Link>}
         </div>
       </div>
     </motion.article>
   );
 }
 
-export default function BarberCarousel({ barbers: BARBERS, initialBarberId, onChoose, heading, headingId, compact = false }) {
+export default function BarberCarousel({ barbers: BARBERS, initialBarberId, onChoose, onBook, heading, headingId, compact = false }) {
   const { t, language } = useLanguage();
   const initialIndex = Math.max(0, BARBERS.findIndex(barber => barber.id === initialBarberId));
   const sceneRef = useRef(null);
@@ -146,7 +149,7 @@ export default function BarberCarousel({ barbers: BARBERS, initialBarberId, onCh
     setAnimating(true);
     animationRef.current = animate(position, target, {
       type: 'tween',
-      duration: returning ? .45 : 1.15 + Math.max(0, Math.abs(target - current) - 1) * .2,
+      duration: returning ? .22 : .42 + Math.max(0, Math.abs(target - current) - 1) * .08,
       ease: [.45, 0, .2, 1],
       onComplete: () => finishSelection(index, target),
     });
@@ -255,7 +258,7 @@ export default function BarberCarousel({ barbers: BARBERS, initialBarberId, onCh
           onClickCapture={event => { if (suppressClickRef.current) { event.preventDefault(); event.stopPropagation(); suppressClickRef.current = false; } }}
           onDragStart={event => event.preventDefault()}
         >
-          {BARBERS.map((barber, index) => <Card key={barber.name} barber={barber} index={index} count={BARBERS.length} position={position} layout={layout} activeIndex={activeIndex} animating={animating} onChoose={onChoose} onSelect={next => { selectBarber(next); sceneRef.current?.focus({ preventScroll: true }); }} />)}
+          {BARBERS.map((barber, index) => <Card key={barber.name} barber={barber} index={index} count={BARBERS.length} position={position} layout={layout} activeIndex={activeIndex} animating={animating} onChoose={onChoose} onBook={onBook} onSelect={next => { selectBarber(next); sceneRef.current?.focus({ preventScroll: true }); }} />)}
           <button type="button" data-carousel-control className={`${styles.arrow} ${styles.previousArrow}`} disabled={animating} aria-label={language === 'en' ? 'Previous barber' : 'Előző fodrász'} onClick={() => selectBarber(activeIndex - 1)}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true" focusable="false"><path d="M19 12H5m6 6-6-6 6-6" /></svg>
           </button>

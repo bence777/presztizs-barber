@@ -1,32 +1,130 @@
-import Head from 'next/head';
+import DemetersLogo from '../components/DemetersLogo';
+import Link from 'next/link';
+import Seo from '../components/Seo';
+import Services from '../components/Services';
+import PortfolioGallery from '../components/PortfolioGallery';
+import Faq from '../components/Faq';
+import LocationSection from '../components/LocationSection';
+import { COPY, pageMetadata, homeFaq } from '../data/seoContent.mjs';
+import { route, profilePath } from '../data/site.mjs';
+import { profileAvailable } from '../lib/seo/catalog.mjs';
+import { buildSchema } from '../lib/seo/schema.mjs';
+import editorial from '../styles/Editorial.module.css';
+import { useState } from 'react';
 import styles from '../styles/Home.module.css';
 import HeroVideo from '../components/HeroVideo';
-import BarberStack from "../components/BarberStack";
+import BarberStack from '../components/BarberStack';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import { useLanguage } from '../components/LanguageProvider';
 import SalonStory from '../components/SalonStory';
 import TrustSection from '../components/TrustSection';
 import BookingFooter from '../components/BookingFooter';
-export default function Home() {
+
+
+export default function Home({ catalog, language = 'hu' }) {
   const { t } = useLanguage();
-  return <>
-    <Head><title>DEMETERS | Barber Debrecen</title><meta name="description" content={t("DEMETERS — precíz vágások, karakteres stílus. Online időpontfoglalás Debrecenben.")} /><meta property="og:site_name" content="DEMETERS"/><meta property="og:title" content="DEMETERS | Barber Debrecen"/><script type="application/ld+json" dangerouslySetInnerHTML={{__html:JSON.stringify({'@context':'https://schema.org','@type':'HairSalon',name:'DEMETERS',areaServed:{'@type':'City',name:'Debrecen'}})}}/></Head>
-    <main id="teteje" className={styles.site}>
-      <header className={styles.header}>
-        <a className={styles.brand} href="/">DEMETERS</a>
-        <div className={styles.headerActions}><nav aria-label={t("Fő navigáció")}><a href="#szalon">{t("A SZALON")}</a><a href="#csapat">{t("CSAPAT")}</a><a className={styles.bookingNav} href="/idopontfoglalas">{t("FOGLALÁS")}</a></nav><LanguageSwitcher /></div>
-      </header>
-      <section className={styles.hero} aria-labelledby="hero-title">
-        <HeroVideo />
-        <div className={styles.portrait} aria-hidden="true" />
-        <div className={styles.shade} aria-hidden="true" />
-        <div className={styles.center}><h1 id="hero-title">DEMETERS</h1></div>
-        <div className={styles.bottomline}><span>{t("GÖRGESS LEJJEBB")}</span><a href="/idopontfoglalas">{t("IDŐPONTFOGLALÁS")}</a></div>
-      </section>
-      <SalonStory />
-      <BarberStack />
-      <TrustSection />
-      <BookingFooter />
-    </main>
-  </>;
+  const meta = pageMetadata('home', language);
+  const c = COPY[language];
+  const [bookingRequest, setBookingRequest] = useState(null);
+
+  return (
+    <>
+      <Seo {...meta} path={route('home', language)} language={language} alternates={{ 'hu-HU': '/', en: '/en', 'x-default': '/' }} schema={buildSchema({ ...meta, path: route('home', language), language, catalog, services: catalog.services })} />
+
+      <main id="teteje" className={styles.site}>
+        <header className={styles.header}>
+          <a
+            className={styles.brand}
+            href={route('home', language)}
+            aria-label={`DEMETERS – ${c.home}`}
+          >
+            <DemetersLogo className={styles.navLogo} />
+          </a>
+
+          <div className={styles.headerActions}>
+            <nav aria-label={t("Fő navigáció")}>
+              <Link href={route('prices', language)}>{c.prices}</Link>
+              <Link href={route('team', language)}>{c.team}</Link>
+
+              <a
+                className={styles.bookingNav}
+                href="#foglalas"
+              >
+                {t("FOGLALÁS")}
+              </a>
+            </nav>
+
+            <LanguageSwitcher />
+          </div>
+        </header>
+
+        <section
+          className={styles.hero}
+          aria-labelledby="hero-title"
+        >
+          <HeroVideo />
+
+          <div
+            className={styles.portrait}
+            aria-hidden="true"
+          />
+
+          <div
+            className={styles.shade}
+            aria-hidden="true"
+          />
+
+          <div className={styles.center}>
+            <DemetersLogo className={styles.heroLogo} />
+
+            <h1
+              id="hero-title"
+              className={styles.heroTitle}
+            >
+              {meta.h1}
+            </h1>
+          </div>
+
+          <div className={styles.bottomline}>
+            <span>{t("GÖRGESS LEJJEBB")}</span>
+
+            <a href="#foglalas">
+              {t("IDŐPONTFOGLALÁS")}
+            </a>
+          </div>
+        </section>
+
+        <SalonStory />
+
+        <BarberStack
+          initialBarbers={catalog.barbers}
+          onBook={barber =>
+            setBookingRequest({
+              id: barber.id,
+              name: barber.name,
+            })
+          }
+        />
+
+        <nav className={editorial.homeLinks} aria-label={c.team}>
+          <Link href={route('team', language)}>{c.team} ↗</Link>
+          {catalog.barbers.filter(barber => profileAvailable(barber, catalog, language)).map(barber => <Link key={barber.id} href={profilePath(barber.slug, language)}>{barber.name} ↗</Link>)}
+        </nav>
+        <Services catalog={catalog} />
+        <TrustSection />
+        <div className={editorial.homeBlock}>
+          <PortfolioGallery catalog={catalog} language={language} />
+          <LocationSection language={language} />
+          <Faq items={homeFaq(catalog, language)} title={c.faq} />
+        </div>
+
+        <BookingFooter bookingRequest={bookingRequest} catalog={catalog} />
+      </main>
+    </>
+  );
+}
+
+export async function getStaticProps() {
+  const { homeProps } = await import('../lib/server/publicPages');
+  return homeProps('hu');
 }

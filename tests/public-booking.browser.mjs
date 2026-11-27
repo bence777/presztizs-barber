@@ -19,8 +19,8 @@ try {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     await page.clock.install({ time: new Date('2026-11-25T09:00:00Z') });
-    const barbers = TEAM.map((member, index) => ({ id: `barber-${index}`, name: member.name, role: 'Fodrász', image: null }));
-    const services = [{ id: 'hajvagas', staffId:'barber-0', name: 'Gépi hajvágás', description: 'Precíz vágás', price: 5500, duration: 30 }];
+    const barbers = TEAM.map((member, index) => ({ id: member.id, name: member.name, role: 'Fodrász', image: null }));
+    const services = [{ id: 'hajvagas', staffId:TEAM[0].id, name: 'Gépi hajvágás', description: 'Precíz vágás', price: 5500, duration: 30 }];
     let authenticated = false, profileSaved = false, conflict = false, creates = [];
     const profile = { name: 'Test Guest', email: 'guest@example.com', phone: '+36301234567' };
     await page.route('**/api/**', async route => {
@@ -31,7 +31,7 @@ try {
         case '/api/booking/config': result = { services, barbers }; break;
         case '/api/booking/availability':
           assert.equal(url.searchParams.get('service'), 'hajvagas');
-          assert.ok(['barber-0', 'barber-1', 'any'].includes(url.searchParams.get('barber')));
+          assert.ok([TEAM[0].id, TEAM[1].id, 'any'].includes(url.searchParams.get('barber')));
           result = { hasWorkingHours: true, days: { '2026-11-26': (conflict ? ['11:00'] : ['10:00', '11:00']).map(value => ({ value, available: true })) } }; break;
         case '/api/guest/session': result = { remembered: authenticated, authenticated }; break;
         case '/api/guest/me': status = authenticated ? 200 : 401; result = authenticated ? { profile } : { error: 'Jelentkezz be e-mailes kóddal.' }; break;
@@ -55,14 +55,14 @@ try {
     await page.getByRole('heading', { name: 'Egy saját hely. Közös szemlélet.' }).waitFor();
     assert.ok((await page.locator('#szalon').innerText()).includes('Demeter Tamás'));
     assert.deepEqual(await page.locator('#csapat article h3').allTextContents(), TEAM.map(member => member.name));
-    assert.equal(await page.locator('#szolgaltatasok').count(), 0);
-    assert.ok(!/5500|Minden vágásnak karaktere van/i.test(await page.locator('main').innerText()));
+    assert.equal(await page.locator('#szolgaltatasok').count(), 1);
+    assert.ok(!/Minden vágásnak karaktere van/i.test(await page.locator('main').innerText()));
     assert.ok((await page.locator('video').evaluate(element => getComputedStyle(element).filter)).includes('brightness(0.85)'));
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
     await page.screenshot({ path: `${output}/home-${width}.png` });
-    pass(`${width}px home: founder, six names, brighter hero, no price list or slogan, no overflow`);
+    pass(`${width}px home: founder, six names, brighter hero, SSR services and prices, no overflow`);
 
-    await page.getByRole('button', { name: 'English', exact: true }).click();
+    await page.getByRole('link', { name: 'English', exact: true }).click();
     await page.getByRole('heading', { name: 'Our own space. A shared vision.' }).waitFor();
     await page.reload();
     await page.getByRole('heading', { name: 'Our own space. A shared vision.' }).waitFor();
@@ -70,14 +70,14 @@ try {
     await page.locator('header').getByRole('link', { name: 'BOOK', exact: true }).click();
     await page.getByRole('heading', { name: 'Choose a barber' }).waitFor();
     assert.equal(await page.locator('[class*="serviceRow"]').count(), 0);
-    assert.ok(!/5[\s,]?500/.test(await page.locator('main').innerText()));
+    assert.equal(await page.locator('#foglalas [class*=serviceRow]').count(), 0);
     const steps = page.getByRole('navigation', { name: width <= 800 ? 'Mobile booking steps' : 'Booking steps', exact: true });
     assert.deepEqual(await steps.getByRole('button').allTextContents(), ['01Barber', '02Service', '03Appointment', '04Your details']);
     assert.equal(await steps.getByRole('button').nth(1).isDisabled(), true);
     assert.equal(await steps.getByRole('button').nth(2).isDisabled(), true);
-    await page.locator('[data-barber-carousel] [aria-roledescription="carousel"]').focus();
+    await page.locator('#foglalas [data-barber-carousel] [aria-roledescription="carousel"]').focus();
     await page.keyboard.press('ArrowRight');
-    await page.locator('[data-barber-carousel] article[class*="activeCard"]').getByRole('button', { name: 'BOOK AN APPOINTMENT', exact: true }).click();
+    await page.locator('#foglalas [data-barber-carousel] article[class*="activeCard"]').getByRole('button', { name: 'BOOK AN APPOINTMENT', exact: true }).click();
     await page.getByRole('heading', { name: 'What can we do for you?' }).waitFor();
     assert.equal(await page.getByRole('button', { name: /Clipper haircut/ }).count(), 1);
     await page.screenshot({ path: `${output}/services-${width}.png`, fullPage: true });
@@ -110,8 +110,8 @@ try {
       await page.getByRole('button', { name: 'CONFIRM APPOINTMENT', exact: true }).click();
       await page.getByRole('heading', { name: 'Your booking is confirmed.' }).waitFor();
       assert.deepEqual(creates, [
-        { serviceId: 'hajvagas', barberId: 'barber-0', date: '2026-11-26', time: '10:00' },
-        { serviceId: 'hajvagas', barberId: 'barber-0', date: '2026-11-26', time: '11:00' },
+        { serviceId: 'hajvagas', barberId: TEAM[0].id, date: '2026-11-26', time: '10:00' },
+        { serviceId: 'hajvagas', barberId: TEAM[0].id, date: '2026-11-26', time: '11:00' },
       ]);
       assert.ok((await page.getByRole('status').innerText()).includes('Clipper haircut'));
       await page.screenshot({ path: `${output}/confirmation-mobile.png`, fullPage: true });
@@ -127,9 +127,9 @@ try {
     await page.getByRole('heading', { name: 'What can we do for you?' }).waitFor();
     await page.getByRole('button', { name: /Clipper haircut/ }).click();
     await steps.getByRole('button').first().click();
-    await page.locator('[data-barber-carousel] [aria-roledescription="carousel"]').focus();
+    await page.locator('#foglalas [data-barber-carousel] [aria-roledescription="carousel"]').focus();
     await page.keyboard.press('ArrowRight');
-    await page.locator('[data-barber-carousel] article[class*="activeCard"]').getByRole('button', { name: 'BOOK AN APPOINTMENT', exact: true }).click();
+    await page.locator('#foglalas [data-barber-carousel] article[class*="activeCard"]').getByRole('button', { name: 'BOOK AN APPOINTMENT', exact: true }).click();
     assert.equal(await page.locator('[class*="summaryBottom"]').count(),0);
     assert.equal(await page.getByRole('button', { name: 'Change service', exact: true }).count(), 0);
     assert.equal(await page.getByRole('button', { name: 'Change appointment', exact: true }).count(), 0);
@@ -140,7 +140,7 @@ try {
     await page.goto(base + '/idopontfoglalas?barberName=Unknown&lang=en');
     await page.getByRole('status').filter({ hasText: 'This barber is not currently available' }).waitFor();
     assert.equal(await page.locator('[class*="serviceRow"]').count(), 0);
-    await page.goto(base + '/idopontfoglalas?service=hajvagas&barber=barber-0&lang=hu');
+    await page.goto(base + '/idopontfoglalas?service=hajvagas&barber=paliga-zoltan&lang=hu');
     await page.getByRole('heading', { name: 'Találjuk meg a napod.' }).waitFor();
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
     assert.deepEqual(errors, []);

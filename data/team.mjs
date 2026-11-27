@@ -21,9 +21,9 @@ export function getTeamBarbers(barbers, { includeMissing = false } = {}) {
   });
 }
 
-export function barberBookingHref(barber) {
+export function barberBookingHref(barber, language = 'hu') {
   const query = new URLSearchParams({ barber: barber.id, barberName: barber.name });
-  return `/idopontfoglalas?${query}`;
+  return `${language === 'en' ? '/en' : '/'}?${query}#foglalas`;
 }
 
 export function resolveBarberSelection(barbers, query) {

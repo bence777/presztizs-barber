@@ -7,3 +7,7 @@ node_modules/
 supabase/.temp/
 
 .next-qa/
+
+.next-seo-qa/
+
+.next-seo-fixture/

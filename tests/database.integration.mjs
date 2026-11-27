@@ -327,5 +327,47 @@ try {
    const pending=touch(guest,'guest','G'.repeat(43),true,other);await client.query('commit');assert.equal((await pending).length,0);
   }finally{await other.end()}
  });
+ await client.query('reset role');
+ await client.query(await read('supabase/migrations/20261127105305_public_seo_profiles.sql'));
+ await check('public profile migration preserves existing prices and does not grant anonymous table access',async()=>{
+  assert.equal((await client.query("select public_slug from public.booking_staff where id='qa-one'")).rows[0].public_slug,'qa-one');
+  await client.query('set role anon');
+  for(const table of ['booking_staff','booking_services','booking_staff_slug_history'])await assert.rejects(()=>client.query(`select * from public.${table}`),e=>e.code==='42501');
+  await client.query('reset role');
+ });
+ await check('barber can edit only their own public biography, portfolio and translations',async()=>{
+  await identity(barber);
+  assert.equal((await client.query("update public.booking_staff set bio='Own public biography with enough detail to make a useful profile.',bio_en='An English biography with enough public detail for an English profile.',portfolio='[{\"src\":\"/images/demetertamas.webp\",\"alt\":\"Own work\"}]' where id='qa-one' returning id")).rowCount,1);
+  assert.equal((await client.query("update public.booking_staff set bio='Cannot change this' where id='qa-two' returning id")).rowCount,0);
+  assert.equal((await client.query("update public.booking_services set name_en='Custom haircut' where staff_id='qa-two' returning id")).rowCount,0);
+  await assert.rejects(()=>client.query("update public.booking_staff set active=false where id='qa-one'"),e=>e.code==='42501');
+  await assert.rejects(()=>client.query("select * from public.booking_staff_slug_history"),e=>e.code==='42501');
+ });
+ await check('profile slugs remain stable across display-name edits and old slugs redirect directly to the current staff',async()=>{
+  await identity(barber);
+  await client.query("update public.booking_staff set name='Updated Display Name' where id='qa-one'");
+  assert.equal((await client.query("select public_slug from public.booking_staff where id='qa-one'")).rows[0].public_slug,'qa-one');
+  await client.query("update public.booking_staff set public_slug='new-public-slug' where id='qa-one'");
+  await client.query('reset role');
+  assert.deepEqual((await client.query("select staff_id from public.booking_staff_slug_history where slug='qa-one'")).rows,[{staff_id:'qa-one'}]);
+  await client.query("update public.booking_staff set public_slug='newest-public-slug' where id='qa-one'");
+  assert.equal((await client.query("select * from public.booking_staff_slug_history where staff_id='qa-one'")).rowCount,2);
+  await assert.rejects(()=>client.query("update public.booking_staff set public_slug='qa-one' where id='qa-two'"),e=>e.code==='23505');
+  await client.query("update public.booking_staff set public_slug='qa-one' where id='qa-one'");
+  assert.equal((await client.query("select * from public.booking_staff_slug_history where slug='qa-one'")).rowCount,0);
+ });
+ await check('profile timestamps only change on public content changes; new staff automatically receive a stable slug',async()=>{
+  await client.query('reset role');
+  const before=(await client.query("select public_updated_at from public.booking_staff where id='qa-one'")).rows[0].public_updated_at;
+  await client.query("update public.booking_staff set booking_step_minutes=booking_step_minutes where id='qa-one'");
+  const after=(await client.query("select public_updated_at from public.booking_staff where id='qa-one'")).rows[0].public_updated_at;
+  assert.equal(+before,+after);
+  await client.query("insert into public.booking_staff(id,name,active) values('qa-new-profile','New Profile',false)");
+  assert.equal((await client.query("select public_slug from public.booking_staff where id='qa-new-profile'")).rows[0].public_slug,'qa-new-profile');
+ });
+ await check('owner retains authority over both barbers public profiles',async()=>{
+  await identity(owner);
+  assert.equal((await client.query("update public.booking_staff set bio='Owner-approved public introduction, suitable for publication.' where id in ('qa-one','qa-two') returning id")).rowCount,2);
+ });
  console.log(`${passed} database checks passed`);
 } finally {if(client)await client.end();await pg.stop().catch(()=>{});await rm(tmp,{recursive:true,force:true});}
