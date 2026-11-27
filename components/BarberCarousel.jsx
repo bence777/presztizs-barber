@@ -7,6 +7,7 @@ import {
   useTransform,
   useReducedMotion,
 } from "framer-motion";
+import { releaseVelocity, momentumTarget } from '../lib/client/carouselMomentum.mjs';
 import { trackEvent } from '../lib/client/analytics.mjs';
 import { barberBookingHref } from '../data/team.mjs';
 import { useLanguage } from './LanguageProvider';
@@ -52,7 +53,7 @@ function Card({ barber, index, count, position, layout, activeIndex, animating, 
       aria-label={barber.name}
       style={{ x, y, z, rotateY, scale, opacity, filter, zIndex, visibility, width: layout.cardWidth, height: layout.cardHeight }}
     >
-      {!active && <button className={styles.cardSelect} type="button" disabled={animating} tabIndex={inView && !animating ? 0 : -1} aria-label={`${t("VÁLASSZ FODRÁSZT")}: ${barber.name}`} onClick={() => onSelect(index)} />}
+      {!active && <button className={styles.cardSelect} type="button" aria-disabled={animating || undefined} tabIndex={inView && !animating ? 0 : -1} aria-label={`${t("VÁLASSZ FODRÁSZT")}: ${barber.name}`} onClick={() => { if (!animating) onSelect(index); }} />}
       <div className={styles.cardContent}>
         <div className={styles.cardHeading}>
           <span className={styles.role}>{t(barber.role || "Fodrász")}</span>
@@ -68,8 +69,8 @@ function Card({ barber, index, count, position, layout, activeIndex, animating, 
           {barber.publicPhone&&<a data-carousel-control className={styles.publicPhone} href={`tel:${barber.publicPhone.replace(/[^+\d]/g,'')}`} tabIndex={active?0:-1} onClick={event=>{event.stopPropagation();trackEvent('phone_clicked',{placement:'barber_carousel',barber_id:barber.id});}}>{barber.publicPhone}</a>}
           {onChoose ? <button
             type="button" className={styles.cardAction}
-            tabIndex={active && !animating ? 0 : -1} disabled={animating}
-            onClick={() => { if (!active) onSelect(index); else onChoose(barber); }}
+            tabIndex={active && !animating ? 0 : -1} aria-disabled={animating || undefined}
+            onClick={() => { if (animating) return; if (!active) onSelect(index); else onChoose(barber); }}
           >{language === 'hu' ? <>IDŐPONT<wbr />FOGLALÁS</> : t("IDŐPONTFOGLALÁS")}</button> : <Link
             className={styles.cardAction}
             href={barberBookingHref(barber, language)}
@@ -95,9 +96,9 @@ export default function BarberCarousel({ barbers: BARBERS, initialBarberId, onCh
   const animationRef = useRef(null);
   const animatingRef = useRef(false);
   const pendingRef = useRef(null);
-  const selectRef = useRef(null);
   const layoutRef = useRef(null);
   const wheelTimerRef = useRef(null);
+  const settleRef = useRef(null);
   const [animating, setAnimating] = useState(false);
   const [activeIndex, setActiveIndex] = useState(initialIndex);
   const [dragging, setDragging] = useState(false);
@@ -146,11 +147,12 @@ export default function BarberCarousel({ barbers: BARBERS, initialBarberId, onCh
   function selectBarber(next, returning = false) {
     // One deliberate action produces one complete transition. Repeated clicks
     // and held keys cannot build up velocity or queue a series of selections.
-    if (!BARBERS.length || animatingRef.current || dragRef.current?.dragging) return;
+    if (!BARBERS.length || dragRef.current?.dragging) return;
+    animationRef.current?.stop();
     const index = wrap(next, BARBERS.length);
     const current = position.get();
     const target = current + relativeTo(index, current, BARBERS.length);
-    if (Math.abs(target - current) < .0001) return;
+    if (Math.abs(target - current) < .0001) { finishSelection(index, target); return; }
     if (reducedMotion) { finishSelection(index, target); return; }
     animatingRef.current = true;
     pendingRef.current = { index, target };
@@ -162,7 +164,26 @@ export default function BarberCarousel({ barbers: BARBERS, initialBarberId, onCh
       onComplete: () => finishSelection(index, target),
     });
   }
-  selectRef.current = selectBarber;
+
+  function settleWithMomentum(velocity = 0) {
+    if (!BARBERS.length) return;
+    animationRef.current?.stop();
+    const current = position.get();
+    const speed = reducedMotion ? 0 : velocity;
+    const target = momentumTarget(current, speed);
+    const index = wrap(target, BARBERS.length);
+    if (reducedMotion || Math.abs(target - current) < .002) { finishSelection(index, target); return; }
+    animatingRef.current = true;
+    pendingRef.current = { index, target };
+    setAnimating(true);
+    animationRef.current = animate(position, target, {
+      type: 'inertia', velocity: speed, power: .34, timeConstant: 270,
+      restDelta: .008, modifyTarget: () => target,
+      onComplete: () => finishSelection(index, target),
+    });
+  }
+  settleRef.current = settleWithMomentum;
+
 
   useEffect(() => {
     const scene = sceneRef.current;
@@ -179,7 +200,7 @@ export default function BarberCarousel({ barbers: BARBERS, initialBarberId, onCh
       const pixels = dx * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? scene.clientWidth : 1);
       position.set(position.get() + pixels / layoutRef.current.firstOffset);
       clearTimeout(wheelTimerRef.current);
-      wheelTimerRef.current = setTimeout(() => selectRef.current(Math.round(position.get()), true), 160);
+      wheelTimerRef.current = setTimeout(() => settleRef.current(0), 160);
     }
     scene.addEventListener('wheel', horizontalWheel, { passive: false });
     return () => { scene.removeEventListener('wheel', horizontalWheel); clearTimeout(wheelTimerRef.current); };
@@ -193,14 +214,14 @@ export default function BarberCarousel({ barbers: BARBERS, initialBarberId, onCh
   }, [reducedMotion]);
 
   function pointerDown(event) {
-    suppressClickRef.current = false;
     if (!event.isPrimary || event.button !== 0 || event.target.closest('[data-carousel-control]')) return;
+    suppressClickRef.current = animatingRef.current;
     clearTimeout(wheelTimerRef.current);
     animationRef.current?.stop();
     animatingRef.current = false;
     pendingRef.current = null;
     setAnimating(false);
-    dragRef.current = { id: event.pointerId, x: event.clientX, y: event.clientY, origin: position.get(), index: activeRef.current, dragging: false, vertical: false };
+    dragRef.current = { id: event.pointerId, x: event.clientX, y: event.clientY, origin: position.get(), samples: [{ x: event.clientX, time: performance.now() }], dragging: false, vertical: false };
   }
 
   function pointerMove(event) {
@@ -218,7 +239,10 @@ export default function BarberCarousel({ barbers: BARBERS, initialBarberId, onCh
     }
     if (drag.dragging) {
       event.preventDefault();
-      // Follow the full gesture, including several cards and wrap-around.
+      const now = performance.now();
+      drag.samples.push({ x: event.clientX, time: now });
+      drag.samples = drag.samples.filter(sample => now - sample.time <= 120);
+      // Follow the hand one-to-one; inertia takes over only after release.
       position.set(drag.origin - dx / layout.firstOffset);
     }
   }
@@ -230,11 +254,9 @@ export default function BarberCarousel({ barbers: BARBERS, initialBarberId, onCh
     setDragging(false);
     if (!drag.dragging) return;
     suppressClickRef.current = true;
-    const dx = event.clientX - drag.x, dy = event.clientY - drag.y;
-    const threshold = Math.max(36, Math.min(64, layout.cardWidth * .18));
-    const deliberate = !cancelled && Math.abs(dx) >= threshold && Math.abs(dx) > Math.abs(dy) * 1.2;
-    const steps = deliberate ? -Math.sign(dx) * Math.max(1, Math.round(Math.abs(dx) / layout.firstOffset)) : 0;
-    selectBarber(Math.round(drag.origin) + steps, true);
+    // Cancellation/lost capture must settle from the current visual position,
+    // never from where the gesture started.
+    settleWithMomentum(cancelled ? 0 : releaseVelocity(drag.samples, performance.now(), layout.firstOffset));
   }
 
   function keyboardNavigate(event) {

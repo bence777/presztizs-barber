@@ -61,8 +61,9 @@ try {
     const cdp = await context.newCDPSession(page);
     const button = await page.locator('#foglalas [data-barber-carousel] article[class*="activeCard"]').getByRole('button', { name: 'IDŐPONTFOGLALÁS', exact: true }).boundingBox();
     const x = button.x + button.width * .65, y = button.y + button.height / 2;
+    const spacing = await scene.evaluate(el => parseFloat(getComputedStyle(el).getPropertyValue('--card-width')) * .76);
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
-    for (let step = 1; step <= 6; step++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x - step * 11, y }] });
+    for (let step = 1; step <= 6; step++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x - step * spacing / 6, y }] });
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   } else { await scene.focus(); await page.keyboard.press('ArrowRight'); }
   await settled(page, staff[0].name);

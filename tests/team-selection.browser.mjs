@@ -64,17 +64,22 @@ try {
     async function mouseDrag(dx, fromLink = false, dy = 0) {
       const box = await (fromLink ? card.locator('a') : card).boundingBox();
       const x = box.x + box.width * .6, y = box.y + box.height * (fromLink ? .5 : .3);
-      await page.mouse.move(x, y); await page.mouse.down(); await page.mouse.move(x + dx, y + dy, { steps: 6 }); await page.mouse.up();
+      const spacing = await scene.evaluate(el => parseFloat(getComputedStyle(el).getPropertyValue('--card-width')) * (el.clientWidth < 600 ? .76 : .7));
+      const distance = Math.abs(dx) <= 30 ? dx : Math.sign(dx) * spacing;
+      await page.mouse.move(x, y); await page.mouse.down(); await page.mouse.move(x + distance, y + dy, { steps: 6 });
+      // This regression checks deliberate placement; flick inertia has its own suite.
+      await page.waitForTimeout(150); await page.mouse.up();
     }
     await mouseDrag(-30); await settled(page, 0);
     await mouseDrag(-60); await settled(page, 1);
-    pass(`${width}px a normal 60px drag advances once; a 30px accidental move does not`);
+    pass(`${width}px a held one-card drag settles correctly; a small held move stays nearby`);
     await mouseDrag(-65, true); await settled(page, 2);
     assert.equal(new URL(page.url()).pathname, '/');
     pass(`${width}px dragging from the booking CTA works without accidentally navigating`);
     const box = await card.boundingBox(); await page.mouse.move(box.x + box.width / 2, box.y + box.height / 3);
-    await page.mouse.wheel(75, 0); await settled(page, 3);
-    await page.mouse.wheel(-75, 0); await settled(page, 2);
+    const spacing = await scene.evaluate(el => parseFloat(getComputedStyle(el).getPropertyValue('--card-width')) * (el.clientWidth < 600 ? .76 : .7));
+    await page.mouse.wheel(spacing, 0); await settled(page, 3);
+    await page.mouse.wheel(-spacing, 0); await settled(page, 2);
     const scroll = await page.evaluate(() => scrollY);
     await page.mouse.wheel(0, 150); await page.waitForTimeout(150); await settled(page, 2);
     await page.evaluate(y => scrollTo({ top: y, behavior: 'instant' }), scroll);
@@ -83,10 +88,11 @@ try {
       const cdp = await context.newCDPSession(page), r = await card.locator('a').boundingBox();
       const x = r.x + r.width * .65, y = r.y + r.height * .5;
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
-      for (let step = 1; step <= 6; step++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x - step * 11, y }] });
+      for (let step = 1; step <= 6; step++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x - step * spacing / 6, y }] });
+      await page.waitForTimeout(150);
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
       await settled(page, 3);
-      pass('real touch swipe from the booking CTA advances one card');
+      pass('held touch swipe from the booking CTA settles on the placed card');
     }
     const currentIndex = width === 390 ? 3 : 2;
     await page.screenshot({ path: `${output}/gestures-${width}.png` });
