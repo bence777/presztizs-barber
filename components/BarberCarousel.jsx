@@ -7,6 +7,7 @@ import {
   useTransform,
   useReducedMotion,
 } from "framer-motion";
+import useCarouselHaptics from '../lib/client/useCarouselHaptics';
 import { releaseVelocity, momentumTarget } from '../lib/client/carouselMomentum.mjs';
 import { trackEvent } from '../lib/client/analytics.mjs';
 import { barberBookingHref } from '../data/team.mjs';
@@ -106,12 +107,24 @@ export default function BarberCarousel({ barbers: BARBERS, initialBarberId, onCh
   layoutRef.current = layout;
   const reducedMotion = useReducedMotion();
   const position = useMotionValue(initialIndex);
+  const hapticPositionRef = useRef(initialIndex);
+  const haptics = useCarouselHaptics();
+  const hapticController = haptics.controller;
   useEffect(() => () => { animationRef.current?.stop(); clearTimeout(wheelTimerRef.current); }, []);
   useEffect(() => position.on('change', value => {
     if (!BARBERS.length) return;
     const index = wrap(Math.round(value), BARBERS.length);
-    if (index !== activeRef.current) { activeRef.current = index; setActiveIndex(index); }
-  }), [position, BARBERS.length]);
+    if (index !== activeRef.current) {
+      activeRef.current = index; setActiveIndex(index);
+    }
+    const previous = hapticPositionRef.current;
+    hapticPositionRef.current = value;
+    // Tick at the actual centre crossing, not halfway through a card change.
+    const landing = pendingRef.current && Math.abs(value - pendingRef.current.target) < .008;
+    if (!landing && (value > previous ? Math.floor(value) > Math.floor(previous) : Math.ceil(value) < Math.ceil(previous))) {
+      hapticController.current.tick(position.getVelocity());
+    }
+  }), [position, BARBERS.length, hapticController]);
 
   useEffect(() => {
     const scene = sceneRef.current;
@@ -136,6 +149,7 @@ export default function BarberCarousel({ barbers: BARBERS, initialBarberId, onCh
   }, []);
 
   function finishSelection(index, target) {
+    hapticController.current.finish(index);
     position.set(target);
     activeRef.current = index;
     setActiveIndex(index);
@@ -193,6 +207,7 @@ export default function BarberCarousel({ barbers: BARBERS, initialBarberId, onCh
       const dy = event.shiftKey ? 0 : event.deltaY;
       if (Math.abs(dx) <= Math.abs(dy) * 1.2 || Math.abs(dx) < 1) return;
       event.preventDefault();
+      hapticController.current.cancel();
       animationRef.current?.stop();
       animatingRef.current = false;
       pendingRef.current = null;
@@ -204,7 +219,7 @@ export default function BarberCarousel({ barbers: BARBERS, initialBarberId, onCh
     }
     scene.addEventListener('wheel', horizontalWheel, { passive: false });
     return () => { scene.removeEventListener('wheel', horizontalWheel); clearTimeout(wheelTimerRef.current); };
-  }, [position, BARBERS.length]);
+  }, [position, BARBERS.length, hapticController]);
 
   useEffect(() => {
     if (!reducedMotion) return;
@@ -215,6 +230,7 @@ export default function BarberCarousel({ barbers: BARBERS, initialBarberId, onCh
 
   function pointerDown(event) {
     if (!event.isPrimary || event.button !== 0 || event.target.closest('[data-carousel-control]')) return;
+    hapticController.current.cancel();
     suppressClickRef.current = animatingRef.current;
     clearTimeout(wheelTimerRef.current);
     animationRef.current?.stop();
@@ -234,6 +250,7 @@ export default function BarberCarousel({ barbers: BARBERS, initialBarberId, onCh
     }
     if (!drag.dragging && Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.2) {
       drag.dragging = true;
+      if (event.pointerType === 'touch') hapticController.current.begin(activeRef.current);
       setDragging(true);
       event.currentTarget.setPointerCapture(event.pointerId);
     }
@@ -256,6 +273,7 @@ export default function BarberCarousel({ barbers: BARBERS, initialBarberId, onCh
     suppressClickRef.current = true;
     // Cancellation/lost capture must settle from the current visual position,
     // never from where the gesture started.
+    if (cancelled) hapticController.current.cancel();
     settleWithMomentum(cancelled ? 0 : releaseVelocity(drag.samples, performance.now(), layout.firstOffset));
   }
 
@@ -300,7 +318,8 @@ export default function BarberCarousel({ barbers: BARBERS, initialBarberId, onCh
         </div>
         <div className={styles.bottom}>
           <span className={styles.caption}>{language === 'en' ? 'Drag or scroll sideways to choose.' : 'Húzd vagy görgesd oldalra a választáshoz.'}</span>
-          <div className={styles.dots} role="group" aria-label={t("Fodrász kiválasztása")}>{BARBERS.map((barber,index)=><button data-carousel-control key={barber.id} type="button" aria-label={barber.name} aria-pressed={index===activeIndex} disabled={animating} onClick={()=>selectBarber(index)}><span/></button>)}</div>
+          <div className={styles.selectionControls}><div className={styles.dots} role="group" aria-label={t("Fodrász kiválasztása")}>{BARBERS.map((barber,index)=><button data-carousel-control key={barber.id} type="button" aria-label={barber.name} aria-pressed={index===activeIndex} disabled={animating} onClick={()=>selectBarber(index)}><span/></button>)}</div>
+          {haptics.available && <button type="button" data-carousel-control className={styles.hapticsButton} aria-pressed={haptics.enabled} aria-label={language === 'en' ? haptics.enabled ? 'Turn haptics off' : 'Turn haptics on' : haptics.enabled ? 'Rezgés kikapcsolása' : 'Rezgés bekapcsolása'} onClick={haptics.toggle}>{language === 'en' ? 'Haptics' : 'Rezgés'}</button>}</div>
         </div>
     </div>
   );
