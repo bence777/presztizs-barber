@@ -12,7 +12,10 @@ async function swipe(page,scope) {
  const box=await scene.boundingBox(),cdp=await page.context().newCDPSession(page);
  const x=box.x+box.width*.75,y=box.y+box.height*.4;
  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});
- for(let i=1;i<=5;i++){await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x-i*30,y}]});await page.waitForTimeout(12)}
+ // Pipeline samples so native input acknowledgement does not slow down the flick.
+ const moves=[];
+ for(let i=1;i<=5;i++){moves.push(cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x-i*30,y}]}));await page.waitForTimeout(12)}
+ await Promise.all(moves);
  await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await cdp.detach();
 }
 async function mock(context,supported=true) {

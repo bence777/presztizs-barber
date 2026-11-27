@@ -61,7 +61,8 @@
   perspective: 1300px;
   perspective-origin: 50% 50%;
   overflow: clip;
-  touch-action: pan-y pinch-zoom;
+  /* Native touchmove owns sideways/diagonal drags; vertical scroll and pinch stay native. */
+  touch-action: auto;
   cursor: grab;
   user-select: none;
   -webkit-user-select: none;

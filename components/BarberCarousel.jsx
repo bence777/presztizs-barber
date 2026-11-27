@@ -8,6 +8,7 @@ import {
   useReducedMotion,
 } from "framer-motion";
 import useCarouselHaptics from '../lib/client/useCarouselHaptics';
+import { gestureAxis } from '../lib/client/carouselGesture.mjs';
 import { releaseVelocity, momentumTarget } from '../lib/client/carouselMomentum.mjs';
 import { trackEvent } from '../lib/client/analytics.mjs';
 import { barberBookingHref } from '../data/team.mjs';
@@ -54,7 +55,8 @@ function Card({ barber, index, count, position, layout, activeIndex, animating, 
       aria-label={barber.name}
       style={{ x, y, z, rotateY, scale, opacity, filter, zIndex, visibility, width: layout.cardWidth, height: layout.cardHeight }}
     >
-      {!active && <button className={styles.cardSelect} type="button" aria-disabled={animating || undefined} tabIndex={inView && !animating ? 0 : -1} aria-label={`${t("VÁLASSZ FODRÁSZT")}: ${barber.name}`} onClick={() => { if (!animating) onSelect(index); }} />}
+      {/* Keep the touch target mounted while the active card changes mid-swipe. */}
+      <button hidden={active} className={styles.cardSelect} type="button" aria-disabled={animating || undefined} tabIndex={!active && inView && !animating ? 0 : -1} aria-label={`${t("VÁLASSZ FODRÁSZT")}: ${barber.name}`} onClick={() => { if (!animating) onSelect(index); }} />
       <div className={styles.cardContent}>
         <div className={styles.cardHeading}>
           <span className={styles.role}>{t(barber.role || "Fodrász")}</span>
@@ -100,6 +102,7 @@ export default function BarberCarousel({ barbers: BARBERS, initialBarberId, onCh
   const layoutRef = useRef(null);
   const wheelTimerRef = useRef(null);
   const settleRef = useRef(null);
+  const touchHandlersRef = useRef(null);
   const [animating, setAnimating] = useState(false);
   const [activeIndex, setActiveIndex] = useState(initialIndex);
   const [dragging, setDragging] = useState(false);
@@ -201,11 +204,17 @@ export default function BarberCarousel({ barbers: BARBERS, initialBarberId, onCh
 
   useEffect(() => {
     const scene = sceneRef.current;
+    let axis = null, lastInput = -Infinity, totalX = 0, totalY = 0;
     function horizontalWheel(event) {
       if (event.ctrlKey || dragRef.current?.dragging || BARBERS.length < 2) return;
       const dx = event.deltaX || (event.shiftKey ? event.deltaY : 0);
       const dy = event.shiftKey ? 0 : event.deltaY;
-      if (Math.abs(dx) <= Math.abs(dy) * 1.2 || Math.abs(dx) < 1) return;
+      const now = performance.now();
+      if (now - lastInput > 220) { axis = null; totalX = 0; totalY = 0; }
+      lastInput = now;
+      totalX += dx; totalY += dy;
+      axis = gestureAxis(totalX, totalY, axis, 1);
+      if (axis !== 'x') return;
       event.preventDefault();
       hapticController.current.cancel();
       animationRef.current?.stop();
@@ -244,15 +253,13 @@ export default function BarberCarousel({ barbers: BARBERS, initialBarberId, onCh
     const drag = dragRef.current;
     if (!drag || event.pointerId !== drag.id || drag.vertical) return;
     const dx = event.clientX - drag.x, dy = event.clientY - drag.y;
-    if (!drag.dragging && Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx) * 1.2) {
-      drag.vertical = true;
-      return;
-    }
-    if (!drag.dragging && Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+    drag.axis = gestureAxis(dx, dy, drag.axis);
+    if (drag.axis === 'y') { drag.vertical = true; return; }
+    if (!drag.dragging && drag.axis === 'x') {
       drag.dragging = true;
       if (event.pointerType === 'touch') hapticController.current.begin(activeRef.current);
       setDragging(true);
-      event.currentTarget.setPointerCapture(event.pointerId);
+      if (event.pointerType !== 'touch') event.currentTarget.setPointerCapture(event.pointerId);
     }
     if (drag.dragging) {
       event.preventDefault();
@@ -277,6 +284,52 @@ export default function BarberCarousel({ barbers: BARBERS, initialBarberId, onCh
     settleWithMomentum(cancelled ? 0 : releaseVelocity(drag.samples, performance.now(), layout.firstOffset));
   }
 
+  touchHandlersRef.current = { down: pointerDown, move: pointerMove, end: pointerEnd };
+
+  useEffect(() => {
+    const scene = sceneRef.current;
+    let touchId = null, lastTouch = null;
+    const adapt = (event, touch) => ({
+      pointerId: touch.identifier, pointerType: 'touch', isPrimary: true, button: 0,
+      clientX: touch.clientX, clientY: touch.clientY, target: event.target, currentTarget: scene,
+      preventDefault: () => { if (event.cancelable) event.preventDefault(); },
+    });
+    const cancel = event => {
+      if (lastTouch) touchHandlersRef.current.end(adapt(event, lastTouch), true);
+      touchId = null; lastTouch = null;
+    };
+    const start = event => {
+      if (event.touches.length !== 1) { cancel(event); return; }
+      lastTouch = event.touches[0]; touchId = lastTouch.identifier;
+      touchHandlersRef.current.down(adapt(event, lastTouch));
+    };
+    const move = event => {
+      if (touchId === null) return;
+      if (event.touches.length !== 1) { cancel(event); return; }
+      const touch = Array.from(event.touches).find(item => item.identifier === touchId);
+      if (!touch) return;
+      lastTouch = touch;
+      touchHandlersRef.current.move(adapt(event, touch));
+    };
+    const end = event => {
+      if (touchId === null) return;
+      const touch = Array.from(event.changedTouches).find(item => item.identifier === touchId);
+      if (!touch) return;
+      touchHandlersRef.current.end(adapt(event, touch));
+      touchId = null; lastTouch = null;
+    };
+    // A non-passive native listener owns a diagonal sideways gesture before
+    // Safari/Chrome can turn it into page panning and cancel Pointer Events.
+    scene.addEventListener('touchstart', start, { passive: true });
+    scene.addEventListener('touchmove', move, { passive: false });
+    scene.addEventListener('touchend', end, { passive: true });
+    scene.addEventListener('touchcancel', cancel, { passive: true });
+    return () => {
+      scene.removeEventListener('touchstart', start); scene.removeEventListener('touchmove', move);
+      scene.removeEventListener('touchend', end); scene.removeEventListener('touchcancel', cancel);
+    };
+  }, []);
+
   function keyboardNavigate(event) {
     if (event.altKey || event.ctrlKey || event.metaKey || event.repeat) return;
     const next = { ArrowLeft: activeIndex - 1, ArrowRight: activeIndex + 1, Home: 0, End: BARBERS.length - 1 }[event.key];
@@ -300,11 +353,11 @@ export default function BarberCarousel({ barbers: BARBERS, initialBarberId, onCh
           aria-busy={animating}
           aria-label={t("A csapat")}
           tabIndex={0}
-          onPointerDown={pointerDown}
-          onPointerMove={pointerMove}
-          onPointerUp={pointerEnd}
-          onPointerCancel={event => pointerEnd(event, true)}
-          onLostPointerCapture={event => { if (event.target === event.currentTarget) pointerEnd(event, true); }}
+          onPointerDown={event => { if (event.pointerType !== 'touch') pointerDown(event); }}
+          onPointerMove={event => { if (event.pointerType !== 'touch') pointerMove(event); }}
+          onPointerUp={event => { if (event.pointerType !== 'touch') pointerEnd(event); }}
+          onPointerCancel={event => { if (event.pointerType !== 'touch') pointerEnd(event, true); }}
+          onLostPointerCapture={event => { if (event.pointerType !== 'touch' && event.target === event.currentTarget) pointerEnd(event, true); }}
           onClickCapture={event => { if (suppressClickRef.current) { event.preventDefault(); event.stopPropagation(); suppressClickRef.current = false; } }}
           onDragStart={event => event.preventDefault()}
         >

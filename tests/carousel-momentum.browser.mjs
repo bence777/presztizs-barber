@@ -37,10 +37,13 @@ try {
     return point;
   }
   async function move(point, dx, duration = 70) {
+    // Pipeline samples: native touch acknowledgements can wait multiple frames.
+    const moves = [];
     for (let i = 1; i <= 5; i++) {
-      await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: point.x + dx * i / 5, y: point.y }] });
+      moves.push(cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: point.x + dx * i / 5, y: point.y }] }));
       await page.waitForTimeout(duration / 5);
     }
+    await Promise.all(moves);
   }
   async function end(cancel = false) { await cdp.send('Input.dispatchTouchEvent', { type: cancel ? 'touchCancel' : 'touchEnd', touchPoints: [] }); }
   for (const scope of ['#csapat', '#foglalas']) {
