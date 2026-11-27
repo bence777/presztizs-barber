@@ -76,8 +76,11 @@
 
 .card {
   position: absolute;
+  container-type: size;
   flex-shrink: 0;
-  background: #171717;
+  background: linear-gradient(145deg, #303030, #171717);
+  border: 1px solid #ffffff12;
+  border-radius: 18px;
   color: #fff;
   transform-origin: center;
   backface-visibility: hidden;
@@ -88,9 +91,20 @@
 
 .activeCard { box-shadow: 0 8px 20px rgba(0, 0, 0, .09); }
 
+.avatar {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: min(68cqw, 40cqh);
+  aspect-ratio: 1;
+  border: 1px solid #ffffff26;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #505050, #303030);
+  overflow: hidden;
+  pointer-events: none;
+}
+
 .portrait {
-  position: absolute;
-  inset: 0;
   width: 100%;
   height: 100%;
   display: block;
@@ -100,22 +114,11 @@
   pointer-events: none;
 }
 
-.portraitShade {
-  position: absolute;
-  inset: 52% 0 0;
-  background: linear-gradient(transparent, rgba(0, 0, 0, .48));
-  pointer-events: none;
-}
-
 .initials {
-  position: absolute;
-  top: 16%;
-  left: 10%;
-  right: 10%;
   text-align: center;
-  font: 400 clamp(36px, 4vw, 50px)/1 "Bodoni Moda", Georgia, serif;
+  font: 400 clamp(28px, 18cqw, 52px)/1 "Bodoni Moda", Georgia, serif;
   letter-spacing: -.045em;
-  color: #737373;
+  color: #f1f1f1;
   pointer-events: none;
 }
 
@@ -138,14 +141,19 @@
 .cardContent {
   position: absolute;
   z-index: 2;
-  left: 9%;
-  right: 9%;
-  bottom: 7%;
+  inset: 0;
+  padding: 8% 9%;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: center;
   pointer-events: none;
 }
+
+.cardHeading,
+.cardFooter { width: 100%; }
 
 .role {
   font-size: 14px;
@@ -157,18 +165,19 @@
 .cardContent h3 {
   font-family: "Bodoni Moda", Georgia, serif;
   font-weight: 400;
-  font-size: clamp(28px, 2.6vw, 38px);
+  font-size: clamp(20px, 10cqw, 30px);
   letter-spacing: -.045em;
-  margin: 12px 0 24px;
-  line-height: 1.06;
+  margin: 8px 0 0;
+  line-height: 1.1;
   overflow-wrap: break-word;
 }
 
 .cardAction {
   display: block;
+  margin-inline: auto;
   border: 0;
   background: transparent;
-  text-align: left;
+  text-align: center;
   cursor: pointer;
   font-family: Arial, Helvetica, sans-serif;
   max-width: 100%;
@@ -225,10 +234,8 @@
   .top h2 { font-size: clamp(36px, 9vw, 48px); }
   .bottom { flex-direction: column; gap: 8px; }
   .caption { font-size: 14px; letter-spacing: .08em; }
-  .cardContent h3 { font-size: clamp(28px, 7.6vw, 36px); margin-bottom: 18px; }
   .cardAction { font-size: 14px; letter-spacing: .035em; }
   .role { font-size: 14px; }
-  .initials { top: 14%; font-size: 40px; }
   .arrow { width: 44px; height: 44px; }
   .previousArrow { left: max(0px, calc(50% - var(--card-width) / 2 - 58px)); }
   .nextArrow { right: max(0px, calc(50% - var(--card-width) / 2 - 58px)); }
@@ -239,15 +246,23 @@
   .top h2 { font-size: 32px; }
   .top > span, .caption { display: none; }
   .bottom { flex-direction: row; }
-  .cardContent h3 { font-size: 24px; margin: 6px 0 8px; }
   .cardAction { font-size: 12px; min-height: 36px; padding-block: 6px; letter-spacing: 0; }
   .role { display: none; }
-  .initials { top: 12px; left: 9%; right: auto; font-size: 20px; text-align: left; }
 }
 
 @container (max-height: 380px) {
-  .initials { top: 16px; left: 9%; right: auto; font-size: 24px; text-align: left; }
-  .cardContent h3 { font-size: 26px; margin-block: 8px 14px; }
+  .cardContent { gap: 6px; }
+  .cardContent h3 { margin-top: 0; }
+  .role { display: none; }
+  .avatar { width: min(62cqw, 32cqh); }
+  .initials { font-size: clamp(24px, 16cqw, 40px); }
+  .cardAction { padding-block: 6px; }
+  .cardFooter .publicPhone { margin-block: 0; white-space: nowrap; }
+}
+
+@container (max-height: 260px) {
+  .cardContent { gap: 4px; padding-block: 6%; }
+  .avatar { width: min(60cqw, 28cqh); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -255,5 +270,5 @@
   .cardAction, .arrow { transition: none; }
 }
 
-.publicPhone{display:block;position:relative;z-index:2;color:inherit;text-decoration:none;font:400 14px/1.5 Arial,sans-serif;margin:8px 0;min-height:24px}.publicPhone:hover{text-decoration:underline}.dots{display:flex;justify-content:center;flex-wrap:wrap;gap:2px}.dots button{display:grid;place-items:center;width:32px;height:36px;padding:0;border:0;background:transparent;cursor:pointer}.dots button span{width:7px;height:7px;border-radius:50%;background:#aaa}.dots button[aria-pressed=true] span{background:#171717;transform:scale(1.35)}.dots button:focus-visible{outline:2px solid #333;outline-offset:1px}
+.publicPhone{display:block;position:relative;z-index:2;color:inherit;text-decoration:none;font:400 14px/1.5 Arial,sans-serif;margin:8px 0;min-height:24px;pointer-events:auto}.publicPhone:hover{text-decoration:underline}.dots{display:flex;justify-content:center;flex-wrap:wrap;gap:2px}.dots button{display:grid;place-items:center;width:32px;height:36px;padding:0;border:0;background:transparent;cursor:pointer}.dots button span{width:7px;height:7px;border-radius:50%;background:#aaa}.dots button[aria-pressed=true] span{background:#171717;transform:scale(1.35)}.dots button:focus-visible{outline:2px solid #333;outline-offset:1px}
 .compact{height:480px;min-height:0;padding:12px 0 16px;gap:12px}.compact .bottom{justify-content:center;flex-wrap:wrap;gap:4px}.compact .caption{display:none}@media(max-width:800px){.compact{height:min(450px,62svh);min-height:320px}}

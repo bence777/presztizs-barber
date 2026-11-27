@@ -50,28 +50,33 @@ function Card({ barber, index, count, position, layout, activeIndex, animating, 
       aria-label={barber.name}
       style={{ x, y, z, rotateY, scale, opacity, filter, zIndex, visibility, width: layout.cardWidth, height: layout.cardHeight }}
     >
-      {hasPortrait ? <>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img className={styles.portrait} src={barber.image} alt="" loading="lazy" draggable="false" onError={() => setImageFailed(true)} />
-        <div className={styles.portraitShade} aria-hidden="true" />
-      </> : <span className={styles.initials} aria-hidden="true">{barber.symbol || barber.name.split(" ").map(part => part[0]).join("")}</span>}
       {!active && <button className={styles.cardSelect} type="button" disabled={animating} tabIndex={inView && !animating ? 0 : -1} aria-label={`${t("VÁLASSZ FODRÁSZT")}: ${barber.name}`} onClick={() => onSelect(index)} />}
       <div className={styles.cardContent}>
-        <span className={styles.role}>{t(barber.role || "Fodrász")}</span>
-        <h3>{barber.name}</h3>
-        {barber.publicPhone&&<a data-carousel-control className={styles.publicPhone} href={`tel:${barber.publicPhone.replace(/[^+\d]/g,'')}`} tabIndex={active?0:-1} onClick={event=>event.stopPropagation()}>{barber.publicPhone}</a>}
-        {onChoose ? <button
-          type="button" className={styles.cardAction}
-          tabIndex={active && !animating ? 0 : -1} disabled={animating}
-          onClick={() => { if (!active) onSelect(index); else onChoose(barber); }}
-        >{language === 'hu' ? <>IDŐPONT<wbr />FOGLALÁS</> : t("IDŐPONTFOGLALÁS")}</button> : <a
-          className={styles.cardAction}
-          href={barberBookingHref(barber)}
-          tabIndex={active && !animating ? 0 : -1}
-          aria-disabled={animating || undefined}
-          draggable="false"
-          onClick={event => { if (animating) event.preventDefault(); else if (!active) { event.preventDefault(); onSelect(index); } }}
-        >{language === 'hu' ? <>IDŐPONT<wbr />FOGLALÁS</> : t("IDŐPONTFOGLALÁS")}</a>}
+        <div className={styles.cardHeading}>
+          <span className={styles.role}>{t(barber.role || "Fodrász")}</span>
+          <h3>{barber.name}</h3>
+        </div>
+        <div className={styles.avatar} aria-hidden="true">
+          {hasPortrait ?
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img className={styles.portrait} src={barber.image} alt="" loading="lazy" draggable="false" onError={() => setImageFailed(true)} />
+            : <span className={styles.initials}>{barber.symbol || barber.name.split(" ").map(part => part[0]).join("")}</span>}
+        </div>
+        <div className={styles.cardFooter}>
+          {barber.publicPhone&&<a data-carousel-control className={styles.publicPhone} href={`tel:${barber.publicPhone.replace(/[^+\d]/g,'')}`} tabIndex={active?0:-1} onClick={event=>event.stopPropagation()}>{barber.publicPhone}</a>}
+          {onChoose ? <button
+            type="button" className={styles.cardAction}
+            tabIndex={active && !animating ? 0 : -1} disabled={animating}
+            onClick={() => { if (!active) onSelect(index); else onChoose(barber); }}
+          >{language === 'hu' ? <>IDŐPONT<wbr />FOGLALÁS</> : t("IDŐPONTFOGLALÁS")}</button> : <a
+            className={styles.cardAction}
+            href={barberBookingHref(barber)}
+            tabIndex={active && !animating ? 0 : -1}
+            aria-disabled={animating || undefined}
+            draggable="false"
+            onClick={event => { if (animating) event.preventDefault(); else if (!active) { event.preventDefault(); onSelect(index); } }}
+          >{language === 'hu' ? <>IDŐPONT<wbr />FOGLALÁS</> : t("IDŐPONTFOGLALÁS")}</a>}
+        </div>
       </div>
     </motion.article>
   );
