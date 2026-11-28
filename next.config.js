@@ -2,7 +2,7 @@ const {csp}=require('./csp.config.cjs');
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Keep browser QA builds separate from a running local development server.
-  distDir: process.env.DEMETERS_BUILD_DIR || '.next',
+  distDir: process.env.DEMETERS_BUILD_DIR || (process.env.NODE_ENV === 'development' ? '.next-dev' : '.next'),
   images: { formats: ['image/avif', 'image/webp'],maximumResponseBody:8_000_000,remotePatterns:[] },
   async redirects() {
     return [
@@ -12,7 +12,8 @@ const nextConfig = {
   },
   async headers() {
     const common = [
-      {key:process.env.CSP_MODE==='enforce'?'Content-Security-Policy':'Content-Security-Policy-Report-Only',value:csp},
+      // Next dev injects scripts and opens HMR connections absent from production.
+      ...(process.env.NODE_ENV==='production'?[{key:process.env.CSP_MODE==='enforce'?'Content-Security-Policy':'Content-Security-Policy-Report-Only',value:csp}]:[]),
       {key:'X-Content-Type-Options',value:'nosniff'},
       {key:'X-Frame-Options',value:'DENY'},
       {key:'Referrer-Policy',value:'no-referrer'},

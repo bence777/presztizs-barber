@@ -1,0 +1,20 @@
+DEMETERS – helyi fejlesztés és hiányzó adatbázis-migrációk
+2026. november 28.
+
+Indítás: npm run dev
+A fejlesztői kimenet külön .next-dev könyvtárba kerül. Az npm run build / npm run start továbbra is a .next könyvtárat használja; a DEMETERS_BUILD_DIR explicit felülírás megmaradt. A next.config.js változása után a már futó szervert állítsd le, majd indítsd újra. A külön könyvtár megelőzi, hogy egy párhuzamos production build felülírja a dev fájljait. Az eredeti ENOENT pontos kiváltó eseménye a naplóból nem bizonyítható; az újraindítás után a GET / már 200 volt.
+
+A PGRST202 nem átmeneti hálózati probléma. A PostgREST nem találja a hívott függvényt / annak szignatúráját a séma-cache-ben. A kapcsolt presztizs-barber Supabase projekt csak olvasásos ellenőrzése szerint a public.booking_rate_limit(text,integer,integer) függvény és a private.rate_limits tábla is hiányzik. Az adatbázisban még nem szerepelnek az új hardening-migrációk. Emiatt az új kód /api/booking/config és /api/csp-report végpontja 503-at ad a limiter hívásakor.
+
+Az érdemi javítás a meglévő kiadási terv szerinti adatbázis-frissítés. Nem szabad a limitert kikapcsolni, vagy az összes régi migrációt vakon újrafuttatni: a migrációs nyilvántartás korábban igazoltan eltér a tényleges sémától.
+
+A felülvizsgálandó és sorrendben alkalmazandó új migrációk:
+20261127221722_security_hardening_core.sql
+20261127221728_security_hardening_auth.sql
+20261127221729_security_hardening_outbox.sql
+20261127222902_reconcile_public_seo_profiles.sql
+20261128095716_booking_reminders_and_cancellation.sql
+
+A mentés, előellenőrzés és kiadás részletes lépései a SECURITY-HARDENING-REPORT.md 8. szakaszában vannak. Éles módosítás ebben a munkában nem történt. A séma-cache frissítése önmagában nem hozza létre a hiányzó függvényeket.
+
+A CSP és annak jelentésküldése továbbra is aktív production környezetben. A Next.js fejlesztői szerveren nem állítjuk be a production CSP-t: a dev runtime és HMR más szkripteket/kapcsolatokat használ, ami félrevezető jelentéseket generálna. Ez nem oldja meg a hiányzó adatbázis-függvény problémáját.
