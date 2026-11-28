@@ -8,6 +8,18 @@ export async function hardeningDatabase({client,pg,check,owner,barber,guest}) {
  await client.query('insert into auth.sessions values($1,$2),($3,$4),($5,$6)',[sid,owner,bsid,barber,ssid,second]);
  await client.query("update public.booking_managers set active=true where email in ('barber@test.invalid','owner@test.invalid');update public.booking_staff set active=true where id='qa-one'");
  const read=name=>readFile(new URL('../supabase/migrations/'+name,import.meta.url),'utf8');
+ await check('standalone limiter repair preserves bookings, denies browser roles and survives replay',async()=>{
+  const before=(await client.query('select count(*)::int n from public.booking_appointments')).rows[0].n;
+  const sql=await read('20261128103316_restore_booking_rate_limit.sql');await client.query(sql);
+  for(const role of ['anon','authenticated'])assert.equal((await client.query("select has_function_privilege($1,'public.booking_rate_limit(text,integer,integer)','EXECUTE') allowed",[role])).rows[0].allowed,false);
+  await client.query('set role service_role');
+  assert.equal((await client.query("select public.booking_rate_limit($1,1,60) r",['9'.repeat(64)])).rows[0].r.allowed,true);
+  assert.equal((await client.query("select public.booking_rate_limit($1,1,60) r",['9'.repeat(64)])).rows[0].r.allowed,false);
+  await assert.rejects(()=>client.query('select * from private.rate_limits'),e=>e.code==='42501');
+  await client.query('reset role');await client.query(sql);
+  assert.equal((await client.query("select public.booking_rate_limit($1,1,60) r",['9'.repeat(64)])).rows[0].r.hits,3);
+  assert.equal((await client.query('select count(*)::int n from public.booking_appointments')).rows[0].n,before);
+ });
  for(const file of ['20261127221722_security_hardening_core.sql','20261127221728_security_hardening_auth.sql','20261127221729_security_hardening_outbox.sql'])await client.query(await read(file));
  await client.query('update public.trusted_devices set auth_session_id=case when user_id=$1 then $2::uuid when user_id=$4 then $3::uuid else $5::uuid end where scope=\'admin\'',[owner,sid,bsid,barber,ssid]);
  const identity=async(id,aal='aal2',conn=client)=>{await conn.query('reset role');await conn.query("select set_config('request.jwt.claims',$1,false)",[JSON.stringify(id?{sub:id,role:'authenticated',aal,session_id:id===owner?sid:id===barber?bsid:ssid,amr:[{method:'totp',timestamp:Math.floor(Date.now()/1000)}]}:{role:'service_role'})]);await conn.query("select set_config('request.headers',$1,false)",[JSON.stringify({'x-demeters-admin-device':(id===owner?'A':id===barber?'B':'D').repeat(43),'x-request-id':randomUUID()})]);await conn.query(`set role ${id?'authenticated':'service_role'}`);};

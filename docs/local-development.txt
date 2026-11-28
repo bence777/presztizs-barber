@@ -18,3 +18,5 @@ A felülvizsgálandó és sorrendben alkalmazandó új migrációk:
 A mentés, előellenőrzés és kiadás részletes lépései a SECURITY-HARDENING-REPORT.md 8. szakaszában vannak. Éles módosítás ebben a munkában nem történt. A séma-cache frissítése önmagában nem hozza létre a hiányzó függvényeket.
 
 A CSP és annak jelentésküldése továbbra is aktív production környezetben. A Next.js fejlesztői szerveren nem állítjuk be a production CSP-t: a dev runtime és HMR más szkripteket/kapcsolatokat használ, ami félrevezető jelentéseket generálna. Ez nem oldja meg a hiányzó adatbázis-függvény problémáját.
+
+FRISSÍTÉS – 2026. november 28.: A célzott limiter-javítást külön felhasználói jóváhagyás után élesben alkalmaztuk (20261128103316_restore_booking_rate_limit.sql). A korábban leírt hiányzó limiter már létezik. A valós helyi /api/booking/config utóellenőrzése 200 OK: 7 fodrász, 21 szolgáltatás. A többi hardening-migráció ettől még nincs alkalmazva. Részletek: docs/booking-rate-limit-repair.txt.

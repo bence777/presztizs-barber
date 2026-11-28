@@ -1,0 +1,19 @@
+DEMETERS – célzott PGRST202 javítás – 2026. november 28.
+
+Érintett projekt: presztizs-barber (fdvhdpguhqjmoojarurz).
+Hiba: /api/booking/config a hiányzó public.booking_rate_limit(text,integer,integer) RPC miatt 503-at ad. A private séma létezik; a private.rate_limits tábla és az RPC hiányát olvasásos vizsgálat igazolta.
+
+Előkészített migráció:
+supabase/migrations/20261128103316_restore_booking_rate_limit.sql
+
+Hatás: új private.rate_limits tábla, RLS, lejárati index, atomi limiter RPC kizárólag service_role hívási jogosultsággal, PostgREST séma-cache frissítés. Meglévő foglalás-, profil-, Auth-, MFA- és outbox-adatot nem változtat. A későbbi teljes security_hardening_core migrációval kompatibilis; ismételt alkalmazás nem nullázza a számlálókat.
+
+Ellenőrzés: 76 helyi PostgreSQL-teszt sikeres. Az új ellenőrzés önállóan, a teljes hardening előtt is telepíti a javítást, igazolja a service-role limitálást, a böngészős szerepek tiltását, a számlálók megőrzését ismételt alkalmazáskor és a foglalások számának változatlanságát.
+
+Állapot: ÉLESBEN ALKALMAZVA, a felhasználó külön jóváhagyása után. A korábbi automatikus elutasítást követően új, kifejezett jóváhagyás érkezett; az engedélyezett apply_migration sikeres volt. Távoli migrációverzió: 20261128103316; a helyi fájl ehhez igazítva.
+
+Utóellenőrzés: a függvény és a tábla létezik; anon/authenticated EXECUTE tiltott, service_role EXECUTE engedélyezett. A localhost:3000/api/booking/config valós Supabase-kapcsolattal 200 OK választ adott, 7 fodrásszal és 21 szolgáltatással. A kéréssel nem hoztunk létre foglalást és nem küldtünk levelet. Az Advisor RLS-without-policy INFO jelzése a private.rate_limits táblán szándékos: a táblát a böngészős szerepek nem érhetik el, a szerver csak a korlátozott RPC-n keresztül ír. Forrás: https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy
+
+A meglévő leaked-password-protection figyelmeztetés változatlan, nem ennek a javításnak a része. Forrás: https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection
+
+A többi hardening-migráció és az emlékeztetők ütemezése ettől még külön feladat marad; teljes production deployment nem történt.
