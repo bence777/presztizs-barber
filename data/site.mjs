@@ -4,13 +4,13 @@ export const SITE = Object.freeze({
   origin: 'https://demeters.hu',
   name: 'DEMETERS',
   city: 'Debrecen',
-  address: null, // { streetAddress, postalCode, addressLocality, addressCountry }
+  address: {streetAddress:'Csapó utca 13.',postalCode:'',addressLocality:'Debrecen',addressCountry:'HU'},
   district: '',
   phone: '',
   email: '',
   geo: null, // { latitude, longitude }
   openingHours: [], // { dayOfWeek: ['Monday'], opens: '09:00', closes: '18:00' }
-  mapsUrl: '',
+  mapsUrl: 'https://www.google.com/maps/search/?api=1&query=Debrecen%2C%20Csap%C3%B3%20utca%2013',
   googleBusinessUrl: '',
   parking: { hu: '', en: '' },
   transit: { hu: '', en: '' },
@@ -20,6 +20,7 @@ export const SITE = Object.freeze({
 });
 
 export const ROUTES = {
+  privacy: { hu: '/adatvedelem', en: '/en/privacy' },
   home: { hu: '/', en: '/en' },
   prices: { hu: '/arak', en: '/en/prices' },
   team: { hu: '/fodraszok', en: '/en/barbers' },

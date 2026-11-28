@@ -1,8 +1,12 @@
+import Link from 'next/link';
+import {route} from '../data/site.mjs';
+import {botToken} from '../lib/client/botCheck';
 import { useLanguage } from './LanguageProvider';
 import { useCallback, useEffect, useRef, useState } from "react";
 import styles from "../styles/GuestIdentity.module.css";
 
 async function api(path, options) {
+  if(path==='send-code')options={...options,botToken:await botToken('send-code')};
   const response = await fetch(`/api/guest/${path}`, {
     credentials: "same-origin",
     cache: "no-store",
@@ -20,7 +24,7 @@ async function api(path, options) {
 const validEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 
 export default function GuestIdentity({ onVerified, initialProfile = null }) {
-  const { t } = useLanguage();
+  const { t,language } = useLanguage();
   const [view, setView] = useState(initialProfile ? "ready" : "loading");
   const [email, setEmail] = useState(initialProfile?.email || "");
   const [code, setCode] = useState("");
@@ -256,6 +260,7 @@ export default function GuestIdentity({ onVerified, initialProfile = null }) {
       )}
 
       {error && view !== "unavailable" && <div className={styles.error} role="alert">{t(error)}</div>}
+      <p className={styles.disclaimer}>{language==='en'?'Read how we handle your information: ':'Az adataid kezeléséről itt olvashatsz: '}<Link href={route('privacy',language)}>{language==='en'?'Privacy notice':'Adatvédelmi tájékoztató'}</Link>.</p>
     </div>
   );
 }

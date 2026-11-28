@@ -1,6 +1,7 @@
+import {secureHandler} from '../../../lib/server/security';
 import { bookingConfigured, BookingDbError, findEarliestAppointment } from '../../../lib/server/bookingDb';
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Vercel-CDN-Cache-Control', 'no-store');
   if (req.method !== 'GET') return res.status(405).json({ error: 'Nem támogatott művelet.' });
@@ -16,3 +17,5 @@ export default async function handler(req, res) {
     return res.status(503).json({ error: 'Nem sikerült megtalálni a legkorábbi időpontot.' });
   }
 }
+
+export default secureHandler(handler,{path:'/api/booking/earliest'});

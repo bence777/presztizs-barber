@@ -11,3 +11,9 @@ supabase/.temp/
 .next-seo-qa/
 
 .next-seo-fixture/
+
+.next-security/
+playwright-report/
+test-results/
+
+.next-privacy/

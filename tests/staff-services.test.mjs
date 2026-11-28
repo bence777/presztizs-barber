@@ -29,7 +29,7 @@ test('cross-staff service mutations fail before any database call',async()=>{
  assert.equal(calls.length,0);
 });
 test('service archive retains rows and scopes the update to the owner',async()=>{
- await saveService(manager,{staffId:'staff-one',id:'service-one'},{archive:true});
+ await saveService(manager,{revision:1,staffId:'staff-one',id:'service-one'},{archive:true});
  assert.equal(calls[0].options.method,'PATCH');assert.equal(calls[0].body.active,false);assert.ok(calls[0].body.archived_at);
  assert.equal(calls[0].url.searchParams.get('staff_id'),'eq.staff-one');
 });
@@ -41,5 +41,5 @@ test('invalid weekly hours fail before a destructive replacement',async()=>{
 
 test('a duplicate profile slug reports a profile conflict instead of a booking conflict',async()=>{
  globalThis.fetch=async()=>({ok:false,status:409,text:async()=>JSON.stringify({code:'23505',message:'private internal constraint name'})});
- await assert.rejects(()=>saveSettings(manager,{staffId:'staff-one',name:'Own Barber',image_url:'',public_phone:'',booking_step_minutes:15,default_manual_service_id:null,public_slug:'taken-slug'}),e=>e.status===409&&e.code==='slug_taken'&&e.message.includes('profilcím'));
+ await assert.rejects(()=>saveSettings(manager,{revision:1,staffId:'staff-one',name:'Own Barber',image_url:'',public_phone:'',booking_step_minutes:15,default_manual_service_id:null,public_slug:'taken-slug'}),e=>e.status===409&&e.code==='slug_taken'&&e.message.includes('profilcím'));
 });

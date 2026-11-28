@@ -9,7 +9,7 @@ const bookingId='55555555-5555-4555-8555-555555555555';
 const userId='11111111-1111-4111-8111-111111111111';
 let booking={id:bookingId,user_id:null,staff_id:'barber-1',service_id:'hajvagas',starts_at:'2026-11-12T09:00:00Z',ends_at:'2026-11-12T09:30:00Z',guest_name:'Próba Vendég',guest_email:'proba@example.com',guest_phone:'06301234567',price_huf:6000,status:'confirmed',is_manual:true,is_demo:true};
 let saved=null;
-const defaultInput={staffId:'barber-1',serviceId:'hajvagas',date:'2026-11-12',time:'10:30',guestName:'Teszt Vendég',guestEmail:'test@example.com',guestPhone:'+36301234567',status:'confirmed'};
+const defaultInput={revision:1,staffId:'barber-1',serviceId:'hajvagas',date:'2026-11-12',time:'10:30',guestName:'Teszt Vendég',guestEmail:'test@example.com',guestPhone:'+36301234567',status:'confirmed'};
 const originalFetch=globalThis.fetch;
 globalThis.fetch=async(raw,opts={})=>{
  const u=new URL(raw),table=u.pathname.split('/').pop(),method=opts.method||'GET',body=opts.body?JSON.parse(opts.body):null;
@@ -64,7 +64,7 @@ test('Editor preserves demo marker and shifts end time to selected service durat
  assert.equal(item.guest_name,'Teszt Vendég');
 });
 test('Delete operation removes appointment by ID',async()=>{
- const deleted=await deleteAdminAppointment(bookingId,owner);
+ const deleted=await deleteAdminAppointment(bookingId,owner,1);
  assert.equal(saved,'deleted');
  assert.equal(deleted.id,bookingId);
 });

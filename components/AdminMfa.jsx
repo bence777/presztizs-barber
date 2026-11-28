@@ -1,0 +1,16 @@
+import {useEffect,useState} from 'react';
+import styles from '../styles/AdminAccess.module.css';
+async function api(body){const r=await fetch('/api/admin/auth/mfa',{cache:'no-store',credentials:'same-origin',...(body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Sikertelen ellenőrzés. / Verification failed.');return d;}
+export default function AdminMfa({onDone,onCancel}){
+ const [factors,setFactors]=useState([]),[factor,setFactor]=useState(null),[code,setCode]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState('');
+ useEffect(()=>{let live=true;api().then(d=>{if(live){const verified=d.factors.filter(f=>f.status==='verified');setFactors(verified);setFactor(verified[0]||null);}}).catch(e=>{if(live)setError(e.message)});return()=>{live=false}},[]);
+ async function perform(fn){if(busy)return;setBusy(true);setError('');try{await fn()}catch(e){setError(e.message)}finally{setBusy(false)}}
+ return <main className={styles.screen}><section className={styles.panel} aria-live="polite"><h1>Második faktor / MFA</h1><p className={styles.sub}>Használd a hitelesítő alkalmazásod hatjegyű kódját. / Enter the six-digit code from your authenticator.</p>
+ {factors.length>1&&<label>Hitelesítő / Authenticator<select value={factor?.id||''} onChange={e=>setFactor(factors.find(f=>f.id===e.target.value))}>{factors.map(f=><option key={f.id} value={f.id}>{f.friendly_name||f.id}</option>)}</select></label>}
+ {factor?.totp&&<><p>Add hozzá a hitelesítő alkalmazásodhoz, és őrizd biztonságosan a kulcsot. / Add this key to your authenticator and store it securely.</p><code style={{overflowWrap:'anywhere',display:'block'}}>{factor.totp.secret}</code></>}
+ {factor&&<form className={styles.form} onSubmit={e=>{e.preventDefault();perform(async()=>{await api({operation:'verify',factorId:factor.id,code});setCode('');onDone();})}}><label htmlFor="mfa-code">Hitelesítő kód / Authenticator code</label><input id="mfa-code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required value={code} onChange={e=>setCode(e.target.value.replace(/\D/g,''))}/><button className={styles.primary} disabled={busy} type="submit">Ellenőrzés / Verify</button></form>}
+ <div className={styles.subActions}><button type="button" disabled={busy} onClick={()=>perform(async()=>{const d=await api({operation:'enroll'});setFactor(d.factor)})}>{factors.length?'Tartalék hitelesítő hozzáadása / Add backup authenticator':'Hitelesítő beállítása / Set up authenticator'}</button>
+ {factors.length>1&&<button type="button" disabled={busy} onClick={()=>perform(async()=>{await api({operation:'unenroll',factorId:factor.id});onDone()})}>Kiválasztott hitelesítő eltávolítása / Remove selected authenticator</button>}
+ {onCancel&&<button type="button" disabled={busy} onClick={onCancel}>Vissza / Back</button>}</div>
+ <p className={styles.note}>Elveszett eszköznél a tartalék hitelesítőt használd. Ha egyik sem elérhető, a szalon tulajdonosa a dokumentált helyreállítási folyamatot követi. / Use your backup authenticator, or contact the salon owner for recovery.</p>{error&&<p className={styles.error} role="alert">{error}</p>}</section></main>;
+}

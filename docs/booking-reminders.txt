@@ -1,0 +1,13 @@
+DEMETERS – 2026. november 28. – Foglalási emlékeztetők és lemondás
+
+Az emlékeztető e-mail a foglalás kezdete előtt 4 órára kerül az adatbázisban tárolt küldési sorba. A percenként futó worker továbbítja a Resendnek; a tényleges kézbesítés az ütemezés és a levelezőszolgáltatás függvénye. Az e-mail tartalmazza az időpontot, szolgáltatást, fodrászt, a Debrecen, Csapó utca 13. címet és a foglalás kezelési linkjét.
+
+Az időpont és az e-mail-cím módosítása újraütemezi az emlékeztetőt; a lemondás/törlés érvényteleníti a várakozó küldést. A worker küldés előtt ismét ellenőrzi a foglalás állapotát. Négy órán belül létrehozott foglalásra nem küldünk utólagos négyórás emlékeztetőt. A jóval korábban létrejött, későbbi emlékeztetőket a karbantartás nem törli.
+
+A vendég online legkésőbb kezdés előtt 4 órával mondhatja le az időpontot. A szerver és az atomi adatbázis-művelet is ellenőrzi a határt, tulajdonost és rekordverziót. A fodrász adminisztrációs lehetőségei megmaradnak.
+
+Élesítés: az összes korábbi, még nem alkalmazott migráció után szükséges a 20261128095716_booking_reminders_and_cancellation.sql migráció, az új alkalmazáskód telepítése, működő Resend-beállítás és az engedélyezett percenkénti worker. Az előkészített ütemezés: supabase/sql/security_hardening_schedule.sql. Ezeket a változtatásokat ebben a munkában nem alkalmaztuk az éles környezeten.
+
+A kezdőlapról eltávolítottuk a külön csapatszekciót és közvetlenül a nyitó rész után jelenik meg a foglalás. Első kártya a legkorábbi időpont, utána Demeter Tamás. Az ellenőrzéskor a meglévő aktív demeter-tamas profilhoz három aktív szolgáltatás és öt nyitvatartási sor tartozott; új Auth-fiók nem készült. A megadott cím a weboldal címadataiban és beágyazott Google-térképen szerepel. Az adatvédelmi tervezetben a Google Maps is megjelenik.
+
+Ellenőrzés: 129 sikeres egységteszt, 75 sikeres helyi PostgreSQL-ellenőrzés, sikeres production build, 11 sikeres SEO-böngészőtesztcsoport és 3 adatvédelmi böngészőtesztcsoport. Külön 390 és 1440 pixel szélességen ellenőriztük a közvetlen foglalási szekciót, a nyolc kártya sorrendjét, a térkép címét és a túlcsordulás hiányát. Lint: 0 hiba, 7 meglévő React Hook-figyelmeztetés. A levelezéshez csak helyi tesztadatokat használtunk, valódi vendégnek nem ment próbaüzenet.

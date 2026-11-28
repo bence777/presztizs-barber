@@ -1,5 +1,9 @@
 # DEMETERS – foglalási rendszer, 2026. november 26.
 
+Adatvédelmi tájékoztató: `/adatvedelem` és `/en/privacy`. Jelenleg egyeztetési, noindex tervezet a `data/privacy.mjs` fájlban, külön önálló adatkezelői jegyzékkel a vállalkozó fodrászoknak. A véglegesítéshez szükséges üzleti adatok és megőrzési döntések listája: [privacy-release-checklist.txt](docs/privacy-release-checklist.txt).
+
+A 2026. november 27-i security-hardening branch új működését, migrációs sorrendjét, teszteredményeit és kötelező kiadási lépéseit a [SECURITY-HARDENING-REPORT.md](SECURITY-HARDENING-REPORT.md) írja le. Ennek jóváhagyott kiadásakor az alábbi régebbi 7 napos admin sliding session- és közvetlen e-mail-küldési leírásokat ez váltja fel.
+
 A foglaló valós Supabase-adatbázist és külön vendég-/kezelői azonosítást használ. Az alábbi új kiadási útmutató az irányadó; a dokumentum végén lévő prototípusleírás történeti előzmény.
 
 ## Saját fodrászfiókok és gördülő eszközmegjegyzés

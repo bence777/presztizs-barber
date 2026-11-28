@@ -1,3 +1,4 @@
+import {adminFetch} from '../lib/client/adminFetch';
 import {useState} from 'react';
 import useDialog from '../lib/client/useDialog';
 import styles from '../styles/AdminDashboard.module.css';
@@ -5,7 +6,7 @@ const ZONE='Europe/Budapest';
 const day=iso=>new Intl.DateTimeFormat('sv-SE',{timeZone:ZONE,year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(iso));
 const time=iso=>new Intl.DateTimeFormat('sv-SE',{timeZone:ZONE,hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(iso));
 export function absenceForm(row,date,staffId) {
-  return row?.id?{id:row.id,staffId:row.staff_id,startDate:day(row.starts_at),endDate:day(row.all_day?new Date(Date.parse(row.ends_at)-1):row.ends_at),allDay:row.all_day,startTime:row.daily_start?.slice(0,5)||time(row.starts_at),endTime:row.daily_end?.slice(0,5)||time(row.ends_at),reason:row.reason||'',kind:row.kind||'leave'}:
+  return row?.id?{id:row.id,revision:row.revision,staffId:row.staff_id,startDate:day(row.starts_at),endDate:day(row.all_day?new Date(Date.parse(row.ends_at)-1):row.ends_at),allDay:row.all_day,startTime:row.daily_start?.slice(0,5)||time(row.starts_at),endTime:row.daily_end?.slice(0,5)||time(row.ends_at),reason:row.reason||'',kind:row.kind||'leave'}:
     {staffId,startDate:date,endDate:date,allDay:true,startTime:'12:00',endTime:'13:00',reason:'',kind:'leave'};
 }
 export function AbsenceList({rows,staff,onEdit}) {
@@ -21,7 +22,7 @@ export default function AdminTimeOff({initial,staff,manager,onClose,onSaved}) {
   async function save(e,remove=false){e?.preventDefault();if(busy)return;
     if(remove&&!window.confirm('Törlöd a távollétet? Az érintett időpontok újra foglalhatóvá válhatnak.'))return;
     setBusy(true);setError('');
-    try {const response=await fetch('/api/admin/time-off',{method:remove?'DELETE':form.id?'PATCH':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(form)});const result=await response.json();if(!response.ok)throw new Error(result.error||'Nem sikerült menteni.');onSaved(remove?'Távollét törölve.':'Távollét elmentve.');}
+    try {const response=await adminFetch('/api/admin/time-off',{method:remove?'DELETE':form.id?'PATCH':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(form)});const result=await response.json();if(!response.ok)throw new Error(result.error||'Nem sikerült menteni.');onSaved(remove?'Távollét törölve.':'Távollét elmentve.');}
     catch(e){setError(e.message)}finally{setBusy(false)}
   }
   return <div className={styles.drawerBackdrop} onMouseDown={e=>{if(e.target===e.currentTarget&&!busy)onClose()}}><aside ref={dialog} tabIndex={-1} className={styles.drawer} role="dialog" aria-modal="true" aria-labelledby="absence-title"><div className={styles.drawerHead}><h2 id="absence-title">{form.id?'Távollét szerkesztése':'Új távollét'}</h2><button type="button" className={styles.iconButton} disabled={busy} onClick={onClose} aria-label="Bezárás">×</button></div>

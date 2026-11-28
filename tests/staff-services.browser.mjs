@@ -1,3 +1,4 @@
+import os from 'node:os';
 // Browser checks use intercepted APIs; no real booking, email or production mutation.
 import {createRequire} from 'node:module';
 import path from 'node:path';
@@ -7,7 +8,7 @@ import {TEAM} from '../data/team.mjs';
 const require=createRequire(path.join(process.env.DEMETERS_QA_MODULES||process.cwd(),'package.json'));
 const {chromium}=require('playwright');
 const base=process.env.DEMETERS_PREVIEW_URL||'http://127.0.0.1:3108';
-const out='/private/tmp/demeters-qa/staff-services';await mkdir(out,{recursive:true});
+const out=`${os.tmpdir()}/demeters-qa/staff-services`;await mkdir(out,{recursive:true});
 const browser=await chromium.launch({headless:true,...(process.env.DEMETERS_BROWSER?{executablePath:process.env.DEMETERS_BROWSER}:{})});
 let passed=0;const pass=name=>{passed++;console.log('PASS '+name)};
 try{

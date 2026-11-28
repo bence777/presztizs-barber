@@ -1,0 +1,73 @@
+DEMETERS – az adatvédelmi tájékoztató véglegesítése
+Dátum: 2026-11-28
+
+Nyomtatható egyeztetési példányok:
+- docs/DEMETERS-adatvedelmi-tajekoztato-tervezet.pdf
+- docs/DEMETERS-privacy-notice-draft.pdf
+A PDF-ek a 2026-11-28-i forrásból készültek; tartalommódosítás után
+újra exportálandók az oldal Nyomtatás / mentés PDF-ként gombjával.
+
+A HU/EN szöveg a data/privacy.mjs fájlban, a közös olvasható/nyomtatható oldal
+az /adatvedelem és /en/privacy útvonalon található. A láblécből és az első
+adatmegadásnál elérhető. Jelenleg egyértelműen megjelölt, noindex tervezet.
+A szöveg a biztonsági megerősítést tartalmazó, még kiadás előtt álló verzióhoz
+készült. Production közzététel nem történt.
+
+Véglegesítéshez az üzemeltetőtől szükséges:
+- Az adatkezelő teljes hivatalos neve, székhelye/postacíme, működő adatvédelmi
+  kapcsolattartási e-mail-címe. Márkanév vagy privát adminbelépési e-mail nem
+  helyettesítheti ezeket. A nyilvántartási adatok/DPO mezőt a valós helyzethez
+  igazítani; nem létező tisztviselőt vagy adatot nem szabad feltüntetni.
+- A felhasználó megerősítette: a fodrászok külön vállalkozóként önálló
+  adatkezelők. A data/privacy.mjs külön barbers jegyzékét mindegyikük hivatalos
+  nevével, székhelyével és privacy elérhetőségével ki kell tölteni; új/inaktív
+  fodrásznál a jegyzék aktualizálandó. A közös felület nem jelent automatikusan
+  közös adatkezelést. Az üzemeltető technikai adatfeldolgozói feladatait, a
+  szükséges Art. 28 szerződéseket és esetleges külön saját adatkezelését
+  azonosítani kell. Az admin technikai hozzáférése nem önálló felhasználási jog.
+- A vendégprofil, inaktív Auth-fiók és foglalási kapcsolati másolat külön
+  megőrzési határideje, az időszak kezdőeseménye, jogalap, felülvizsgálat és
+  törlési felelős. A kód jelenleg nem törli ezeket automatikusan egy általános
+  1/2/5/8 éves határidővel; ilyen állítás nem tehető a tájékoztatóba.
+- Konkrét jogos érdekek és dokumentált érdekmérlegelés a biztonság, naplózás,
+  jogvita és a weboldal/külső tartalmak kiszolgálása kapcsán.
+- A tényleges SMTP-szolgáltató neve, vállalkozási adatai, DPA és megőrzés.
+  A Supabase Auth e-mail-kód és a Resend foglalási értesítő nem feltétlenül
+  ugyanazon SMTP-beállításon keresztül jut ki.
+- Supabase/Vercel/Resend/Cloudflare tényleges szerződő fele és bekapcsolt
+  funkciói; DPA, alfeldolgozók, célországok, továbbítási garanciák és hozzáférés
+  a garanciákhoz. DPF-re csak ténylegesen igazolt és alkalmazható esetben lehet
+  hivatkozni. Egy publikus DPA-link önmagában nem szerződéses ellenőrzés.
+- Hosting/Auth/SMTP/Resend naplómegőrzés és mentési ciklus; a joggyakorlási
+  levelezés megőrzése. Törlés visszaállítás utáni ismétlésének eljárása.
+- Vercel Analytics/Speed Insights és Resend open/click tracking dashboard
+  kapcsolóinak ellenőrzése. A forrásban nincs telepített marketingkövető, de
+  ebből a szolgáltatói dashboard tényleges állapota nem következik.
+- Turnstile tényleges beállításának ellenőrzése (pre-clearance, ephemeral ID,
+  cookie-használat és a választott mód). A külső technikai jelek feldolgozását
+  nem szabad összekeverni a saját trusted device tábla minimális adataival.
+- Külső profil/portfólióképek tárhelyeinek, az Unsplash-képnek és a képek
+  személyiségi jogi/jogalapi helyzetének ellenőrzése. A vendégfoglalás nem
+  hozzájárulás az azonosítható vendégfotó nyilvánosságra hozatalához.
+- Az egyszerű e-mailes NAIH tájékozódást ne jelöljük hatósági eljárásindításnak;
+  a hivatalos csatornákhoz a hatóság aktuális ügyintézési oldala legyen linkelve.
+
+Technikai bevezetés:
+1. A megállapított üzleti határidőket tényleges törlési/anonimizálási eljárás
+   vagy migráció kövesse. A jelenlegi technikai 7/30/90/365 napos takarítás a
+   hardening migrációt és működő ütemezést igényel; nem igazolt éles állapot.
+2. A data/privacy.mjs mindkét nyelvi változatának VÉGLEGESÍTENDŐ / TO BE
+   CONFIRMED részeit töltsük ki, a nem alkalmazható mezőket távolítsuk el.
+   A kész notice-ban ne maradjon szerkesztői megjegyzés.
+3. Controller adatok, review jelzők és tényleges hatálybalépési dátum után
+   állítható approved-ra. Az indexelési védelem nem helyettesíti a tartalmi
+   ellenőrzést és nem teszi jogszerűvé a hiányos dokumentum közzétételét.
+4. Próbáljuk ki mindkét nyelvet, kódbekérés előtti linket, olvasható mobil
+   táblákat, nyomtatást, címzettadat- és megőrzési joggyakorlási folyamatot.
+   Az információ megismerése nem általános adatkezelési hozzájárulás; a
+   szerződéses foglaláshoz nem került kötelező "elfogadom" checkbox.
+5. Jóváhagyott végleges verziót archiválni kell, és a tényleges kiadás dátumát
+   rögzíteni. Érdemi új célról előzetes tájékoztatás szükséges.
+
+Nem történt új adatgyűjtés, consent-tracking vagy szolgáltatói beállításváltás.
+A tájékoztató elkészítése nem bizonyítja a teljes szolgáltatás GDPR-megfelelését.

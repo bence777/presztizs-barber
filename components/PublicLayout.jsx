@@ -11,7 +11,7 @@ export function PublicFooter({ language = 'hu', catalog }) {
   const c = COPY[language];
   return <footer className={styles.footer}>
     <div className={styles.footerBrand}><Link href={route('home', language)}>DEMETERS</Link><p>{c.footerLine}</p></div>
-    <nav aria-label={language === 'en' ? 'Footer navigation' : 'Lábléc navigáció'}>{['prices', 'team', 'contact'].map(key => <Link key={key} href={route(key, language)}>{c[key]}</Link>)}<Link href={`${route('home', language)}#szalon`}>{language === 'en' ? 'The salon' : 'A szalon'}</Link><Link href={bookingHref(language)}>{c.book}</Link></nav>
+    <nav aria-label={language === 'en' ? 'Footer navigation' : 'Lábléc navigáció'}>{['prices', 'team', 'contact'].map(key => <Link key={key} href={route(key, language)}>{c[key]}</Link>)}<Link href={`${route('home', language)}#szalon`}>{language === 'en' ? 'The salon' : 'A szalon'}</Link><Link href={bookingHref(language)}>{c.book}</Link><Link href={route('privacy',language)}>{language==='en'?'Privacy notice':'Adatvédelmi tájékoztató'}</Link></nav>
     <nav aria-label={c.services}>{availableServiceKeys(catalog || { services: [] }).map(key => <Link key={key} href={route(key, language)}>{SERVICE_CONTENT[key][language].label}</Link>)}</nav>
     <address>DEMETERS / {SITE.city}{SITE.address && <span>{SITE.address.postalCode} {SITE.address.addressLocality}, {SITE.address.streetAddress}</span>}{SITE.phone && <a href={`tel:${SITE.phone.replace(/[^+\d]/g, '')}`} onClick={() => trackEvent('phone_clicked', { placement: 'footer' })}>{SITE.phone}</a>}{SITE.email && <a href={`mailto:${SITE.email}`}>{SITE.email}</a>}</address>
     <small>© {new Date().getFullYear()} DEMETERS</small>

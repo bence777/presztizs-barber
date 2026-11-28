@@ -93,8 +93,8 @@ test('partial multi-day absences expand daily instead of blocking all intermedia
  assert.throws(()=>timeOffPayload({staffId:'barber-2',startDate:'2026-11-18',endDate:'2026-11-20',allDay:true},barber),e=>e.status===403);
 });
 test('absence update and delete keep staff scope and bearer on write',async()=>{
- await mutateTimeOff('PATCH',{id,staffId:'barber-1',startDate:'2026-11-18',endDate:'2026-11-18',allDay:true},barber);
- await mutateTimeOff('DELETE',{id},barber);
+ await mutateTimeOff('PATCH',{revision:1,id,staffId:'barber-1',startDate:'2026-11-18',endDate:'2026-11-18',allDay:true},barber);
+ await mutateTimeOff('DELETE',{revision:1,id},barber);
  for(const call of calls){assert.equal(call.url.searchParams.get('staff_id'),'eq.barber-1');assert.equal(call.headers.Authorization,'Bearer verified-staff-jwt')}
 });
 test('calendar queries paginate past PostgREST caps rather than hiding occupied time',async()=>{

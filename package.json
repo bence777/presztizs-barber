@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "test": "node --experimental-default-type=module --test tests/*.test.mjs",
     "test:db": "node tests/database.integration.mjs",
@@ -12,18 +12,31 @@
     "test:responsive": "node tests/admin-responsive.browser.mjs",
     "test:services": "node tests/staff-services.browser.mjs",
     "test:isolation": "node tests/staff-isolation.browser.mjs",
-    "lint": "next lint",
-    "test:seo": "node tests/seo.browser.mjs"
+    "lint": "eslint .",
+    "test:seo": "node tests/seo.browser.mjs",
+    "test:http": "node tests/security.http.mjs",
+    "test:security-ui": "node tests/security.browser.mjs",
+    "test:secrets": "node scripts/scan-secrets.mjs",
+    "test:auth": "node tests/auth-provider.http.mjs",
+    "test:privacy": "node tests/privacy.browser.mjs"
   },
   "dependencies": {
-    "framer-motion": "^14.12.0",
-    "next": "^14.2.35",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "framer-motion": "14.14.0",
+    "next": "16.4.6",
+    "postcss": "8.5.34",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
     "sharp": "0.35.5"
   },
   "devDependencies": {
-    "eslint": "8.57.1",
-    "eslint-config-next": "14.2.35"
+    "@playwright/test": "1.65.1",
+    "embedded-postgres": "17.12.0-beta.19",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.4.6",
+    "pg": "8.23.1",
+    "supabase": "3.4.0"
+  },
+  "engines": {
+    "node": ">=22.18.0 <25"
   }
 }

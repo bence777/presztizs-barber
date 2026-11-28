@@ -18,10 +18,11 @@ let rejectInsert=false;
 const originalFetch=globalThis.fetch;
 globalThis.fetch=async (url,options={})=>{
   const name=new URL(url).pathname.split('/').at(-1);
-  if (options.method === 'POST' && name === 'booking_appointments') {
-    posts.push(JSON.parse(options.body));
+  if(name==='booking_idempotency_result')return {ok:true,status:200,text:async()=>JSON.stringify(null)};
+  if (options.method === 'POST' && name === 'booking_create_idempotent') {
+    posts.push(JSON.parse(options.body).p_booking);
     if(rejectInsert) return {ok:false,status:409,text:async()=>JSON.stringify({code:'23P01',message:'overlapping appointment'})};
-    return {ok:true,status:201,text:async()=>JSON.stringify([{id:'test-booking-id',...posts.at(-1)}])};
+    return {ok:true,status:201,text:async()=>JSON.stringify({id:'test-booking-id',...posts.at(-1)})};
   }
   return {ok:true,status:200,text:async()=>JSON.stringify(rows[name]||[])};
 };
@@ -87,12 +88,12 @@ test('Booking insert locks in price and staff and returns confirmation',async()=
   const farDate = new Date(Date.now()+3*86400000).toISOString().slice(0,10);
   const dow=new Date(`${farDate}T12:00:00Z`).getUTCDay();
   rows.booking_hours.push({staff_id:'mark',weekday:dow,opens:'09:00:00',closes:'18:00:00'});
-  const result=await placeBooking({userId:'11111111-1111-4111-8111-111111111111',serviceId:'hajvagas',barberId:'mark',date:farDate,time:'13:00'});
+  const result=await placeBooking({idempotencyKey:'12345678-1234-4234-8234-123456789abc',userId:'11111111-1111-4111-8111-111111111111',serviceId:'hajvagas',barberId:'mark',date:farDate,time:'13:00'});
   assert.equal(result.staff_id,'mark');
   assert.equal(posts.length,1);
   assert.equal(posts[0].price_huf,5000);
   assert.equal(posts[0].ends_at,new Date(new Date(posts[0].starts_at).getTime()+45*60000).toISOString());
   rejectInsert=true;
-  await assert.rejects(()=>placeBooking({userId:'11111111-1111-4111-8111-111111111111',serviceId:'hajvagas',barberId:'mark',date:farDate,time:'13:00'}),err=>err.status===409);
+  await assert.rejects(()=>placeBooking({idempotencyKey:'12345678-1234-4234-8234-123456789abc',userId:'11111111-1111-4111-8111-111111111111',serviceId:'hajvagas',barberId:'mark',date:farDate,time:'13:00'}),err=>err.status===409);
   globalThis.fetch=originalFetch;
 });

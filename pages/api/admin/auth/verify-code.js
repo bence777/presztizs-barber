@@ -1,10 +1,12 @@
+import {verifiedClaims} from '../../../../lib/server/security';
+import {secureHandler} from '../../../../lib/server/security';
 import { authApi, jsonOnly } from '../../../../lib/server/guestAuth';
 import { normalizedAdminEmail, setAdminCookies } from '../../../../lib/server/adminAuth';
 import { managerByEmail } from '../../../../lib/server/bookingManagement';
 import { registerTrustedDevice, setDeviceCookie } from '../../../../lib/server/trustedDevices';
 export const config = { api: { bodyParser: { sizeLimit:'4kb' } } };
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (!jsonOnly(req, res, 'POST')) return;
   const email = normalizedAdminEmail(req.body?.email);
   const code = typeof req.body?.code === 'string' ? req.body.code.trim() : '';
@@ -23,7 +25,7 @@ export default async function handler(req, res) {
     const manager = await managerByEmail(session.user.email);
     if (!manager) return res.status(403).json({error:'Ehhez az e-mail-címhez nem tartozik aktív kezelői jogosultság.'});
     const expiry = Date.now() + (remember ? 7 * 24 : 12) * 60 * 60 * 1000;
-    const deviceToken = await registerTrustedDevice(req, {userId:session.user.id,scope:"admin",expiresAt:expiry});
+    const deviceToken = await registerTrustedDevice(req, {userId:session.user.id,scope:"admin",expiresAt:expiry,sessionId:verifiedClaims(session.access_token).session_id});
     setAdminCookies(res, session, session.user.id, undefined, remember);
     setDeviceCookie(res, "admin", deviceToken, expiry, remember);
     return res.status(200).json({ok:true,manager:{email:manager.email,role:manager.role,staff_id:manager.staff_id}});
@@ -33,3 +35,5 @@ export default async function handler(req, res) {
     return res.status(502).json({error:'Átmenetileg nem érhető el a kezelői bejelentkezés.'});
   }
 }
+
+export default secureHandler(handler,{path:'/api/admin/auth/verify-code'});

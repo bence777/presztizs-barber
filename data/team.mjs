@@ -1,4 +1,5 @@
 export const TEAM = [
+  { id: 'demeter-tamas', name: 'Demeter Tamás' },
   { id: 'paliga-zoltan', name: 'Paliga Zoltán' },
   { id: 'kovacs-tibi', name: 'Kovács Tibi' },
   { id: 'nehez-zsiros-bence', name: 'Nehéz Zsíros Bence' },

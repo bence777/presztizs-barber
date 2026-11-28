@@ -1,7 +1,7 @@
 // Explicit opt-in server-side fixtures for local QA only. Never load in production.
 // NODE_OPTIONS=--require=./tests/fixtures/public-seo-fetch.cjs
-const names = [['paliga-zoltan','Paliga Zoltán'],['kovacs-tibi','Kovács Tibi'],['nehez-zsiros-bence','Nehéz Zsíros Bence'],['toth-dominik','Tóth Dominik'],['hunyadi-robert','Hunyadi Róbert'],['pelles-zsombor','Pelles Zsombor']];
-const staff=names.map(([id,name],index)=>({id,name,role:'Barber',image_url:null,public_phone:null,booking_step_minutes:15,active:true,public_slug:id,bio:index<2?'Ez egy kizárólag helyi teszteléshez használt, nem éles fodrászbemutatkozás.':'',bio_en:index<2?'This is a public biography fixture used only in local automated tests, never in production.':'',specializations:[],specializations_en:[],portfolio:[],social_links:{},public_updated_at:index<2?'2026-11-27T10:00:00.000Z':null}));
+const names = [['demeter-tamas','Demeter Tamás'],['paliga-zoltan','Paliga Zoltán'],['kovacs-tibi','Kovács Tibi'],['nehez-zsiros-bence','Nehéz Zsíros Bence'],['toth-dominik','Tóth Dominik'],['hunyadi-robert','Hunyadi Róbert'],['pelles-zsombor','Pelles Zsombor']];
+const staff=names.map(([id,name],index)=>({id,name,role:'Barber',image_url:null,public_phone:null,booking_step_minutes:15,active:true,public_slug:id,bio:['paliga-zoltan','kovacs-tibi'].includes(id)?'Ez egy kizárólag helyi teszteléshez használt, nem éles fodrászbemutatkozás.':'',bio_en:['paliga-zoltan','kovacs-tibi'].includes(id)?'This is a public biography fixture used only in local automated tests, never in production.':'',specializations:[],specializations_en:[],portfolio:[],social_links:{},public_updated_at:['paliga-zoltan','kovacs-tibi'].includes(id)?'2026-11-27T10:00:00.000Z':null}));
 const services=staff.flatMap((member,index)=>[
  {id:`cut-${member.id}`,staff_id:member.id,name:'Hajvágás',name_en:'Haircut',description:'',description_en:'',duration_minutes:30,price_huf:6000+index*500,active:true,archived_at:null},
  {id:`combo-${member.id}`,staff_id:member.id,name:'Haj és szakáll',name_en:'Hair and beard',description:'',description_en:'',duration_minutes:60,price_huf:8000+index*500,active:true,archived_at:null},
@@ -10,6 +10,8 @@ const originalFetch=globalThis.fetch;
 globalThis.fetch=async(input,options={})=>{
  const url=new URL(typeof input==='string'?input:input.url||input.href);
  if(!url.hostname.endsWith('.supabase.co'))return originalFetch(input,options);
+ if(url.pathname.endsWith('/rpc/booking_rate_limit'))return new Response(JSON.stringify({allowed:true,hits:1,retry_after:60}),{headers:{'Content-Type':'application/json'}});
+ if(url.pathname.endsWith('/rpc/booking_monthly_blocks'))return new Response('[]',{headers:{'Content-Type':'application/json'}});
  if(options.method&&options.method!=='GET')throw new Error('Local SEO QA forbids all database mutations');
  const table=url.pathname.split('/').at(-1);
  let rows=table==='booking_staff'?staff:table==='booking_services'?services:table==='booking_staff_slug_history'?[{slug:'previous-paliga',staff_id:'paliga-zoltan'}]:null;

@@ -1,13 +1,15 @@
+import {secureHandler} from '../../lib/server/security';
 /* eslint-disable @next/next/no-img-element -- ImageResponse renders a bitmap, not an HTML page. */
 import DemetersLogo from '../../components/DemetersLogo';
 import { ImageResponse } from 'next/og';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import {downloadPortrait,validateImage} from '../../lib/server/ogImage';
 import { pageMetadata, SERVICE_CONTENT } from '../../data/seoContent.mjs';
 import { getPublicCatalog } from '../../lib/server/publicCatalog';
 import { profileAvailable } from '../../lib/seo/catalog.mjs';
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   res.setHeader('X-Robots-Tag', 'noindex, follow');
   if (req.method !== 'GET' && req.method !== 'HEAD') return res.status(405).end();
   const language = req.query.lang === 'en' ? 'en' : 'hu';
@@ -22,19 +24,11 @@ export default async function handler(req, res) {
       // A missing portrait falls back to the branded name-based preview.
       try {
       if (/^\/images\/[a-z0-9_-]+\.(webp|png|jpe?g)$/i.test(barber.image || '')) {
-        const bytes = await readFile(path.join(process.cwd(), 'public', barber.image));
+        const bytes = await validateImage(await readFile(path.join(process.cwd(), 'public', barber.image)));
         const mime = barber.image.endsWith('.webp') ? 'image/webp' : barber.image.endsWith('.png') ? 'image/png' : 'image/jpeg';
         portrait = `data:${mime};base64,${bytes.toString('base64')}`;
       } else if (barber.image && process.env.SUPABASE_URL) {
-        const photo = new URL(barber.image);
-        if (photo.hostname === new URL(process.env.SUPABASE_URL).hostname && photo.pathname.startsWith('/storage/v1/object/public/')) {
-          const response = await fetch(photo, { redirect: 'error', signal: AbortSignal.timeout(4000) });
-          const mime = response.headers.get('content-type')?.split(';')[0];
-          if (response.ok && ['image/webp','image/jpeg','image/png'].includes(mime)) {
-            const bytes = Buffer.from(await response.arrayBuffer());
-            if (bytes.length <= 8_000_000) portrait = `data:${mime};base64,${bytes.toString('base64')}`;
-          }
-        }
+        portrait = await downloadPortrait(barber.image);
       }
       } catch { portrait = null; }
     }
@@ -56,3 +50,5 @@ export default async function handler(req, res) {
     res.setHeader('Cache-Control', 'no-store'); return res.status(503).end();
   }
 }
+
+export default secureHandler(handler,{path:'/api/og'});

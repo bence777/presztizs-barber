@@ -1,8 +1,12 @@
+import Link from 'next/link';
+import AdminMfa from './AdminMfa';
+import {botToken} from '../lib/client/botCheck';
 import {cloneElement, useCallback, useEffect, useState} from 'react';
 import styles from '../styles/AdminAccess.module.css';
 
 const EMAIL_OK = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 async function adminApi(url, body) {
+  if(['send-code','password'].includes(url))body={...body,botToken:await botToken(url)};
   const response = await fetch(`/api/admin/auth/${url}`, {
     credentials:'same-origin', cache:'no-store',
     ...(body === undefined ? {} : {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}),
@@ -18,6 +22,9 @@ async function adminApi(url, body) {
 }
 
 export default function AdminIdentityGate({children}) {
+  const [reauth,setReauth]=useState(null);
+  useEffect(()=>{const open=e=>setReauth(()=>e.detail.resolve);window.addEventListener('demeters:reauth',open);return()=>window.removeEventListener('demeters:reauth',open)},[]);
+  const [mfaMandatory,setMfaMandatory]=useState(false);
   const [phase,setPhase] = useState('loading');
   const [email,setEmail] = useState('');
   const [method,setMethod] = useState('email');
@@ -35,7 +42,7 @@ export default function AdminIdentityGate({children}) {
     setPhase('loading');setError('');
     try {
       const session=await adminApi('session');
-      if(session.authenticated && session.manager){setManager(session.manager);setPhase('ready');}
+      if(session.authenticated && session.manager){setMfaMandatory(session.mfaRequired===true);setManager(session.manager);setPhase(session.mfaRequired?'mfa':'ready');}
       else {setManager(null);setPhase('email');}
     } catch(e) {
       if(e.status===403){setEmail(e.email||'');setManager(null);setPhase('denied');}
@@ -52,6 +59,7 @@ export default function AdminIdentityGate({children}) {
       try {
         const state=await adminApi('session');
         if(active&&!state.authenticated){setManager(null);setPhase('email');}
+        else if(active&&state.mfaRequired){setMfaMandatory(true);setPhase('mfa');}
         else if(active&&!state.manager){setManager(null);setPhase('denied');}
         else if(active){setManager(current=>current?.role===state.manager.role&&current?.staff_id===state.manager.staff_id&&current?.email===state.manager.email?current:state.manager);}
       }catch(e){
@@ -98,7 +106,7 @@ export default function AdminIdentityGate({children}) {
     action(async()=>{
       const result=await adminApi('verify-code',{email,code,remember});
       if(!result.manager)throw new Error('A belépés nem sikerült.');
-      setManager(result.manager);setCode('');setPhase('ready');
+      setManager(result.manager);setCode('');await checkSession();
     });
   }
   function switchAccount(){action(logout);}
@@ -107,11 +115,13 @@ export default function AdminIdentityGate({children}) {
     action(async()=>{
       const result=await adminApi('password',{...(legacyLogin?{loginName}:{email:loginName}),password,remember});
       if(!result.manager)throw new Error('A belépés nem sikerült.');
-      setPassword('');setManager(result.manager);setPhase('ready');
+      setPassword('');setManager(result.manager);await checkSession();
     });
   }
 
-  if(phase==='ready' && manager) return cloneElement(children,{key:`${manager.role}:${manager.staff_id||'owner'}`,onAdminLogout:async()=>{try{await logout();}catch(e){setError(e.message);setPhase('unavailable');}},adminManager:manager});
+  if(reauth)return <AdminMfa onDone={()=>{reauth(true);setReauth(null)}} onCancel={()=>{reauth(false);setReauth(null)}}/>;
+  if(phase==='mfa')return <AdminMfa onDone={checkSession} onCancel={()=>mfaMandatory?action(logout):setPhase('ready')}/>;
+  if(phase==='ready' && manager) return cloneElement(children,{onAdminSecurity:()=>setPhase('mfa'),key:`${manager.role}:${manager.staff_id||'owner'}`,onAdminLogout:async()=>{try{await logout();}catch(e){setError(e.message);setPhase('unavailable');}},adminManager:manager});
   return <main className={styles.screen}>
     <div className={styles.top}><a href="/" className={styles.brand}>D<span>.</span> <strong>DEMETERS</strong></a><span className={styles.topLabel}>STUDIO / MANAGEMENT</span></div>
     <section className={styles.panel} aria-live="polite">
@@ -122,7 +132,7 @@ export default function AdminIdentityGate({children}) {
         <form className={styles.form} onSubmit={passwordLogin}>
           <label htmlFor="staff-login">{legacyLogin?'Korábbi felhasználónév':'E-mail-cím'}</label><input id="staff-login" type={legacyLogin?'text':'email'} inputMode={legacyLogin?'text':'email'} required autoComplete="username" autoCapitalize="none" spellCheck={false} value={loginName} onChange={e=>setLoginName(e.target.value)} placeholder={legacyLogin?'Korábbi azonosító':'sajat@email.hu'}/>
           <label htmlFor="staff-password">Jelszó</label><input id="staff-password" type="password" autoComplete="current-password" required maxLength={128} value={password} onChange={e=>setPassword(e.target.value)}/>
-          <label className={styles.remember}><input type="checkbox" checked={remember} onChange={e=>setRemember(e.target.checked)}/> Megjegyzés: használatonként újabb 7 nap</label>
+          <label className={styles.remember}><input type="checkbox" checked={remember} onChange={e=>setRemember(e.target.checked)}/> Megbízható eszköz: legfeljebb 24 óra, 30 perc inaktivitás</label>
           <button className={styles.primary} disabled={busy} type="submit">{busy?'Belépés…':'Bejelentkezés'}</button>
         </form><p className={styles.note}>Jelszó helyett belépési kódot is kérhetsz az e-mail-címedre.</p><div className={styles.subActions}><button type="button" onClick={()=>{setLegacyLogin(!legacyLogin);setLoginName('');setError('')}}>{legacyLogin?'Belépés e-mail-címmel':'Korábbi felhasználóneves fiókom van'}</button></div>
       </>:<><p className={styles.sub}>Lépj be a saját kezelői e-mail-címeddel. Ez a vendégprofiltól független belépés.</p>
@@ -136,7 +146,7 @@ export default function AdminIdentityGate({children}) {
         <form onSubmit={verifyCode} className={styles.form}>
           <label htmlFor="admin-auth-otp">Ellenőrző kód</label>
           <input id="admin-auth-otp" type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={10} pattern="[0-9]{6,10}" value={code} onChange={e=>setCode(e.target.value.replace(/\D/g,'').slice(0,10))} placeholder="E-mailben kapott kód" required autoFocus/>
-          <label style={{display:"flex",alignItems:"center",gap:9,fontSize:12,color:"#666",margin:"14px 0"}}><input type="checkbox" checked={remember} onChange={e=>setRemember(e.target.checked)}/> Megbízható eszköz: használatonként újabb 7 nap (opcionális)</label>
+          <label style={{display:"flex",alignItems:"center",gap:9,fontSize:12,color:"#666",margin:"14px 0"}}><input type="checkbox" checked={remember} onChange={e=>setRemember(e.target.checked)}/> Megbízható eszköz: legfeljebb 24 óra, 30 perc inaktivitás (opcionális)</label>
           <button className={styles.primary} type="submit" disabled={busy||code.length<6}>{busy?'Ellenőrzés…':'Bejelentkezés'} </button>
         </form><div className={styles.subActions}>
           <button type="button" disabled={busy||cooldown>0} onClick={()=>sendCode()}>{cooldown>0?`Új kód ${cooldown} mp múlva`:'Kód újraküldése'}</button>
@@ -146,6 +156,7 @@ export default function AdminIdentityGate({children}) {
       {phase==='denied' && <><h1>Nincs kezelői hozzáférés.</h1><p className={styles.sub}>A megadott fiók nem szerepel az aktív szalonkezelők között. A hozzáférést a szalon tulajdonosa adhatja meg.</p>{email&&<p className={styles.verified}>{email}</p>}<button className={styles.primary} disabled={busy} onClick={switchAccount} type="button">Belépés másik e-maillel </button></>}
       {phase==='unavailable' && <><h1>Kapcsolódási hiba.</h1><p className={styles.sub}>Most nem sikerült ellenőrizni a kezelői munkamenetet.</p><button className={styles.primary} onClick={checkSession} type="button">Újrapróbálás</button></>}
       {error&&<p role="alert" className={styles.error}>{error}</p>}
+      <p className={styles.note}><Link href="/adatvedelem">Adatvédelmi tájékoztató</Link></p>
       <div className={styles.bottom}><span>SECURE ACCESS · SUPABASE AUTH</span><a href="/foglalasaim">Vendég vagyok</a></div>
     </section>
     <footer className={styles.footer}>© DEMETERS <span>SAJÁT KEZELŐI AZONOSÍTÁS</span></footer>

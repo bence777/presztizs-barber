@@ -310,15 +310,19 @@ export default function BookingWizard({ bookingRequest }) {
     setBookingBusy(true);
     setBookingError("");
     try {
+      const intent=JSON.stringify([serviceId,barberId,date,time]);
+      let saved;try{saved=JSON.parse(sessionStorage.getItem('demeters-booking-intent'));}catch{}
+      const idempotencyKey=saved?.intent===intent?saved.key:crypto.randomUUID();
+      sessionStorage.setItem('demeters-booking-intent',JSON.stringify({intent,key:idempotencyKey}));
       const response = await fetch("/api/booking/create", {
         method: "POST", credentials: "same-origin", cache: "no-store",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Idempotency-Key":idempotencyKey },
         body: JSON.stringify({ serviceId, barberId, date, time }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
         if (response.status === 401) { setVerified(false); setPerson({ name: '', email: '', phone: '' }); setShowPreview(false); }
-        if (response.status === 409) {
+        if (response.status === 409 && !['booking_quota','idempotency_conflict'].includes(data.code)) {
           invalidateCachedAvailability(serviceId, barberId, date.slice(0, 7));
           setStep(2); setShowPreview(false); setTime(null); setRefreshAvailability(n => n + 1);
           if (earliestRequested) void findEarliest(serviceId);
@@ -327,6 +331,7 @@ export default function BookingWizard({ bookingRequest }) {
       }
       invalidateCachedAvailability(serviceId, barberId, date.slice(0, 7));
       if (!data.booking?.id) throw new Error(t("Nem sikerült véglegesíteni a foglalást."));
+      sessionStorage.removeItem('demeters-booking-intent');
       setConfirmedBooking(data.booking);
       trackEvent('booking_completed', { barber_id: barberId, service_id: serviceId, language });
     } catch (error) { setBookingError(error.message); }

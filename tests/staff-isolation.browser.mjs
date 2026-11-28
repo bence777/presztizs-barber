@@ -1,3 +1,4 @@
+import os from 'node:os';
 // Local UI fixtures only. SQL/RLS and session renewal are covered by real DB/unit tests.
 import {createRequire} from 'node:module';
 import path from 'node:path';
@@ -7,7 +8,7 @@ import {TEAM} from '../data/team.mjs';
 const require=createRequire(path.join(process.env.DEMETERS_QA_MODULES||process.cwd(),'package.json'));
 const {chromium}=require('playwright');
 const base=process.env.DEMETERS_PREVIEW_URL||'http://127.0.0.1:3108';
-const output='/private/tmp/demeters-qa/staff-isolation';await mkdir(output,{recursive:true});
+const output=`${os.tmpdir()}/demeters-qa/staff-isolation`;await mkdir(output,{recursive:true});
 const browser=await chromium.launch({headless:true,...(process.env.DEMETERS_BROWSER?{executablePath:process.env.DEMETERS_BROWSER}:{})});
 let checks=0;const pass=message=>{checks++;console.log('PASS '+message)};
 try{
@@ -61,9 +62,9 @@ try{
   assert.equal(await page.getByLabel('Megjelenített név',{exact:true}).inputValue(),staff[0].name);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));pass(`${width}px permission changes clear the old view; barber sees only own calendar/services/settings and cannot switch staff`);
   authenticated=false;await page.reload();
-  await page.getByRole('button',{name:'Jelszavas belépés',exact:true}).click();await page.getByRole('checkbox',{name:/használatonként újabb 7 nap/}).waitFor();
+  await page.getByRole('button',{name:'Jelszavas belépés',exact:true}).click();await page.getByRole('checkbox',{name:/legfeljebb 24 óra/}).waitFor();
   await page.goto(base+'/foglalasaim');await page.getByLabel('E-MAIL-CÍM',{exact:true}).fill('guest@example.com');await page.getByRole('button',{name:'ELLENŐRZŐ KÓD KÉRÉSE',exact:true}).click();await page.getByRole('checkbox',{name:/használatonként újabb 60 nap/}).waitFor();
-  assert.deepEqual(errors,[]);pass(`${width}px admin and guest opt-in labels show the independent sliding 7/60-day lifetime`);
+  assert.deepEqual(errors,[]);pass(`${width}px admin labels show bounded lifetime; guest labels preserve sliding 60-day lifetime`);
   await context.close();
  }
  console.log(`${checks} staff-isolation browser checks passed; ${output}`);

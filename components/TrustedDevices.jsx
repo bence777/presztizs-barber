@@ -1,3 +1,4 @@
+import {adminFetch} from '../lib/client/adminFetch';
 import { useLanguage } from './LanguageProvider';
 import {useCallback,useEffect,useState} from 'react';
 import {useRouter} from 'next/router';
@@ -8,7 +9,7 @@ const displayDate = (iso, locale) => new Intl.DateTimeFormat(locale, {
 }).format(new Date(iso));
 
 async function request(url,body,method='GET') {
-  const response = await fetch(url,{
+  const response = await adminFetch(url,{
     credentials:'same-origin',cache:'no-store',
     ...(method==='GET'?{}:{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}),
   });
@@ -40,7 +41,7 @@ export default function TrustedDevices({scope='guest'}) {
   async function remove(device) {
     const text=device.current?
       t("Ez a jelenlegi eszközöd. A hozzáférés azonnal megszűnik, és újra be kell jelentkezned. Törlöd?"):
-      t("Megszünteted a(z) „{name}” eszköz hozzáférését? Más eszközök bejelentkezése megmarad.", { name: device.device_name });
+      t("Megszünteted a(z) „{name}” eszköz hozzáférését? A biztonság érdekében a többi eszközön is új belépés lesz szükséges.", { name: device.device_name });
     if(!window.confirm(text))return;
     setBusy(device.id);setError('');setNotice('');
     try {
@@ -51,7 +52,7 @@ export default function TrustedDevices({scope='guest'}) {
         window.location.reload();
       } else {
         setDevices(prev=>prev.filter(x=>x.id!==device.id));
-        setNotice(t("Az eszköz hozzáférését megszüntettük. Új belépéshez e-mail-kód szükséges."));
+        setNotice(result.providerRevoked===false?"Az alkalmazás-hozzáférést visszavontuk. A szolgáltatói kijelentkeztetés átmenetileg sikertelen. / App access revoked; provider sign-out is temporarily unavailable.":t("Az eszköz hozzáférését megszüntettük. Új belépéshez e-mail-kód szükséges."));
       }
     } catch(e) {setError(e.message);} finally {setBusy('');}
   }

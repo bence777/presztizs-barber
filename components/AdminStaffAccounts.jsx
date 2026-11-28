@@ -1,17 +1,18 @@
+import {adminFetch} from '../lib/client/adminFetch';
 import {useCallback,useEffect,useState} from 'react';
 import useDialog from '../lib/client/useDialog';
 import styles from '../styles/AdminDashboard.module.css';
-const api=async(url,options={})=>{const r=await fetch(url,{cache:'no-store',credentials:'same-origin',...options});const result=await r.json();if(!r.ok)throw new Error(result.error||'Nem sikerült menteni.');return result};
+const api=async(url,options={})=>{const r=await adminFetch(url,{cache:'no-store',credentials:'same-origin',...options});const result=await r.json();if(!r.ok)throw new Error(result.error||'Nem sikerült menteni.');return result};
 export default function AdminStaffAccounts({refreshVersion,onSaved}){
  const [data,setData]=useState({staff:[],accounts:[]}),[loading,setLoading]=useState(true),[error,setError]=useState(''),[form,setForm]=useState(null),[saving,setSaving]=useState(false);
  const close=()=>{if(!saving)setForm(null)};
  const dialog=useDialog(Boolean(form),close);
  const load=useCallback(async()=>{setLoading(true);try{setData(await api('/api/admin/staff-accounts'));setError('')}catch(e){setError(e.message)}finally{setLoading(false)}},[]);
  useEffect(()=>{load()},[load,refreshVersion]);
- function edit(staff,account){setError('');setForm({staffId:staff.id,name:staff.name,email:account?.isPlaceholder?'':account?.email||'',previousEmail:account?.isPlaceholder?account.email:undefined,isPlaceholder:account?.isPlaceholder===true,active:account?.isPlaceholder?true:account?.active??true,existing:Boolean(account),password:'',createStaff:staff.pendingSetup===true,copyHoursFrom:''})}
+ function edit(staff,account){setError('');setForm({revision:account?.revision,staffRevision:staff.revision,staffId:staff.id,name:staff.name,email:account?.isPlaceholder?'':account?.email||'',previousEmail:account?.isPlaceholder?account.email:undefined,isPlaceholder:account?.isPlaceholder===true,active:account?.isPlaceholder?true:account?.active??true,existing:Boolean(account),password:'',createStaff:staff.pendingSetup===true,copyHoursFrom:''})}
  function add(){setError('');setForm({staffId:`barber-${crypto.randomUUID()}`,name:'',email:'',active:true,existing:false,password:'',createStaff:true,copyHoursFrom:''})}
  async function save(e){e.preventDefault();if(saving)return;setSaving(true);setError('');try{const result=await api('/api/admin/staff-accounts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(form)});if(!result.account?.authUserId)throw new Error('Az Auth-fiók mentését nem sikerült ellenőrizni.');setForm(null);await load();onSaved('Fodrász és e-mailes Auth-fiók elmentve.')}catch(e){setError(e.message)}finally{setSaving(false)}}
- async function toggle(account){setSaving(true);setError('');try{await api('/api/admin/staff-accounts',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:account.email,active:!account.active})});await load();onSaved(account.active?'Hozzáférés letiltva.':'Hozzáférés engedélyezve.')}catch(e){setError(e.message)}finally{setSaving(false)}}
+ async function toggle(account){setSaving(true);setError('');try{await api('/api/admin/staff-accounts',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:account.email,revision:account.revision,active:!account.active})});await load();onSaved(account.active?'Hozzáférés letiltva.':'Hozzáférés engedélyezve.')}catch(e){setError(e.message)}finally{setSaving(false)}}
  return <section aria-label="Fodrászfiókok kezelése" className={styles.accountsSection}>
   <div className={styles.accountIntro}><p className={styles.helpText}>Minden fodrász saját e-mail-címhez kapcsolt fiókot kap. A mentés a Supabase Authban is létrehozza a felhasználót. A fodrász a saját címére kapott kóddal léphet be, és csak a saját adatait érheti el.</p><button className={styles.primaryButton} type="button" disabled={saving||loading} onClick={add}>+ Új fodrász hozzáadása</button></div>
   {error&&!form&&<p className={styles.drawerError} role="alert">{error}</p>}{loading&&<p role="status">Fiókok betöltése…</p>}

@@ -1,7 +1,8 @@
+import {secureHandler} from '../../../lib/server/security';
 import { authApi, clearGuestCookies, getGuest, jsonOnly } from "../../../lib/server/guestAuth";
 import { removeCurrentTrustedDevice } from "../../../lib/server/trustedDevices";
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (!jsonOnly(req, res, "POST")) return;
   // Revoke the server-side credential BEFORE clearing local cookies.
   try {
@@ -19,3 +20,5 @@ export default async function handler(req, res) {
   clearGuestCookies(res);
   return res.status(200).json({ ok: true });
 }
+
+export default secureHandler(handler,{path:'/api/guest/logout'});

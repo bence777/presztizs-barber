@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { alternatePath, identifyPath, SITE } from './data/site.mjs';
-export function middleware(request) {
+export function proxy(request) {
   const url = request.nextUrl;
   const page = identifyPath(url.pathname);
   const requestedLanguage = url.searchParams.get('lang');

@@ -1,3 +1,4 @@
+import os from 'node:os';
 // UI smoke test with deterministic API fixtures. Real SQL/RLS is tested separately.
 import {createRequire} from 'node:module';
 import {mkdir} from 'node:fs/promises';
@@ -7,7 +8,7 @@ import { TEAM } from '../data/team.mjs';
 const require=createRequire(path.join(process.env.DEMETERS_QA_MODULES||process.cwd(),'package.json'));
 const {chromium}=require('playwright');
 const base=process.env.DEMETERS_PREVIEW_URL||'http://127.0.0.1:3100';
-const output=process.env.DEMETERS_QA_OUTPUT||'/private/tmp/demeters-qa/screenshots';await mkdir(output,{recursive:true});
+const output=process.env.DEMETERS_QA_OUTPUT||`${os.tmpdir()}/demeters-qa/screenshots`;await mkdir(output,{recursive:true});
 const browser=await chromium.launch({headless:true,...(process.env.DEMETERS_BROWSER?{executablePath:process.env.DEMETERS_BROWSER}:{})});
 let passed=0;const pass=name=>{passed++;console.log('PASS '+name)};
 try {

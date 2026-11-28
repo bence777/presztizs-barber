@@ -42,7 +42,7 @@ test('metadata is unique by intent and language; schema prices come from the sam
   assert.equal(titles.size,12);
   const schema=buildSchema({path:'/arak',title:'Árak',description:'Aktuális árak',catalog,services:catalog.services,language:'hu',breadcrumbs:[{name:'Főoldal',path:'/'},{name:'Árak',path:'/arak'}]});
   const salon=schema['@graph'].find(entity=>entity['@type']==='HairSalon');
-  assert.equal(salon['@id'],'https://demeters.hu/#salon'); assert.ok(!salon.aggregateRating); assert.ok(!salon.address); assert.ok(!salon.telephone);
+  assert.equal(salon['@id'],'https://demeters.hu/#salon'); assert.ok(!salon.aggregateRating); assert.equal(salon.address.streetAddress,'Csapó utca 13.'); assert.ok(!salon.telephone);
   const offers=schema['@graph'].find(entity=>entity['@type']==='OfferCatalog').itemListElement;
   assert.deepEqual(offers.map(offer=>offer.price),[6000,8000,12000]);
   assert.ok(offers.every(offer=>offer.priceCurrency==='HUF'));

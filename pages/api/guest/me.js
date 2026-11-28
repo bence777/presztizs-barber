@@ -1,6 +1,7 @@
+import {secureHandler} from '../../../lib/server/security';
 import { getGuest, getProfile, jsonOnly, safeApiError } from "../../../lib/server/guestAuth";
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (!jsonOnly(req, res, "GET")) return;
   try {
     const guest = await getGuest(req, res);
@@ -13,3 +14,5 @@ export default async function handler(req, res) {
     });
   } catch (error) { return safeApiError(res, error, "me"); }
 }
+
+export default secureHandler(handler,{path:'/api/guest/me'});

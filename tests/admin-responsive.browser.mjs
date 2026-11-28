@@ -1,3 +1,4 @@
+import os from 'node:os';
 import {createRequire} from 'node:module';
 import path from 'node:path';
 import {mkdir} from 'node:fs/promises';
@@ -5,7 +6,7 @@ import assert from 'node:assert/strict';
 const require=createRequire(path.join(process.env.DEMETERS_QA_MODULES||process.cwd(),'package.json'));
 const {chromium}=require('playwright');
 const base=process.env.DEMETERS_PREVIEW_URL||'http://127.0.0.1:3100';
-const output='/private/tmp/demeters-qa/responsive-v2';await mkdir(output,{recursive:true});
+const output=`${os.tmpdir()}/demeters-qa/responsive-v2`;await mkdir(output,{recursive:true});
 const browser=await chromium.launch({headless:true,...(process.env.DEMETERS_BROWSER?{executablePath:process.env.DEMETERS_BROWSER}:{})});
 let checks=0;
 const pass=name=>{checks++;console.log('PASS '+name)};

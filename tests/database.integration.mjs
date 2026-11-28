@@ -4,6 +4,7 @@ import {readFile,mkdtemp,rm} from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import assert from 'node:assert/strict';
+import {hardeningDatabase} from './security.database.mjs';
 const require=createRequire(path.join(process.env.DEMETERS_QA_MODULES||process.cwd(),'package.json'));
 const EmbeddedPostgres=require('embedded-postgres').default;
 const tmp=await mkdtemp(path.join(os.tmpdir(),'demeters-db-'));
@@ -14,6 +15,7 @@ const root=path.resolve(import.meta.dirname,'..');
 const read=p=>readFile(path.join(root,p),'utf8');
 try {
  await pg.initialise();await pg.start();client=pg.getPgClient();await client.connect();
+ console.log('Database engine:',(await client.query('select version() v')).rows[0].v.split(' on ')[0]);
  await client.query(`create role anon nologin;create role authenticated nologin;create role service_role nologin bypassrls;
  create schema auth;grant usage on schema auth to authenticated,service_role;
  create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz);
@@ -369,5 +371,6 @@ try {
   await identity(owner);
   assert.equal((await client.query("update public.booking_staff set bio='Owner-approved public introduction, suitable for publication.' where id in ('qa-one','qa-two') returning id")).rowCount,2);
  });
+ await hardeningDatabase({client,pg,check,owner,barber,guest});
  console.log(`${passed} database checks passed`);
 } finally {if(client)await client.end();await pg.stop().catch(()=>{});await rm(tmp,{recursive:true,force:true});}

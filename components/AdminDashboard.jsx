@@ -1,3 +1,4 @@
+import {adminFetch} from '../lib/client/adminFetch';
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {useRouter} from 'next/router';
 import styles from '../styles/AdminDashboard.module.css';
@@ -51,7 +52,7 @@ const dayIdx=s=>(new Date(s+'T12:00:00Z').getUTCDay()+6)%7;
 const formattedPrice=n=>new Intl.NumberFormat('hu-HU').format(n??0)+' Ft';
 const minutes=iso=>{const [h,m]=timeKey(iso).split(':').map(Number);return h*60+m};
 const duration=b=>Math.max(1,Math.round((new Date(b.ends_at)-new Date(b.starts_at))/60000));
-const api=async(url,options={})=>{const r=await fetch(url,{cache:'no-store',credentials:'same-origin',...options});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Szerverhiba történt.');return d};
+const api=async(url,options={})=>{const r=await adminFetch(url,{cache:'no-store',credentials:'same-origin',...options});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Szerverhiba történt.');return d};
 const forRange=(date,mode,tab)=>{
   if(tab==='absence')return {from:startMonth(date),to:offsetDay(endMonth(date),1)};
   if(tab==='list')return {from:startMonth(date),to:offsetDay(endMonth(date),1)};
@@ -59,7 +60,7 @@ const forRange=(date,mode,tab)=>{
   if(mode==='month'){const from=startWeek(startMonth(date));return {from,to:offsetDay(from,42)}};
   const from=startWeek(date);return {from,to:offsetDay(from,7)};
 };
-function parseBooking(b){return {durationMinutes:duration(b),originalStart:b.starts_at,monthlySeriesId:b.monthly_series_id||null,staffId:b.staff_id,serviceId:b.service_id,date:dateKey(b.starts_at),time:timeKey(b.starts_at),guestName:b.guest_name||'',guestEmail:b.guest_email||'',guestPhone:b.guest_phone||'',status:b.status,notify:!b.is_demo};}
+function parseBooking(b){return {revision:b.revision,durationMinutes:duration(b),originalStart:b.starts_at,monthlySeriesId:b.monthly_series_id||null,staffId:b.staff_id,serviceId:b.service_id,date:dateKey(b.starts_at),time:timeKey(b.starts_at),guestName:b.guest_name||'',guestEmail:b.guest_email||'',guestPhone:b.guest_phone||'',status:b.status,notify:!b.is_demo};}
 function emptyForm(date,time,staffId,services,staff){
  const member=staff.find(x=>x.id===staffId)||staff.find(x=>x.active);
  const own=services.filter(x=>x.active&&!x.archived_at&&x.staff_id===member?.id);
@@ -68,7 +69,7 @@ function emptyForm(date,time,staffId,services,staff){
 }
 function StatusTag({value}) {return <span className={`${styles.status} ${styles['status_'+value]||''}`}><span className={styles.statusDot}/>{STATUS[value]||value}</span>}
 
-export default function AdminDashboard({onAdminLogout,adminManager}){
+export default function AdminDashboard({onAdminLogout,onAdminSecurity,adminManager}){
   const router=useRouter();
   const [cursor,setCursor]=useState(today);
   const [view,setView]=useState('week');
@@ -159,11 +160,11 @@ export default function AdminDashboard({onAdminLogout,adminManager}){
   async function removeBooking(){if(!selectedId||!form||saving)return;
     if(!window.confirm(`VÉGLEG törlöd ezt a foglalást?\n\n${form.guestName} • ${form.date} ${form.time}\n\nA törölt foglalás nem állítható vissza.`))return;
     setSaving(true);setError('');try{
-      await api('/api/admin/appointment',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:selectedId,notify:form.notify})});
+      await api('/api/admin/appointment',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:selectedId,revision:form.revision,notify:form.notify})});
       setToast('A foglalást véglegesen törölted.');closeDrawer();setRefreshVersion(x=>x+1);
     }catch(e){setError(e.message)}finally{setSaving(false)}
   }
-  async function markBooking(status){if(!selectedId||saving)return;setSaving(true);setError('');try{await api('/api/admin/change-status',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:selectedId,status})});setToast(status==='completed'?'Szolgáltatás teljesítettnek jelölve.':'Foglalás lemondva.');closeDrawer();setRefreshVersion(x=>x+1)}catch(e){setError(e.message)}finally{setSaving(false)}}
+  async function markBooking(status){if(!selectedId||saving)return;setSaving(true);setError('');try{await api('/api/admin/change-status',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:selectedId,revision:form.revision,status})});setToast(status==='completed'?'Szolgáltatás teljesítettnek jelölve.':'Foglalás lemondva.');closeDrawer();setRefreshVersion(x=>x+1)}catch(e){setError(e.message)}finally{setSaving(false)}}
   function openAbsence(row){setAbsenceEditor(absenceForm(row,cursor,filterStaff==='all'?staffOptions.find(s=>s.active)?.id||'':filterStaff));}
   async function addSlotBreak(){
     if(!slotActions||saving)return;
@@ -178,7 +179,7 @@ export default function AdminDashboard({onAdminLogout,adminManager}){
   async function stopMonthly(){
     if(!selectedId||saving||!window.confirm('Leállítod a havi ismétlést? A még el nem kezdődött alkalmak törlődnek, a korábbi foglalások megmaradnak.'))return;
     setSaving(true);setError('');
-    try{await api('/api/admin/appointment',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:selectedId,stopMonthly:true})});setToast('A havi ismétlés leállítva.');closeDrawer();setRefreshVersion(x=>x+1)}catch(e){setError(e.message)}finally{setSaving(false)}
+    try{await api('/api/admin/appointment',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:selectedId,revision:form.revision,stopMonthly:true})});setToast('A havi ismétlés leállítva.');closeDrawer();setRefreshVersion(x=>x+1)}catch(e){setError(e.message)}finally{setSaving(false)}
   }
   const pageTitle=tab==='calendar'?'Naptár':tab==='absence'?'Szabadságok':tab==='accounts'?'Fodrászfiókok':tab==='services'?'Szolgáltatásaim':tab==='settings'?'Saját beállítások':'Foglalások';
   const pageDescription={services:'Szolgáltatások, árak és időtartamok kezelése.',settings:'Profil, nyilvános elérhetőség és munkaidő.',calendar:'Időpontok, vendégek és szabad helyek.',list:'A kiválasztott hónap foglalásainak kezelése.',absence:'Szabadságok és szünetek rögzítése, módosítása.',accounts:'Saját belépés minden fodrásznak, elkülönített hozzáféréssel.'}[tab];
@@ -250,7 +251,7 @@ export default function AdminDashboard({onAdminLogout,adminManager}){
       <div className={styles.sidebarFoot}><div className={styles.onlineDot}/> <span>Adatkapcsolat · Supabase</span><small>EUROPE / Debrecen</small></div>
     </aside>
     <div className={styles.main}>
-      <header className={styles.topbar}><div className={styles.breadcrumb}><span>DEMETERS</span><span className={styles.slash}>/</span><strong>{pageTitle}</strong></div><div className={styles.topRight}><span className={styles.topTime}>MAGYARORSZÁG · GMT+1/+2</span><a href="/admin/eszkozok" title="Eszközök kezelése" style={{fontSize:12,color:"#555",textDecoration:"none"}}>Eszközök</a><a href="/" title="Weboldal megnyitása">Főoldal</a><span className={styles.avatar} title={ownName||'Kezelői fiók'}>D</span>{onAdminLogout&&<button type="button" onClick={onAdminLogout} title="Kilépés a kezelői fiókból" style={{background:'transparent',border:'1px solid #ddd',borderRadius:6,padding:'7px 11px',fontSize:11,color:'#666',cursor:'pointer'}}>Kijelentkezés</button>}</div></header>
+      <header className={styles.topbar}><div className={styles.breadcrumb}><span>DEMETERS</span><span className={styles.slash}>/</span><strong>{pageTitle}</strong></div><div className={styles.topRight}><span className={styles.topTime}>MAGYARORSZÁG · GMT+1/+2</span><a href="/admin/eszkozok" title="Eszközök kezelése" style={{fontSize:12,color:"#555",textDecoration:"none"}}>Eszközök</a><a href="/" title="Weboldal megnyitása">Főoldal</a><span className={styles.avatar} title={ownName||'Kezelői fiók'}>D</span>{onAdminSecurity&&<button type="button" onClick={onAdminSecurity} title="Biztonsági beállítások / Security settings" style={{background:'transparent',border:'1px solid #ddd',borderRadius:6,padding:'7px 11px',fontSize:11,color:'#666',cursor:'pointer'}}>MFA</button>}{onAdminLogout&&<button type="button" onClick={onAdminLogout} title="Kilépés a kezelői fiókból" style={{background:'transparent',border:'1px solid #ddd',borderRadius:6,padding:'7px 11px',fontSize:11,color:'#666',cursor:'pointer'}}>Kijelentkezés</button>}</div></header>
       <nav className={styles.sectionNav} aria-label="Mobil kezelőfelület">{navigation.map(([id,label,icon])=><button key={id} type="button" aria-current={tab===id?'page':undefined} onClick={()=>navigate(id)}><Icon name={icon} size={20}/><span>{label}</span></button>)}</nav>
       <div className={styles.content}>
         <div className={styles.headingRow}><div><div className={styles.overline}>{isOwner?'SZALON / FŐADMIN':'SAJÁT FIÓK'}</div><h1>{pageTitle}</h1><p>{pageDescription}</p>{!isOwner&&ownName&&<span className={styles.ownCalendar}>Saját fiók · {ownName}</span>}</div><div className={styles.headingActions}><button type="button" className={styles.ghostButton} onClick={()=>setRefreshVersion(x=>x+1)} disabled={loading}><Icon name="refresh" size={16}/><span>Frissítés</span></button>{!['accounts','services','settings'].includes(tab)&&<button type="button" className={styles.primaryButton} onClick={()=>tab==='absence'?openAbsence():newBooking()}><Icon name="plus" size={17}/>{tab==='absence'?'Új távollét':'Új foglalás'}</button>}</div></div>
@@ -296,7 +297,7 @@ export default function AdminDashboard({onAdminLogout,adminManager}){
       </details>
       {!isAdding&&form.status==='confirmed'&&<div className={styles.quickActions}><button type="button" className={styles.ghostButton} disabled={saving||Date.parse(form.originalStart)>Date.now()} onClick={()=>markBooking('completed')}>✓ Szolgáltatás elvégezve</button><button type="button" className={styles.cancelButton} disabled={saving} onClick={()=>{if(window.confirm('Lemondod a foglalást?'))markBooking('cancelled')}}>Foglalás lemondása</button></div>}
       {!isAdding&&<p className={styles.bookingMeta}>Foglalási azonosító: {selectedId}{currentBooking?.is_demo?' · TESZTADAT':''}</p>}
-      {error&&<p className={styles.drawerError} role="alert">{error}</p>}
+      {error&&<p className={styles.drawerError} role="alert">{error}<button type="button" onClick={()=>{closeDrawer();setRefreshVersion(x=>x+1);setError('')}}>Friss állapot betöltése</button></p>}
       <div className={styles.formActions}><button type="button" className={styles.cancelButton} disabled={saving} onClick={closeDrawer}>Mégse</button><button type="submit" className={styles.primaryButton} disabled={saving||!form.staffId||!form.serviceId}>{saving?'Mentés…':isAdding?'Foglalás hozzáadása':'Módosítások mentése'}</button></div>
       {!isAdding&&<button type="button" className={styles.deleteButton} disabled={saving} onClick={removeBooking}><Icon name="trash" size={16}/> Foglalás végleges törlése</button>}
     </form></aside></div>}

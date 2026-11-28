@@ -14,6 +14,8 @@ const {setDeviceCookie}=await import('../lib/server/trustedDevices.js');
 const {managerFor,requireManager}=await import('../lib/server/bookingManagement.js');
 const USER_ID='12345678-1234-4234-8234-123456789abc';
 const EMAIL='owner@example.com';
+const SESSION='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const TOKEN='test.'+Buffer.from(JSON.stringify({session_id:SESSION,aal:'aal2'})).toString('base64url')+'.signature';
 
 function response() {
   const headers=new Map();
@@ -25,7 +27,7 @@ function response() {
 }
 function sessionCookies() {
   const res=response();
-  setAdminCookies(res,{access_token:'admin-token',refresh_token:'admin-refresh'},USER_ID);
+  setAdminCookies(res,{access_token:TOKEN,refresh_token:'admin-refresh'},USER_ID);
   setDeviceCookie(res,'admin','A'.repeat(43),Date.now()+7*24*60*60*1000,true);
   const req={cookies:{}};
   for(const raw of res.getHeader('Set-Cookie')){
@@ -38,8 +40,10 @@ const originalFetch=globalThis.fetch;
 let requests=[];
 globalThis.fetch=async(url,options={})=>{
   requests.push({url:String(url),options});
-  if(String(url).includes('/rest/v1/rpc/booking_touch_trusted_device'))return {ok:true,status:200,text:async()=>JSON.stringify([{id:USER_ID,user_id:USER_ID,scope:'admin',last_seen_at:new Date().toISOString(),expires_at:new Date(Date.now()+7*86400000).toISOString()}])};
-  if(String(url).includes('/rest/v1/trusted_devices')) return {ok:true,status:200,text:async()=>JSON.stringify([{id:USER_ID,user_id:USER_ID,scope:'admin',last_seen_at:new Date().toISOString(),expires_at:new Date(Date.now()+86400000).toISOString()}])};
+  if(String(url).includes('/rpc/booking_session_active'))return {ok:true,status:200,text:async()=>JSON.stringify(true)};
+  if(String(url).includes('/rpc/booking_security_settings'))return {ok:true,status:200,text:async()=>JSON.stringify({admin_absolute_seconds:86400,admin_idle_seconds:1800,require_staff_mfa:false})};
+  if(String(url).includes('/rest/v1/rpc/booking_touch_trusted_device'))return {ok:true,status:200,text:async()=>JSON.stringify([{id:USER_ID,user_id:USER_ID,scope:'admin',created_at:new Date().toISOString(),auth_session_id:SESSION,last_seen_at:new Date().toISOString(),expires_at:new Date(Date.now()+7*86400000).toISOString()}])};
+  if(String(url).includes('/rest/v1/trusted_devices')) return {ok:true,status:200,text:async()=>JSON.stringify([{id:USER_ID,user_id:USER_ID,scope:'admin',created_at:new Date().toISOString(),auth_session_id:SESSION,last_seen_at:new Date().toISOString(),expires_at:new Date(Date.now()+86400000).toISOString()}])};
   if(String(url).endsWith('/auth/v1/user')) return {ok:true,status:200,text:async()=>JSON.stringify({id:USER_ID,email:EMAIL})};
   if(String(url).includes('/rest/v1/booking_managers')) return {ok:true,status:200,text:async()=>JSON.stringify([{email:EMAIL,role:'owner',staff_id:null}])};
   throw new Error('unexpected request '+url);
@@ -67,7 +71,7 @@ test('Admin session is independent from guest cookie auth',async()=>{
   assert.equal(noGuest,null);
   const admin=await getAdmin(req,res);
   assert.equal(admin.user.email,EMAIL);
-  assert.equal(admin.token,'admin-token');
+  assert.equal(admin.token,TOKEN);
   const session=await managerFor(req,res);
   assert.equal(session.manager.role,'owner');
   assert.equal(session.manager.email,EMAIL);
@@ -103,7 +107,9 @@ test('Admin login and guest identity remain separate at page and API boundaries'
   assert.doesNotMatch(manager,/getGuest\(/);
   const send=readFileSync(new URL('../pages/api/admin/auth/send-code.js',import.meta.url),'utf8');
   const verify=readFileSync(new URL('../pages/api/admin/auth/verify-code.js',import.meta.url),'utf8');
-  assert.match(send,/managerByEmail/);
+  assert.match(send,/booking_queue_admin_otp/);
+  const worker=readFileSync(new URL('../lib/server/outbox.js',import.meta.url),'utf8');
+  assert.match(worker,/managerByEmail/);
   assert.match(verify,/managerByEmail/);
   assert.match(verify,/setAdminCookies/);
 });

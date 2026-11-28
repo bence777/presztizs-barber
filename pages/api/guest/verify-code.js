@@ -1,8 +1,10 @@
+import {verifiedClaims} from '../../../lib/server/security';
+import {secureHandler} from '../../../lib/server/security';
 import { authApi, getProfile, jsonOnly, safeApiError, setGuestCookies } from "../../../lib/server/guestAuth";
 import { registerTrustedDevice, setDeviceCookie } from "../../../lib/server/trustedDevices";
 export const config = { api: { bodyParser: { sizeLimit: "4kb" } } };
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (!jsonOnly(req, res, "POST")) return;
   const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
   const code = typeof req.body?.code === "string" ? req.body.code.trim() : "";
@@ -20,7 +22,7 @@ export default async function handler(req, res) {
     const guest = { user: result.data.user, token: result.data.access_token };
     const profile = await getProfile(guest);
     const expiry = Date.now() + (remember ? 60 * 24 : 12) * 60 * 60 * 1000;
-    const deviceToken = await registerTrustedDevice(req, { userId: guest.user.id, scope: "guest", expiresAt: expiry });
+    const deviceToken = await registerTrustedDevice(req, { userId: guest.user.id, scope: "guest", expiresAt: expiry,sessionId:verifiedClaims(result.data.access_token).session_id });
     setGuestCookies(res, result.data, guest.user.id, { remember });
     setDeviceCookie(res, "guest", deviceToken, expiry, remember);
     return res.status(200).json({
@@ -32,3 +34,5 @@ export default async function handler(req, res) {
     return safeApiError(res, error, "verify-code");
   }
 }
+
+export default secureHandler(handler,{path:'/api/guest/verify-code'});

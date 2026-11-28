@@ -5,14 +5,11 @@ import PortfolioGallery from '../components/PortfolioGallery';
 import Faq from '../components/Faq';
 import LocationSection from '../components/LocationSection';
 import { COPY, pageMetadata, homeFaq } from '../data/seoContent.mjs';
-import { route, profilePath } from '../data/site.mjs';
-import { profileAvailable } from '../lib/seo/catalog.mjs';
+import { route } from '../data/site.mjs';
 import { buildSchema } from '../lib/seo/schema.mjs';
 import editorial from '../styles/Editorial.module.css';
-import { useState } from 'react';
 import styles from '../styles/Home.module.css';
 import HeroVideo from '../components/HeroVideo';
-import BarberStack from '../components/BarberStack';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import { useLanguage } from '../components/LanguageProvider';
 import SalonStory from '../components/SalonStory';
@@ -25,7 +22,6 @@ export default function Home({ catalog, language = 'hu' }) {
   const { t } = useLanguage();
   const meta = pageMetadata('home', language);
   const c = COPY[language];
-  const [bookingRequest, setBookingRequest] = useState(null);
 
   return (
     <>
@@ -92,21 +88,7 @@ export default function Home({ catalog, language = 'hu' }) {
           </div>
         </section>
 
-        <BarberStack
-          initialBarbers={catalog.barbers}
-          onBook={barber =>
-            setBookingRequest({
-              id: barber.id,
-              name: barber.name,
-            })
-          }
-        />
-
-        <nav className={editorial.homeLinks} aria-label={c.team}>
-          <Link href={route('team', language)}>{c.team}</Link>
-          {catalog.barbers.filter(barber => profileAvailable(barber, catalog, language)).map(barber => <Link key={barber.id} href={profilePath(barber.slug, language)}>{barber.name}</Link>)}
-        </nav>
-        <BookingFooter bookingRequest={bookingRequest} catalog={catalog} showFooter={false} />
+        <BookingFooter catalog={catalog} showFooter={false} showIntro={false} />
         <TrustSection />
         <div className={editorial.homeBlock}>
           <PortfolioGallery catalog={catalog} language={language} />

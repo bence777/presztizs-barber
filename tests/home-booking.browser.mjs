@@ -1,3 +1,4 @@
+import os from 'node:os';
 // All API requests use fixtures; these checks never create real bookings or email.
 import { createRequire } from 'node:module';
 import { mkdir } from 'node:fs/promises';
@@ -7,7 +8,7 @@ import { TEAM } from '../data/team.mjs';
 const require = createRequire(path.join(process.env.DEMETERS_QA_MODULES || process.cwd(), 'package.json'));
 const { chromium } = require('playwright');
 const base = process.env.DEMETERS_PREVIEW_URL || 'http://127.0.0.1:3102';
-const output = process.env.DEMETERS_QA_OUTPUT || '/private/tmp/demeters-qa/home-booking';
+const output = process.env.DEMETERS_QA_OUTPUT || `${os.tmpdir()}/demeters-qa/home-booking`;
 await mkdir(output, { recursive: true });
 const browser = await chromium.launch({ headless: true, ...(process.env.DEMETERS_BROWSER ? { executablePath: process.env.DEMETERS_BROWSER } : {}) });
 const staff = TEAM.map((member, i) => ({ ...member, id: member.id, active: true }));

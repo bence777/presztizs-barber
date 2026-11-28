@@ -1,7 +1,8 @@
+import {secureHandler} from '../../../lib/server/security';
 import { authApi, jsonOnly, safeApiError } from "../../../lib/server/guestAuth";
 export const config = { api: { bodyParser: { sizeLimit: "4kb" } } };
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (!jsonOnly(req, res, "POST")) return;
   const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
   if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -20,3 +21,5 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true });
   } catch (error) { return safeApiError(res, error, "send-code"); }
 }
+
+export default secureHandler(handler,{path:'/api/guest/send-code'});

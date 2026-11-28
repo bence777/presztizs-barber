@@ -1,9 +1,10 @@
+import {secureHandler} from '../../../lib/server/security';
 import {jsonOnly} from '../../../lib/server/guestAuth';
 import {requireManager} from '../../../lib/server/bookingManagement';
 import {adminMutationError} from '../../../lib/server/adminCalendar';
 import {readServices,saveService} from '../../../lib/server/staffSettings';
 export const config={api:{bodyParser:{sizeLimit:'12kb'}}};
-export default async function handler(req,res){
+async function handler(req,res){
  res.setHeader('Cache-Control','no-store');
  if(!['GET','POST','PATCH','DELETE'].includes(req.method))return res.status(405).end();
  if(req.method!=='GET'&&!jsonOnly(req,res,req.method))return;
@@ -15,3 +16,5 @@ export default async function handler(req,res){
   return res.status(req.method==='POST'?201:200).json({service:await saveService(session.manager,payload,{archive:req.method==='DELETE'})});
  }catch(e){return adminMutationError(res,e)}
 }
+
+export default secureHandler(handler,{path:'/api/admin/services'});

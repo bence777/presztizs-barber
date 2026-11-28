@@ -1,3 +1,4 @@
+import os from 'node:os';
 // Local SSR fixture server required; every browser API call is intercepted.
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -6,7 +7,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 const require=createRequire(path.join(process.env.DEMETERS_QA_MODULES||process.cwd(),'package.json'));
 const {chromium}=require('playwright');
 const base=process.env.DEMETERS_PREVIEW_URL||'http://127.0.0.1:3112';
-const output='/private/tmp/demeters-qa/seo';await mkdir(output,{recursive:true});
+const output=`${os.tmpdir()}/demeters-qa/seo`;await mkdir(output,{recursive:true});
 const browser=await chromium.launch({headless:true,...(process.env.DEMETERS_BROWSER?{executablePath:process.env.DEMETERS_BROWSER}:{})});let passed=0;
 const pass=name=>{passed++;console.log('PASS '+name)};
 try{
@@ -50,7 +51,8 @@ try{
  await context.close();
  for(const width of [320,390,768,1440]){
   const context=await browser.newContext({viewport:{width,height:950},reducedMotion:'reduce'});const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
-  await page.route('**/api/**',route=>{const pathname=new URL(route.request().url()).pathname;if(pathname==='/api/booking/config')return route.fulfill({json:{barbers:[],services:[]}});throw new Error('Unexpected API request '+pathname);});
+  await context.route('https://www.google.com/**',route=>route.abort());
+  await page.route(url=>url.origin===new URL(base).origin&&url.pathname.startsWith('/api/'),route=>{const pathname=new URL(route.request().url()).pathname;if(pathname==='/api/booking/config')return route.fulfill({json:{barbers:[],services:[]}});throw new Error('Unexpected API request '+pathname);});
   for(const route of ['/','/en/prices','/ferfi-hajvagas-debrecen','/fodraszok','/fodraszok/paliga-zoltan','/kapcsolat']){
    await page.goto(base+route);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),route+' overflows at '+width);
    if(route==='/'){assert.equal(await page.locator('video source').count(),0,'Reduced motion should not download a video');assert.equal(await page.locator('#foglalas [data-barber-carousel]').count(),0,'Booking must be deferred while hero is visible');await page.locator('details summary').first().focus();await page.keyboard.press('Enter');assert.ok(await page.locator('details').first().getAttribute('open')!==null);}

@@ -3,11 +3,11 @@ import DeferredBooking from './DeferredBooking';
 import { PublicFooter } from './PublicLayout';
 import styles from "../styles/BookingFooter.module.css";
 
-export default function BookingFooter({ bookingRequest, catalog, showFooter = true }) {
+export default function BookingFooter({ bookingRequest, catalog, showFooter = true, showIntro = true }) {
   const { t, language } = useLanguage();
   return (
     <>
-      <section className={styles.cta} aria-labelledby="booking-heading">
+      {showIntro && <section className={styles.cta} aria-labelledby="booking-heading">
         <div className={styles.backdrop} aria-hidden="true" />
         <div className={styles.wrap}>
           <div className={styles.topline}>
@@ -27,7 +27,7 @@ export default function BookingFooter({ bookingRequest, catalog, showFooter = tr
             <span>DEMETERS</span>
           </div>
         </div>
-      </section>
+      </section>}
       <section id="foglalas" className={styles.booking} aria-label={t("Időpontfoglalás")}>
         <div className={styles.bookingHeader}>
           <span>{t("IDŐPONTFOGLALÁS")}</span>

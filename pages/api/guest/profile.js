@@ -1,7 +1,8 @@
+import {secureHandler} from '../../../lib/server/security';
 import { getGuest, jsonOnly, safeApiError, upsertProfile } from "../../../lib/server/guestAuth";
 export const config = { api: { bodyParser: { sizeLimit: "4kb" } } };
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (!jsonOnly(req, res, "POST")) return;
   const name = typeof req.body?.name === "string" ? req.body.name.trim().replace(/\s+/g, " ") : "";
   const phone = typeof req.body?.phone === "string" ? req.body.phone.trim() : "";
@@ -16,3 +17,5 @@ export default async function handler(req, res) {
     return res.status(200).json({ profile: { name: stored.full_name, phone: stored.phone, email: guest.user.email } });
   } catch (error) { return safeApiError(res, error, "profile"); }
 }
+
+export default secureHandler(handler,{path:'/api/guest/profile'});
